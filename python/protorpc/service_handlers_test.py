@@ -116,6 +116,26 @@ class Service(object):
     pass
 
 
+def VerifyResponse(test,
+                   response,
+                   expected_status,
+                   expected_status_message,
+                   expected_content):
+  def write(content):
+    if expected_content == '':
+      test.assertEquals('', content)
+    else:
+      test.assertNotEquals(-1, content.find(expected_content))
+
+  def start_response(response, headers):
+    status, message = response.split(' ', 1)
+    test.assertEquals(expected_status, status)
+    test.assertEquals(expected_status_message, message)
+    return write
+
+  response.wsgi_write(start_response)
+
+
 class ServiceHandlerFactoryTest(test_util.TestCase):
   """Tests for the service handler factory."""
 
@@ -203,6 +223,11 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.server_host = 'server.host.com'
     self.ResetRequestHandler()
 
+    self.request = Request1()
+    self.request.integer_field = 1
+    self.request.string_field = 'a'
+    self.request.enum_field = Enum1.VAL1
+
   def ResetRequestHandler(self):
     super(ServiceHandlerTest, self).setUp()
 
@@ -235,19 +260,11 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
                       expected_status,
                       expected_status_message,
                       expected_content):
-    def write(content):
-      if expected_content == '':
-        self.assertEquals('', content)
-      else:
-        self.assertNotEquals(-1, content.find(expected_content))
-
-    def start_response(response, headers):
-      status, message = response.split(' ', 1)
-      self.assertEquals(expected_status, status)
-      self.assertEquals(expected_status_message, message)
-      return write
-
-    self.response.wsgi_write(start_response)
+    VerifyResponse(self,
+                   self.response,
+                   expected_status,
+                   expected_status_message,
+                   expected_content)
 
   def testRedirect(self):
     """Test that redirection is disabled."""
@@ -255,12 +272,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
   def testFirstMapper(self):
     """Make sure service attribute works when matches first RPCMapper."""
-    def build_request(handler, request):
-      request.integer_field = 1
-      request.string_field = 'a'
-      request.enum_field = Enum1.VAL1
     self.rpc_mapper1.build_request(
-        self.handler, mox.IsA(Request1)).WithSideEffects(build_request)
+        self.handler, Request1).AndReturn(self.request)
 
     def build_response(handler, response):
       output = '%s %s %s' % (response.integer_field,
@@ -283,12 +296,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     Demonstrates the multiplicity of the RPCMapper configuration.
     """
-    def build_request(handler, request):
-      request.integer_field = 1
-      request.string_field = 'a'
-      request.enum_field = Enum1.VAL1
     self.rpc_mapper2.build_request(
-        self.handler, mox.IsA(Request1)).WithSideEffects(build_request)
+        self.handler, Request1).AndReturn(self.request)
 
     def build_response(handler, response):
       output = '%s %s %s' % (response.integer_field,
@@ -308,12 +317,12 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
   def testCaseInsensitiveContentType(self):
     """Ensure that matching content-type is case insensitive."""
-    def build_request(handler, request):
-      request.integer_field = 1
-      request.string_field = 'a'
-      request.enum_field = Enum1.VAL1
-    self.rpc_mapper1.build_request(
-        self.handler, mox.IsA(Request1)).WithSideEffects(build_request)
+    request = Request1()
+    request.integer_field = 1
+    request.string_field = 'a'
+    request.enum_field = Enum1.VAL1
+    self.rpc_mapper1.build_request(self.handler,
+                                   Request1).AndReturn(self.request)
 
     def build_response(handler, response):
       output = '%s %s %s' % (response.integer_field,
@@ -350,7 +359,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.ResetRequestHandler()
 
     self.rpc_mapper1.build_request(
-        self.handler, mox.IsA(Request1))
+        self.handler, Request1).AndReturn(Request1())
     self.rpc_mapper1.build_response(
         self.handler, mox.IsA(Response1))
 
@@ -387,7 +396,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.ResetRequestHandler()
 
     self.rpc_mapper1.build_request(
-        self.handler, mox.IsA(Request1))
+        self.handler, Request1).AndReturn(Request1())
     self.rpc_mapper1.build_response(
         self.handler, mox.IsA(Response1))
 
@@ -463,7 +472,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     def build_request(handler, request):
       raise service_handlers.RequestError('This is a request error')
     self.rpc_mapper1.build_request(
-        self.handler, mox.IsA(Request1)).WithSideEffects(build_request)
+        self.handler, Request1).WithSideEffects(build_request)
 
     self.mox.ReplayAll()
 
@@ -478,7 +487,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     def build_request(handler, request):
       raise messages.DecodeError('This is a decode error')
     self.rpc_mapper1.build_request(
-        self.handler, mox.IsA(Request1)).WithSideEffects(build_request)
+        self.handler, Request1).WithSideEffects(build_request)
 
     self.mox.ReplayAll()
 
@@ -490,12 +499,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
   def testResponseException(self):
     """Test what happens when build_response raises ResponseError."""
-    def build_request(handler, request):
-      request.integer_field = 1
-      request.string_field = 'a'
-      request.enum_field = Enum1.VAL1
     self.rpc_mapper1.build_request(
-        self.handler, mox.IsA(Request1)).WithSideEffects(build_request)
+        self.handler, Request1).AndReturn(self.request)
 
     self.rpc_mapper1.build_response(
         self.handler, mox.IsA(Response1)).AndRaise(
@@ -538,7 +543,10 @@ class RPCMapperTestBase(test_util.TestCase):
     """Set up test framework."""
     self.Reinitialize()
 
-  def Reinitialize(self, input='', get=False, path_method='method1'):
+  def Reinitialize(self, input='',
+                   get=False,
+                   path_method='method1',
+                   content_type='text/plain'):
     """Allows reinitialization of test with custom input values and POST.
 
     Args:
@@ -578,6 +586,8 @@ class RPCMapperTestBase(test_util.TestCase):
     self.response = webapp.Response()
 
     self.service_handler.initialize(self.request, self.response)
+
+    self.service_handler.request.headers['Content-Type'] = content_type
 
 
 class RPCMapperTest(RPCMapperTestBase, webapp_test_util.RequestHandlerTestBase):
@@ -737,47 +747,55 @@ class RPCMapperTest(RPCMapperTestBase, webapp_test_util.RequestHandlerTestBase):
 class ProtocolMapperTestBase(object):
   """Base class for basic protocol mapper tests."""
 
-  http_method = 'POST'
-
   def setUp(self):
     """Reinitialize test specifically for protocol buffer mapper."""
-    self.Reinitialize(path_method='my_method')
-    self.service_handler.method = 'POST'
-    self.service_handler.request.headers['content-type'] = (
-        'application/x-google-protobuf')
+    super(ProtocolMapperTestBase, self).setUp()
+    self.Reinitialize(path_method='my_method',
+                      content_type='application/x-google-protobuf')
+
+    self.request_message = Request1()
+    self.request_message.integer_field = 1
+    self.request_message.string_field = u'something'
+    self.request_message.enum_field = Enum1.VAL1
+
+    self.response_message = Response1()
+    self.response_message.integer_field = 1
+    self.response_message.string_field = u'something'
+    self.response_message.enum_field = Enum1.VAL1
 
   def testBuildRequest(self):
     """Test request building."""
-    request = Request1()
-    request.integer_field = 1
-    request.string_field = u'something'
-    request.enum_field = Enum1.VAL1
-
-    self.Reinitialize(self.protocol.encode_message(request),
-                      path_method='my_method')
-    self.service_handler.method = self.http_method
-    self.service_handler.request.headers['content-type'] = (
-        self.content_type)
+    self.Reinitialize(self.protocol.encode_message(self.request_message),
+                      content_type=self.content_type)
 
     mapper = self.mapper()
     parsed_request = mapper.build_request(self.service_handler,
                                           Request1)
-    self.assertEquals(request, parsed_request)
+    self.assertEquals(self.request_message, parsed_request)
 
   def testBuildResponse(self):
     """Test response building."""
-    response = Response1()
-    response.integer_field = 1
-    response.string_field = u'something'
-    response.enum_field = Enum1.VAL1
 
     mapper = self.mapper()
-    mapper.build_response(self.service_handler, response)
-    self.assertEquals(self.protocol.encode_message(response),
+    mapper.build_response(self.service_handler, self.response_message)
+    self.assertEquals(self.protocol.encode_message(self.response_message),
                       self.service_handler.response.out.getvalue())
 
+  def testWholeRequest(self):
+    """Test the basic flow of a request with mapper class."""
+    body = self.protocol.encode_message(self.request_message)
+    self.Reinitialize(input=body,
+                      content_type=self.content_type)
+    self.factory.add_request_mapper(self.mapper())
+    self.service_handler.handle('POST', 'method1')
+    VerifyResponse(self,
+                   self.service_handler.response,
+                   '200',
+                   'OK',
+                   self.protocol.encode_message(self.response_message))
 
-class URLEncodedRPCMapperTest(RPCMapperTestBase, ProtocolMapperTestBase):
+
+class URLEncodedRPCMapperTest(ProtocolMapperTestBase, RPCMapperTestBase):
   """Test the URL encoded RPC mapper."""
 
   content_type = 'application/x-www-form-urlencoded'
@@ -789,13 +807,13 @@ class URLEncodedRPCMapperTest(RPCMapperTestBase, ProtocolMapperTestBase):
     self.Reinitialize(urllib.urlencode([('prefix_integer_field', '10'),
                                         ('prefix_string_field', 'a string'),
                                         ('prefix_enum_field', 'VAL1'),
-                                       ]))
+                                       ]),
+                      self.content_type)
 
     url_encoded_mapper = service_handlers.URLEncodedRPCMapper(
         parameter_prefix='prefix_')
-    request = url_encoded_mapper.build_request(
-        self.service_handler,
-        Service.method1.remote.request_type)
+    request = url_encoded_mapper.build_request(self.service_handler,
+                                               Request1)
     self.assertEquals(10, request.integer_field)
     self.assertEquals('a string', request.string_field)
     self.assertEquals(Enum1.VAL1, request.enum_field)
@@ -804,7 +822,8 @@ class URLEncodedRPCMapperTest(RPCMapperTestBase, ProtocolMapperTestBase):
     """Test trying to build request that causes a decode error."""
     self.Reinitialize(urllib.urlencode((('integer_field', '10'),
                                         ('integer_field', '20'),
-                                        )))
+                                        )),
+                      content_type=self.content_type)
 
     url_encoded_mapper = service_handlers.URLEncodedRPCMapper()
 
@@ -833,7 +852,7 @@ class URLEncodedRPCMapperTest(RPCMapperTestBase, ProtocolMapperTestBase):
                       })
 
 
-class ProtobufRPCMapperTest(RPCMapperTestBase, ProtocolMapperTestBase):
+class ProtobufRPCMapperTest(ProtocolMapperTestBase, RPCMapperTestBase):
   """Test the protobuf encoded RPC mapper."""
 
   content_type = 'application/x-google-protobuf'
@@ -841,7 +860,7 @@ class ProtobufRPCMapperTest(RPCMapperTestBase, ProtocolMapperTestBase):
   mapper = service_handlers.ProtobufRPCMapper
 
 
-class JSONRPCMapperTest(RPCMapperTestBase, ProtocolMapperTestBase):
+class JSONRPCMapperTest(ProtocolMapperTestBase, RPCMapperTestBase):
   """Test the URL encoded RPC mapper."""
 
   content_type = 'application/json'

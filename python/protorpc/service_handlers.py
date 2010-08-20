@@ -494,8 +494,7 @@ class ServiceHandler(webapp.RequestHandler):
         self.response.set_status(400, message)
         return
 
-      request = method_info.request_type()
-      mapper.build_request(self, request)
+      request = mapper.build_request(self, method_info.request_type)
     except (RequestError, messages.DecodeError), err:
       logging.error('Error building request: %s', err)
       self.response.set_status(400, 'Invalid RPC request.')
