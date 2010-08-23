@@ -1,0 +1,47 @@
+<!--
+ Copyright 2010 Google Inc.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+{% extends 'base.html' %}
+
+{% block title %}
+  Invoke {{service_path}}: {{service_name}}.{{method.name}}
+{% endblock %}
+
+{% block init_script %}
+var forms_path = "{{forms_url}}";
+var servicePath = "{{service_path}}";
+var serviceName = "{{service_name}}";
+var methodName = "{{method.name}}";
+{% endblock %}
+
+{% block body %}
+
+Invoke {{service_path}}: {{service_name}}.{{method.name}}
+<hr>
+
+<a href="{{forms_path}}">All forms</a>
+
+<hr>
+
+<div id="error-message" style="color:red"></div>
+<form action="{{service_path}}/{{method.name}}"
+      method="GET">
+  <div id="method-form"></div>
+  <input type="hidden" name="response_format" value="text/plain">
+  <input type="submit" name="submit" value="Invoke">
+</form>
+
+{% endblock %}
