@@ -170,17 +170,24 @@ class ServiceHandlerFactoryTest(test_util.TestCase):
     factory = service_handlers.ServiceHandlerFactory(Service)
     path, mapped_factory = factory.mapping('/my_service')
 
-    self.assertEquals(r'\/my\_service' + service_handlers._SERVICE_PATTERN, path)
+    self.assertEquals(r'/my_service' + service_handlers._SERVICE_PATTERN, path)
     self.assertEquals(id(factory), id(mapped_factory))
 
-    path, mapped_factory = factory.mapping('/my_(service)')
-    self.assertEquals('\/my\_\(service\)' +
+    path, mapped_factory = factory.mapping('/my_service/nested')
+    self.assertEquals('/my_service/nested' +
                       service_handlers._SERVICE_PATTERN, path)
+
+  def testRegexMapping(self):
+    """Test the mapping method using a regex."""
+    factory = service_handlers.ServiceHandlerFactory(Service)
+    path, mapped_factory = factory.mapping('.*/my_service')
+
+    self.assertEquals(r'.*/my_service' + service_handlers._SERVICE_PATTERN, path)
+    self.assertEquals(id(factory), id(mapped_factory))
 
   def testMapping_BadPath(self):
     """Test bad parameterse to the mapping method."""
     factory = service_handlers.ServiceHandlerFactory(Service)
-    self.assertRaises(ValueError, factory.mapping, 'my_service')
     self.assertRaises(ValueError, factory.mapping, '/my_service/')
 
   def testDefault(self):
