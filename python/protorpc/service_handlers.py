@@ -331,8 +331,6 @@ class ServiceHandlerFactory(object):
     Raises:
       ValueError if path does not start with /, path ends with /.
     """
-    if not path.startswith('/'):
-      raise ValueError('Path must start with /.')
     if path.endswith('/'):
       raise ValueError('Path must not end with /.')
 
@@ -348,7 +346,7 @@ class ServiceHandlerFactory(object):
     """
     self.__check_path(path)
 
-    service_url_pattern = re.escape(path) + _SERVICE_PATTERN
+    service_url_pattern = path + _SERVICE_PATTERN
 
     return service_url_pattern, self
 
