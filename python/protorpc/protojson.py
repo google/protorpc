@@ -29,10 +29,9 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cStringIO
 import base64
+import logging
 
 from protorpc import messages
-
-from django.utils import simplejson
 
 __all__ = [
     'encode_message',
@@ -40,7 +39,45 @@ __all__ = [
 ]
 
 
-class _MessageJSONEncoder(simplejson.JSONEncoder):
+def _load_json_module():
+  """Try to load a valid json module.
+
+  There are more than one json modules that might be installed.  They are
+  mostly compatible with one another but some versions may be different.
+  This function attempts to load various json modules in a preferred order.
+  It does a basic check to guess if a loaded version of json is compatible.
+
+  Returns:
+    Comptable json module.
+
+  Raises:
+    ImportError if there are no json modules or the loaded json module is
+      not compatible with ProtoRPC.
+  """
+  first_import_error = None
+  for module_name in ['json',
+                      'simplejson',
+                      'django.utils.simplejson']:
+    try:
+      module = __import__(module_name, {}, {}, 'json')
+      if not hasattr(module, 'JSONEncoder'):
+        message = ('json library %s is not compatible with ProtoRPC.' %
+                   module_name)
+        logging.warning(message)
+        raise ImportError(message)
+      else:
+        return module
+    except ImportError, err:
+      if not first_import_error:
+        first_import_error = err
+
+  logging.error('Must use valid json library (Python 2.6 json, simplejson or '
+                'django.utils.simplejson).')
+  raise first_import_error
+json = _load_json_module()
+
+
+class _MessageJSONEncoder(json.JSONEncoder):
   """Message JSON encoder class.
 
   Extension of JSONEncoder that can build JSON from a message object.
@@ -86,7 +123,7 @@ def encode_message(message):
   """
   message.check_initialized()
 
-  return simplejson.dumps(message, cls=_MessageJSONEncoder)
+  return json.dumps(message, cls=_MessageJSONEncoder)
 
 
 def decode_message(message_type, encoded_message):
@@ -106,7 +143,7 @@ def decode_message(message_type, encoded_message):
   if not encoded_message.strip():
     return message_type()
 
-  dictionary = simplejson.loads(encoded_message)
+  dictionary = json.loads(encoded_message)
 
   def decode_dictionary(message_type, dictionary):
     """Merge dictionary in to message.
