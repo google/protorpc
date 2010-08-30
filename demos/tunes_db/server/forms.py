@@ -213,7 +213,7 @@ class ServiceRegistry(object):
                ]
     for url_path in self.__registration_order:
       # TODO(rafek): Probably should map all these to /forms/file_set instead.
-      invoke_path = '%s/form/method/(.*)' % url_path
+      invoke_path = '%s/form/method.(.*)' % url_path
       file_set_path = '%s/form/file_set' % url_path
 
       mappings.extend([

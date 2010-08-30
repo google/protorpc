@@ -170,20 +170,28 @@ class ServiceHandlerFactoryTest(test_util.TestCase):
     factory = service_handlers.ServiceHandlerFactory(Service)
     path, mapped_factory = factory.mapping('/my_service')
 
-    self.assertEquals(r'/my_service' + service_handlers._SERVICE_PATTERN, path)
+    self.assertEquals(r'/my_service' + service_handlers._METHOD_PATTERN, path)
     self.assertEquals(id(factory), id(mapped_factory))
+    match = re.match(path, '/my_service.my_method')
+    self.assertEquals('my_method', match.group(1))
 
     path, mapped_factory = factory.mapping('/my_service/nested')
     self.assertEquals('/my_service/nested' +
-                      service_handlers._SERVICE_PATTERN, path)
+                      service_handlers._METHOD_PATTERN, path)
+    match = re.match(path, '/my_service/nested.my_method')
+    self.assertEquals('my_method', match.group(1))
 
   def testRegexMapping(self):
     """Test the mapping method using a regex."""
     factory = service_handlers.ServiceHandlerFactory(Service)
     path, mapped_factory = factory.mapping('.*/my_service')
 
-    self.assertEquals(r'.*/my_service' + service_handlers._SERVICE_PATTERN, path)
+    self.assertEquals(r'.*/my_service' + service_handlers._METHOD_PATTERN, path)
     self.assertEquals(id(factory), id(mapped_factory))
+    match = re.match(path, '/whatever_preceeds/my_service.my_method')
+    self.assertEquals('my_method', match.group(1))
+    match = re.match(path, '/something_else/my_service.my_other_method')
+    self.assertEquals('my_other_method', match.group(1))
 
   def testMapping_BadPath(self):
     """Test bad parameterse to the mapping method."""
