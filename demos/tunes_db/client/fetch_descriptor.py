@@ -61,7 +61,7 @@ def parse_options(argv):
 def main(argv):
   service_url, options = parse_options(argv)
 
-  get_file_set_url = '%s/get_file_set' % service_url
+  get_file_set_url = '%s.get_file_set' % service_url
 
   request = urllib2.Request(
       get_file_set_url,

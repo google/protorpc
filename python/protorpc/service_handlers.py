@@ -150,14 +150,7 @@ _EXTRA_JSON_CONTENT_TYPES = ['application/x-javascript',
 # The whole method pattern is an optional regex.  It contains a single
 # group used for mapping to the query parameter.  This is passed to the
 # parameters of 'get' and 'post' on the ServiceHandler.
-_METHOD_NAME_PATTERN = r'(?:/([^?]*))?'
-
-# The whole query string is optional, but must be caught in order to allow
-# URL encoded requests to be matched by the webapp framework.  It is not
-# captured because the webapp framework already parses them.
-_QUERY_STRING_PATTERN = r'(?:\?.*)?'
-
-_SERVICE_PATTERN = _METHOD_NAME_PATTERN + _QUERY_STRING_PATTERN
+_METHOD_PATTERN = r'(?:\.([^?]*))?'
 
 
 class RPCMapper(object):
@@ -346,7 +339,7 @@ class ServiceHandlerFactory(object):
     """
     self.__check_path(path)
 
-    service_url_pattern = path + _SERVICE_PATTERN
+    service_url_pattern = path + _METHOD_PATTERN
 
     return service_url_pattern, self
 

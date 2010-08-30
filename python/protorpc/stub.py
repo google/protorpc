@@ -177,7 +177,7 @@ class HTTPTransport(object):
 
     encoded_request = protobuf.encode_message(request)
 
-    method_url = '%s/%s' % (self.__service_url, remote_info.method.func_name)
+    method_url = '%s.%s' % (self.__service_url, remote_info.method.func_name)
     http_request = urllib2.Request(method_url, encoded_request)
     http_request.add_header('content-type', 'application/x-google-protobuf')
 

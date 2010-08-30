@@ -297,7 +297,7 @@ class HTTPTransportTest(test_util.TestCase):
     encoded_response = protobuf.encode_message(response)
 
     def verify_request(urllib2_request):
-      self.assertEquals('http://myserver/myservice/mymethod',
+      self.assertEquals('http://myserver/myservice.mymethod',
                         urllib2_request.get_full_url())
       self.assertEquals(urllib2_request.get_data(), encoded_request)
       self.assertEquals('application/x-google-protobuf',
