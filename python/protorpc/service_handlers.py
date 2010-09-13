@@ -525,7 +525,7 @@ class URLEncodedRPCMapper(RPCMapper):
     # Private attributes:
     #   __parameter_prefix: parameter prefix as provided by constructor
     #     parameter.
-    super(URLEncodedRPCMapper, self).__init__(['POST', 'GET'],
+    super(URLEncodedRPCMapper, self).__init__(['POST'],
                                               _URLENCODED_CONTENT_TYPE,
                                               self)
     self.__parameter_prefix = parameter_prefix
