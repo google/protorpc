@@ -427,6 +427,11 @@ class ServiceHandler(webapp.RequestHandler):
 
   def __match_request(self, mapper, http_method, remote_method):
     content_type = self.request.headers.get('content-type', None)
+    if not content_type:
+      return False
+
+    # Lop off parameters from the end (for example content-encoding)
+    content_type = content_type.split(';', 1)[0]
 
     return bool(http_method in mapper.http_methods and
 
