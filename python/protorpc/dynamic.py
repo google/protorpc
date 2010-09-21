@@ -25,6 +25,8 @@ from google.protobuf import descriptor
 from google.protobuf import message
 from google.protobuf import reflection
 
+from protorpc import util
+
 
 __all__ = ['Error',
            'EnumDefinitionError',
@@ -366,7 +368,13 @@ class Message(message.Message):
 
 class _Field(object):
 
-  def __init__(self, number, **kwargs):
+  @util.positional(2)
+  def __init__(self,
+               number,
+               required=False,
+               repeated=False,
+               variant=None,
+               default=None):
     """Constructor.
 
     Store the attributes of a field so that the _DynamicProtocolMessageType
@@ -398,18 +406,13 @@ class _Field(object):
       TypeError when an unexpected keyword argument is provided.
     """
     self.number = number
-    self.required = kwargs.pop('required', False)
-    self.repeated = kwargs.pop('repeated', False)
-    if self.repeated and 'default' in kwargs:
+    self.required = required
+    self.repeated = repeated
+
+    if self.repeated and default is not None:
       raise MessageDefinitionError(
           'May not provide default for repeated fields.')
-
-    self.default = kwargs.pop('default', None)
-
-    variant = kwargs.pop('variant', None)
-
-    if kwargs:
-      raise TypeError('Unexpected keyword arguments: %r' % list(kwargs))
+    self.default = default
 
     if variant is None:
       self.variant = self.DEFAULT_VARIANT

@@ -51,6 +51,7 @@ import traceback
 import types
 import weakref
 
+from protorpc import util
 
 __all__ = ['MAX_ENUM_VALUE',
            'MAX_FIELD_NUMBER',
@@ -889,6 +890,7 @@ class _Field(object):
 
   __initialized = False
 
+  @util.positional(2)
   def __init__(self,
                number,
                required=False,
@@ -1156,6 +1158,7 @@ class MessageField(_Field):
 
   DEFAULT_VARIANT = Variant.MESSAGE
 
+  @util.positional(3)
   def __init__(self,
                message_type,
                number,
@@ -1191,9 +1194,9 @@ class MessageField(_Field):
       self.__type = message_type
 
     super(MessageField, self).__init__(number,
-                                       required,
-                                       repeated,
-                                       variant)
+                                       required=required,
+                                       repeated=repeated,
+                                       variant=variant)
 
   def validate_element(self, value):
     """Validate single value assigned to message field.
@@ -1230,13 +1233,7 @@ class EnumField(_Field):
 
   DEFAULT_VARIANT = Variant.ENUM
 
-  def __init__(self,
-               enum_type,
-               number,
-               required=False,
-               repeated=False,
-               variant=None,
-               default=None):
+  def __init__(self, enum_type, number, **kwargs):
     """Constructor.
 
     Args:
@@ -1266,11 +1263,7 @@ class EnumField(_Field):
     else:
       self.__type = enum_type
 
-    super(EnumField, self).__init__(number,
-                                    required,
-                                    repeated,
-                                    variant,
-                                    default)
+    super(EnumField, self).__init__(number, **kwargs)
 
   @property
   def type(self):

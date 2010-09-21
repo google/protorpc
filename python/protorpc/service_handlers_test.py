@@ -627,17 +627,6 @@ class RPCMapperTest(RPCMapperTestBase, webapp_test_util.RequestHandlerTestBase):
     environment['CONTENT_LENGTH'] = len('my body')
     return environment
 
-  def testInvalidArguments(self):
-    """Test invalid arguments in to constructor."""
-    self.assertRaisesWithRegexpMatch(
-        TypeError,
-        "Found unexpected arguments: {'unknown': 'whatever'}",
-        service_handlers.RPCMapper,
-        ['GET', 'POST'],
-        'my-content-type',
-        self.protocol,
-        unknown='whatever')
-
   def testContentTypes_JustDefault(self):
     """Test content type attributes."""
     self.mox.ReplayAll()

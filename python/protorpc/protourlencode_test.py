@@ -306,14 +306,6 @@ class ProtourlencodeConformanceTest(test_util.TestCase,
                                              ('int64_value-1', 50),
                                              ('int64_value-2', 6000)])
 
-  def testEncodeMessageParameters(self):
-    """Test that encode_message does not accept unexpected keyword arguments."""
-    self.assertRaisesWithRegexpMatch(TypeError,
-                                     'Found unexpected arguments:',
-                                     protourlencode.encode_message,
-                                     test_util.OptionalMessage(),
-                                     unknown='unimportant')
-
 
 if __name__ == '__main__':
   unittest.main()

@@ -93,6 +93,7 @@ import re
 import urllib
 
 from protorpc import messages
+from protorpc import util
 
 __all__ = ['URLEncodedRequestBuilder',
            'encode_message',
@@ -446,7 +447,8 @@ class URLEncodedRequestBuilder(object):
     return True
 
 
-def encode_message(message, **kwargs):
+@util.positional(1)
+def encode_message(message, prefix=''):
   """Encode Message instance to url-encoded string.
 
   Args:
@@ -460,10 +462,6 @@ def encode_message(message, **kwargs):
     messages.ValidationError if message is not initialized.
   """
   message.check_initialized()
-
-  prefix = kwargs.pop('prefix', '')
-  if kwargs:
-    raise TypeError('Found unexpected arguments: %s' % kwargs)
 
   parameters = []
   def build_message(parent, prefix):

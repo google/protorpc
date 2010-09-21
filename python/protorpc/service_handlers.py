@@ -99,11 +99,12 @@ import urllib
 import weakref
 
 from google.appengine.ext import webapp
-import messages
-import protobuf
-import protojson
-import protourlencode
-import remote
+from protorpc import messages
+from protorpc import protobuf
+from protorpc import protojson
+from protorpc import protourlencode
+from protorpc import remote
+from protorpc import util
 
 __all__ = [
     'Error',
@@ -163,11 +164,12 @@ class RPCMapper(object):
   protocol messages for the remote method.
   """
 
+  @util.positional(4)
   def __init__(self,
                http_methods,
                default_content_type,
                protocol,
-               **kwargs):
+               content_types=None):
     """Constructor.
 
     Args:
@@ -180,10 +182,11 @@ class RPCMapper(object):
     self.__http_methods = frozenset(http_methods)
     self.__default_content_type = default_content_type
     self.__protocol = protocol
-    self.__content_types = (frozenset([self.__default_content_type]) |
-                            frozenset(kwargs.pop('content_types', [])))
-    if kwargs:
-      raise TypeError('Found unexpected arguments: %s' % kwargs)
+
+    if content_types is None:
+      content_types = []
+    self.__content_types = frozenset([self.__default_content_type] +
+                                     content_types)
 
   @property
   def http_methods(self):

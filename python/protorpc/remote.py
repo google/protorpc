@@ -110,6 +110,7 @@ import sys
 from protorpc import message_types
 from protorpc import messages
 from protorpc import descriptor
+from protorpc import util
 
 
 __all__ = [
@@ -297,7 +298,12 @@ class RequestState(object):
     server_port: Post which service has recevied request from.
   """
 
-  def __init__(self, **kwargs):
+  @util.positional(1)
+  def __init__(self,
+               remote_host=None,
+               remote_address=None,
+               server_host=None,
+               server_port=None):
     """Constructor.
 
     Args:
@@ -306,16 +312,10 @@ class RequestState(object):
       server_host: Assigned to attribute.
       server_port: Assigned to attribute.
     """
-    self.remote_host = kwargs.pop('remote_host', None)
-    self.remote_address = kwargs.pop('remote_address', None)
-    self.server_host = kwargs.pop('server_host', None)
-    self.server_port = kwargs.pop('server_port', None)
-
-    if kwargs:
-      class_name = type(self).__name__
-      remaining_keys = kwargs.keys()
-      raise TypeError('%s does not support attributes: %s'
-                      % (class_name, remaining_keys))
+    self.remote_host = remote_host
+    self.remote_address = remote_address
+    self.server_host = server_host
+    self.server_port = server_port
 
   def __repr__(self):
     """String representation of state."""

@@ -55,10 +55,11 @@ class TestCase(unittest.TestCase):
     """
     try:
       function(*params, **kwargs)
+      self.fail('Expected exception %s was not raised' % exception.__name__)
     except exception, err:
       match = bool(re.match(regexp, str(err)))
-      self.assertTrue(match, 'Expected match %s, found %s.' % (regexp,
-                                                               str(err)))
+      self.assertTrue(match, 'Expected match %s, found %s' % (regexp,
+                                                              str(err)))
 
 
 class ModuleInterfaceTest(object):
