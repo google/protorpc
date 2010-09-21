@@ -358,6 +358,35 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.mox.VerifyAll()
 
+  def testContentTypeWithParameters(self):
+    """Test that content types have parameters parsed out."""
+    request = Request1()
+    request.integer_field = 1
+    request.string_field = 'a'
+    request.enum_field = Enum1.VAL1
+    self.rpc_mapper1.build_request(self.handler,
+                                   Request1).AndReturn(self.request)
+
+    def build_response(handler, response):
+      output = '%s %s %s' % (response.integer_field,
+                             response.string_field,
+                             response.enum_field)
+      handler.response.out.write(output)
+    self.rpc_mapper1.build_response(
+        self.handler, mox.IsA(Response1)).WithSideEffects(build_response)
+
+    self.mox.ReplayAll()
+
+    self.handler.request.headers['Content-Type'] = ('application/'
+                                                    'x-www-form-urlencoded' +
+                                                    '; a=b; c=d')
+
+    self.handler.handle('POST', 'method1')
+
+    self.VerifyResponse('200', 'OK', '1 a VAL1')
+
+    self.mox.VerifyAll()
+
   def testRequestState(self):
     """Make sure request state is passed in to handler that supports it."""
     class ServiceWithState(object):
