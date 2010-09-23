@@ -1279,6 +1279,7 @@ class EnumField(_Field):
     return self.__type
 
 
+@util.positional(2)
 def find_definition(name, relative_to=None, importer=__import__):
   """Find definition by name in module-space.
 

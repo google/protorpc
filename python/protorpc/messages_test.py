@@ -1430,22 +1430,34 @@ class FindDefinitionTest(test_util.TestCase):
     D = self.DefineMessage('a.b.d', 'D')
 
     # Find A, B, C and D relative to a.
-    self.assertEquals(A, messages.find_definition('A', a, self.Importer))
-    self.assertEquals(B, messages.find_definition('b.B', a, self.Importer))
-    self.assertEquals(C, messages.find_definition('b.c.C', a, self.Importer))
-    self.assertEquals(D, messages.find_definition('b.d.D', a, self.Importer))
+    self.assertEquals(A, messages.find_definition(
+        'A', a, importer=self.Importer))
+    self.assertEquals(B, messages.find_definition(
+        'b.B', a, importer=self.Importer))
+    self.assertEquals(C, messages.find_definition(
+        'b.c.C', a, importer=self.Importer))
+    self.assertEquals(D, messages.find_definition(
+        'b.d.D', a, importer=self.Importer))
 
     # Find A, B, C and D relative to b.
-    self.assertEquals(A, messages.find_definition('A', b, self.Importer))
-    self.assertEquals(B, messages.find_definition('B', b, self.Importer))
-    self.assertEquals(C, messages.find_definition('c.C', b, self.Importer))
-    self.assertEquals(D, messages.find_definition('d.D', b, self.Importer))
+    self.assertEquals(A, messages.find_definition(
+        'A', b, importer=self.Importer))
+    self.assertEquals(B, messages.find_definition(
+        'B', b, importer=self.Importer))
+    self.assertEquals(C, messages.find_definition(
+        'c.C', b, importer=self.Importer))
+    self.assertEquals(D, messages.find_definition(
+        'd.D', b, importer=self.Importer))
 
     # Find A, B, C and D relative to c.  Module d is the same case as c.
-    self.assertEquals(A, messages.find_definition('A', c, self.Importer))
-    self.assertEquals(B, messages.find_definition('B', c, self.Importer))
-    self.assertEquals(C, messages.find_definition('C', c, self.Importer))
-    self.assertEquals(D, messages.find_definition('d.D', c, self.Importer))
+    self.assertEquals(A, messages.find_definition(
+        'A', c, importer=self.Importer))
+    self.assertEquals(B, messages.find_definition(
+        'B', c, importer=self.Importer))
+    self.assertEquals(C, messages.find_definition(
+        'C', c, importer=self.Importer))
+    self.assertEquals(D, messages.find_definition(
+        'd.D', c, importer=self.Importer))
 
   def testRelativeToMessages(self):
     """Test finding definitions relative to Message definitions."""
@@ -1455,28 +1467,44 @@ class FindDefinitionTest(test_util.TestCase):
     D = A.B.D
 
     # Find relative to A.
-    self.assertEquals(A, messages.find_definition('A', A, self.Importer))
-    self.assertEquals(B, messages.find_definition('B', A, self.Importer))
-    self.assertEquals(C, messages.find_definition('B.C', A, self.Importer))
-    self.assertEquals(D, messages.find_definition('B.D', A, self.Importer))
+    self.assertEquals(A, messages.find_definition(
+        'A', A, importer=self.Importer))
+    self.assertEquals(B, messages.find_definition(
+        'B', A, importer=self.Importer))
+    self.assertEquals(C, messages.find_definition(
+        'B.C', A, importer=self.Importer))
+    self.assertEquals(D, messages.find_definition(
+        'B.D', A, importer=self.Importer))
 
     # Find relative to B.
-    self.assertEquals(A, messages.find_definition('A', B, self.Importer))
-    self.assertEquals(B, messages.find_definition('B', B, self.Importer))
-    self.assertEquals(C, messages.find_definition('C', B, self.Importer))
-    self.assertEquals(D, messages.find_definition('D', B, self.Importer))
+    self.assertEquals(A, messages.find_definition(
+        'A', B, importer=self.Importer))
+    self.assertEquals(B, messages.find_definition(
+        'B', B, importer=self.Importer))
+    self.assertEquals(C, messages.find_definition(
+        'C', B, importer=self.Importer))
+    self.assertEquals(D, messages.find_definition(
+        'D', B, importer=self.Importer))
 
     # Find relative to C.
-    self.assertEquals(A, messages.find_definition('A', C, self.Importer))
-    self.assertEquals(B, messages.find_definition('B', C, self.Importer))
-    self.assertEquals(C, messages.find_definition('C', C, self.Importer))
-    self.assertEquals(D, messages.find_definition('D', C, self.Importer))
+    self.assertEquals(A, messages.find_definition(
+        'A', C, importer=self.Importer))
+    self.assertEquals(B, messages.find_definition(
+        'B', C, importer=self.Importer))
+    self.assertEquals(C, messages.find_definition(
+        'C', C, importer=self.Importer))
+    self.assertEquals(D, messages.find_definition(
+        'D', C, importer=self.Importer))
 
     # Find relative to C searching from c.
-    self.assertEquals(A, messages.find_definition('b.A', C, self.Importer))
-    self.assertEquals(B, messages.find_definition('b.A.B', C, self.Importer))
-    self.assertEquals(C, messages.find_definition('b.A.B.C', C, self.Importer))
-    self.assertEquals(D, messages.find_definition('b.A.B.D', C, self.Importer))
+    self.assertEquals(A, messages.find_definition(
+        'b.A', C, importer=self.Importer))
+    self.assertEquals(B, messages.find_definition(
+        'b.A.B', C, importer=self.Importer))
+    self.assertEquals(C, messages.find_definition(
+        'b.A.B.C', C, importer=self.Importer))
+    self.assertEquals(D, messages.find_definition(
+        'b.A.B.D', C, importer=self.Importer))
 
   def testFindEnum(self):
     """Test that Enums are found."""
@@ -1484,8 +1512,9 @@ class FindDefinitionTest(test_util.TestCase):
       pass
     A = self.DefineMessage('a', 'A', {'Color': Color})
 
-    self.assertEquals(Color,
-                      messages.find_definition('Color', A, self.Importer))
+    self.assertEquals(
+        Color,
+        messages.find_definition('Color', A, importer=self.Importer))
 
   def testFalseScope(self):
     """Test that Message definitions nested in strange objects are hidden."""
@@ -1504,7 +1533,8 @@ class FindDefinitionTest(test_util.TestCase):
     A = self.DefineMessage('a', 'A')
     module_A = self.DefineModule('a.A')
 
-    self.assertEquals(A, messages.find_definition('a.A', None, self.Importer))
+    self.assertEquals(A, messages.find_definition(
+        'a.A', None, importer=self.Importer))
 
 
 def main():

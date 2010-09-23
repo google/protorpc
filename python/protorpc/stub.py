@@ -27,6 +27,7 @@ from protorpc import descriptor
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import remote
+from protorpc import util
 
 
 class RPCError(messages.Error):
@@ -328,6 +329,7 @@ def define_file(file_descriptor, module=None):
   return module
 
 
+@util.positional(1)
 def import_file(file_descriptor, modules=None):
   """Import FileDescriptor in to module space.
 
@@ -357,6 +359,7 @@ def import_file(file_descriptor, modules=None):
   return define_file(file_descriptor, module)
 
 
+@util.positional(1)
 def import_file_set(file_set, modules=None, _open=open):
   """Import FileSet in to module space.
 
@@ -379,4 +382,4 @@ def import_file_set(file_set, modules=None, _open=open):
     file_set = protobuf.decode_message(descriptor.FileSet, encoded_file_set)
 
   for file_descriptor in file_set.files:
-    import_file(file_descriptor, modules)
+    import_file(file_descriptor, modules=modules)

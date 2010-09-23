@@ -110,14 +110,15 @@ class URLEncodedRequestBuilder(object):
   message instance.
   """
 
-  def __init__(self, message, parameter_prefix=''):
+  @util.positional(2)
+  def __init__(self, message, prefix=''):
     """Constructor.
 
     Args:
       message: Message instance to build from parameters.
-      parameter_prefix: Prefix expected at the start of valid parameters.
+      prefix: Prefix expected at the start of valid parameters.
     """
-    self.__parameter_prefix = parameter_prefix
+    self.__parameter_prefix = prefix
 
     # The empty tuple indicates the root message, which has no path.
     # __messages is a full cache that makes it very easy to look up message
@@ -522,17 +523,13 @@ def decode_message(message_type, encoded_message, **kwargs):
   Args:
     message_type: Message instance to merge URL encoded content into.
     encoded_message: URL encoded message.
+    prefix: Prefix to append to field names of contained values.
 
   Returns:
     Decoded instance of message_type.
   """
-  parameter_prefix = kwargs.pop('parameter_prefix', '')
-  if kwargs:
-    raise TypeError('Found unexpected arguments: %s' % kwargs)
-
   message = message_type()
-  builder = URLEncodedRequestBuilder(message,
-                                     parameter_prefix=parameter_prefix)
+  builder = URLEncodedRequestBuilder(message, **kwargs)
   arguments = cgi.parse_qs(encoded_message, keep_blank_values=True)
   for argument, values in sorted(arguments.iteritems()):
     builder.add_parameter(argument, values)

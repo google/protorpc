@@ -483,7 +483,7 @@ class ModuleTest(test_util.TestCase):
     """Test importing FileDescriptor in to module space."""
     modules = {}
     file_descriptor = self.MakeFileDescriptor('standalone')
-    stub.import_file(file_descriptor, modules)
+    stub.import_file(file_descriptor, modules=modules)
     self.assertEquals(file_descriptor,
                       descriptor.describe_file(modules['standalone']))
 
@@ -492,7 +492,7 @@ class ModuleTest(test_util.TestCase):
     module = new.module('standalone')
     modules = {'standalone': module}
     file_descriptor = self.MakeFileDescriptor('standalone')
-    stub.import_file(file_descriptor, modules)
+    stub.import_file(file_descriptor, modules=modules)
     self.assertEquals(module, modules['standalone'])
     self.assertEquals(file_descriptor,
                       descriptor.describe_file(modules['standalone']))
@@ -515,7 +515,7 @@ class ModuleTest(test_util.TestCase):
     """Test importing FileDescriptor in to existing nested module."""
     modules = {}
     file_descriptor = self.MakeFileDescriptor('root.nested')
-    stub.import_file(file_descriptor, modules)
+    stub.import_file(file_descriptor, modules=modules)
     self.assertEquals(modules['root'].nested, modules['root.nested'])
     self.assertEquals(file_descriptor,
                       descriptor.describe_file(modules['root.nested']))
@@ -545,7 +545,7 @@ class ModuleTest(test_util.TestCase):
         'root.nested': nested,
     }
 
-    stub.import_file_set(file_set, modules)
+    stub.import_file_set(file_set, modules=modules)
 
     self.assertEquals(root, modules['root'])
     self.assertEquals(nested, modules['root.nested'])
@@ -575,7 +575,7 @@ class ModuleTest(test_util.TestCase):
     self.mox.ReplayAll()
 
     modules = {}
-    stub.import_file_set('my-file.dat', modules, _open=opener)
+    stub.import_file_set('my-file.dat', modules=modules, _open=opener)
 
     self.assertEquals(file_set,
                       descriptor.describe_file_set(

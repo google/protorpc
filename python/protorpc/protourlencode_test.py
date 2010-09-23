@@ -19,6 +19,7 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import cgi
 import logging
 import unittest
 import urllib
@@ -56,7 +57,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
   def testMakePath(self):
     builder = protourlencode.URLEncodedRequestBuilder(SuperSuperMessage(),
-                                                      'pre.')
+                                                      prefix='pre.')
 
     self.assertEquals(None, builder.make_path(''))
     self.assertEquals(None, builder.make_path('no_such_field'))
@@ -88,7 +89,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
   def testAddParameter_SimpleAttributes(self):
     message = test_util.OptionalMessage()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     self.assertTrue(builder.add_parameter('pre.int64_value', ['10']))
     self.assertTrue(builder.add_parameter('pre.string_value', ['a string']))
@@ -100,7 +101,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
   def testAddParameter_InvalidAttributes(self):
     message = SuperSuperMessage()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     def assert_empty():
       self.assertEquals(None, getattr(message, 'sub_message'))
@@ -115,7 +116,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
   def testAddParameter_NestedAttributes(self):
     message = SuperSuperMessage()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     # Set an empty message fields.
     self.assertTrue(builder.add_parameter('pre.sub_message', ['']))
@@ -133,7 +134,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
   def testAddParameter_NestedMessages(self):
     message = SuperSuperMessage()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     # Add a repeated empty message.
     self.assertTrue(builder.add_parameter(
@@ -162,7 +163,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
   def testAddParameter_RepeatedValues(self):
     message = test_util.RepeatedMessage()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     self.assertTrue(builder.add_parameter('pre.int64_value-0', ['20']))
     self.assertTrue(builder.add_parameter('pre.int64_value-1', ['30']))
@@ -175,13 +176,13 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
   def testAddParameter_InvalidValuesMayRepeat(self):
     message = test_util.OptionalMessage()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     self.assertFalse(builder.add_parameter('nothing', [1, 2, 3]))
 
   def testAddParameter_RepeatedParameters(self):
     message = test_util.OptionalMessage()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     self.assertRaises(messages.DecodeError,
                       builder.add_parameter,
@@ -202,7 +203,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
   def testInvalidFieldFormat(self):
     message = test_util.OptionalMessage()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     self.assertFalse(builder.add_parameter('pre.illegal%20', ['1']))
 
@@ -227,7 +228,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
 
     message = HasNestedRepeated()
-    builder = protourlencode.URLEncodedRequestBuilder(message, 'pre.')
+    builder = protourlencode.URLEncodedRequestBuilder(message, prefix='pre.')
 
     self.assertTrue(builder.add_parameter('pre.nested-0.values-0', ['1']))
     # Try to create an indexed value on a non-message field.
@@ -305,6 +306,27 @@ class ProtourlencodeConformanceTest(test_util.TestCase,
   encoded_extend_message = urllib.urlencode([('int64_value-0', 400),
                                              ('int64_value-1', 50),
                                              ('int64_value-2', 6000)])
+
+  def testParameterPrefix(self):
+    """Test using the 'prefix' parameter to encode_message."""
+    class MyMessage(messages.Message):
+      number = messages.IntegerField(1)
+      names = messages.StringField(2, repeated=True)
+
+    message = MyMessage()
+    message.number = 10
+    message.names = [u'Fred', u'Lisa']
+
+    encoded_message = protourlencode.encode_message(message, prefix='prefix-')
+    self.assertEquals({'prefix-number': ['10'],
+                       'prefix-names-0': ['Fred'],
+                       'prefix-names-1': ['Lisa'],
+                      },
+                      cgi.parse_qs(encoded_message))
+
+    self.assertEquals(message, protourlencode.decode_message(MyMessage,
+                                                             encoded_message,
+                                                             prefix='prefix-'))
 
 
 if __name__ == '__main__':
