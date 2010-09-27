@@ -284,6 +284,7 @@ class ServiceTest(test_util.TestCase):
                       '  New instance of __main__.StatefulService.',
                       factory.func_doc)
     self.assertEquals('StatefulService_service_factory', factory.func_name)
+    self.assertEquals(StatefulService, factory.service_class)
 
     service = factory()
     self.assertEquals(1, service.a)

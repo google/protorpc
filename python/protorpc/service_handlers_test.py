@@ -33,6 +33,7 @@ from protorpc import messages
 from protorpc import protobuf
 from protorpc import protojson
 from protorpc import protourlencode
+from protorpc import registry
 from protorpc import remote
 from protorpc import service_handlers
 
@@ -152,10 +153,10 @@ class ServiceHandlerFactoryTest(test_util.TestCase):
     self.assertEquals([mapper1, mapper2],
                       list(configuration.all_request_mappers()))
 
-  def testServiceClass(self):
-    """Test that service_class attribute is set."""
-    factory = service_handlers.ServiceHandlerFactory(Service)
-    self.assertEquals(Service, factory.service_class)
+  def testServiceFactory(self):
+    """Test that service_factory attribute is set."""
+    handler_factory = service_handlers.ServiceHandlerFactory(Service)
+    self.assertEquals(Service, handler_factory.service_factory)
 
   def testFactoryMethod(self):
     """Test that factory creates correct instance of class."""
@@ -200,13 +201,13 @@ class ServiceHandlerFactoryTest(test_util.TestCase):
 
   def testDefault(self):
     """Test the default factory convenience method."""
-    factory = service_handlers.ServiceHandlerFactory.default(
+    handler_factory = service_handlers.ServiceHandlerFactory.default(
         Service,
         parameter_prefix='my_prefix.')
 
-    self.assertEquals(Service, factory.service_class)
+    self.assertEquals(Service, handler_factory.service_factory)
 
-    mappers = factory.all_request_mappers()
+    mappers = handler_factory.all_request_mappers()
 
     # Verify URL encoded mapper.
     url_encoded_mapper = mappers.next()
@@ -899,6 +900,112 @@ class JSONRPCMapperTest(ProtocolMapperTestBase, RPCMapperTestBase):
   content_type = 'application/json'
   protocol = protojson
   mapper = service_handlers.JSONRPCMapper
+
+
+class MyService(remote.Service):
+
+  def __init__(self, value='default'):
+    self.value = value
+
+
+class ServiceMappingTest(test_util.TestCase):
+
+  def testServiceMapping_Empty(self):
+    """Test an empty service mapping."""
+    mapping = service_handlers.service_mapping({}, '/myreg')
+    self.assertEquals(1, len(mapping))
+    pattern, factory = mapping[0]
+    self.assertEquals('/myreg' + service_handlers._METHOD_PATTERN, pattern)
+    self.assertEquals(registry.RegistryService,
+                      factory.service_factory.service_class)
+    registry_service = factory.service_factory()
+    self.assertEquals({'/myreg': registry.RegistryService},
+                      registry_service.registry)
+
+  def testServiceMapping_ByClass(self):
+    """Test mapping a service by class."""
+    mapping = service_handlers.service_mapping({'/my-service': MyService},
+                                               '/myreg')
+    self.assertEquals(2, len(mapping))
+    pattern, factory = mapping[0]
+    self.assertEquals('/my-service' + service_handlers._METHOD_PATTERN, pattern)
+    self.assertEquals(MyService,
+                      factory.service_factory)
+
+    pattern, factory = mapping[1]
+    self.assertEquals('/myreg' + service_handlers._METHOD_PATTERN, pattern)
+    self.assertEquals(registry.RegistryService,
+                      factory.service_factory.service_class)
+    registry_service = factory.service_factory()
+    self.assertEquals({'/myreg': registry.RegistryService,
+                       '/my-service': MyService,
+                      },
+                      registry_service.registry)
+
+  def testServiceMapping_ByFactory(self):
+    """Test mapping a service by factory."""
+    mapping = service_handlers.service_mapping(
+      {'/my-service': MyService.new_factory('new-value')},
+      '/myreg')
+    self.assertEquals(2, len(mapping))
+    pattern, factory = mapping[0]
+    self.assertEquals('/my-service' + service_handlers._METHOD_PATTERN, pattern)
+    self.assertEquals(MyService, factory.service_factory.service_class)
+    self.assertEquals('new-value',
+                      factory.service_factory().value)
+
+    pattern, factory = mapping[1]
+    self.assertEquals('/myreg' + service_handlers._METHOD_PATTERN, pattern)
+    self.assertEquals(registry.RegistryService,
+                      factory.service_factory.service_class)
+    registry_service = factory.service_factory()
+    self.assertEquals({'/myreg': registry.RegistryService,
+                       '/my-service': MyService,
+                      },
+                      registry_service.registry)
+
+  def testServiceMapping_ByList(self):
+    """Test mapping a service by factory."""
+    mapping = service_handlers.service_mapping(
+      [('/my-service1', MyService.new_factory('service1')),
+       ('/my-service2', MyService.new_factory('service2')),
+      ],
+      '/myreg')
+    self.assertEquals(3, len(mapping))
+    pattern, factory = mapping[0]
+    self.assertEquals('/my-service1' + service_handlers._METHOD_PATTERN,
+                      pattern)
+    self.assertEquals(MyService, factory.service_factory.service_class)
+    self.assertEquals('service1',
+                      factory.service_factory().value)
+
+    pattern, factory = mapping[1]
+    self.assertEquals('/my-service2' + service_handlers._METHOD_PATTERN,
+                      pattern)
+    self.assertEquals(MyService, factory.service_factory.service_class)
+    self.assertEquals('service2',
+                      factory.service_factory().value)
+
+    pattern, factory = mapping[2]
+    self.assertEquals('/myreg' + service_handlers._METHOD_PATTERN, pattern)
+    self.assertEquals(registry.RegistryService,
+                      factory.service_factory.service_class)
+    registry_service = factory.service_factory()
+    self.assertEquals({'/myreg': registry.RegistryService,
+                       '/my-service1': MyService,
+                       '/my-service2': MyService,
+                      },
+                      registry_service.registry)
+
+  def testServiceMapping_NoRegistry(self):
+    """Test mapping a service by class."""
+    mapping = service_handlers.service_mapping({'/my-service': MyService},
+                                               None)
+    self.assertEquals(1, len(mapping))
+    pattern, factory = mapping[0]
+    self.assertEquals('/my-service' + service_handlers._METHOD_PATTERN, pattern)
+    self.assertEquals(MyService,
+                      factory.service_factory)
 
 
 def main():

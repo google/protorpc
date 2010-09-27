@@ -437,6 +437,8 @@ class Service(object):
     # Update name so that it is easier to debug the factory function.
     service_factory.func_name = '%s_service_factory' % cls.__name__
 
+    service_factory.service_class = cls
+
     return service_factory
 
   def initialize_request_state(self, request_state):

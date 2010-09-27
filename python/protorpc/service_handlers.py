@@ -30,9 +30,9 @@ Participants in an RPC:
 
   There are four classes involved with the life cycle of an RPC.
 
-    Service class: A user-defined class that is responsible for implementing
-      an RPC service.  The methods intended for use as RPC methods must be
-      decorated by the 'remote' decorator.
+    Service factory: A user-defined service factory that is responsible for
+      instantiating an RPC service.  The methods intended for use as RPC
+      methods must be decorated by the 'remote' decorator.
 
     RPCMapper: Responsible for determining whether or not a specific request
       matches a particular RPC format and translating between the actual
@@ -95,6 +95,7 @@ import cgi
 import itertools
 import logging
 import re
+import sys
 import urllib
 import weakref
 
@@ -103,6 +104,7 @@ from protorpc import messages
 from protorpc import protobuf
 from protorpc import protojson
 from protorpc import protourlencode
+from protorpc import registry
 from protorpc import remote
 from protorpc import util
 
@@ -112,12 +114,15 @@ __all__ = [
     'ResponseError',
     'ServiceConfigurationError',
 
+    'DEFAULT_REGISTRY_PATH',
+
     'ProtobufRPCMapper',
     'RPCMapper',
     'ServiceHandler',
     'ServiceHandlerFactory',
     'URLEncodedRPCMapper',
     'JSONRPCMapper',
+    'service_mapping',
 ]
 
 
@@ -152,6 +157,8 @@ _EXTRA_JSON_CONTENT_TYPES = ['application/x-javascript',
 # group used for mapping to the query parameter.  This is passed to the
 # parameters of 'get' and 'post' on the ServiceHandler.
 _METHOD_PATTERN = r'(?:\.([^?]*))?'
+
+DEFAULT_REGISTRY_PATH = '/protorpc'
 
 
 class RPCMapper(object):
@@ -283,14 +290,14 @@ class ServiceHandlerFactory(object):
         [ServiceHandlerFactory.default(StockService).mapping('/stocks')])
   """
 
-  def __init__(self, service_class):
+  def __init__(self, service_factory):
     """Constructor.
 
     Args:
-      service_class: Service class to instantiate and provide to
+      service_factory: Service factory to instantiate and provide to
         service handler.
     """
-    self.__service_class = service_class
+    self.__service_factory = service_factory
     self.__request_mappers = []
 
   def all_request_mappers(self):
@@ -307,12 +314,12 @@ class ServiceHandlerFactory(object):
 
   def __call__(self):
     """Construct a new service handler instance."""
-    return ServiceHandler(self, self.__service_class())
+    return ServiceHandler(self, self.__service_factory())
 
   @property
-  def service_class(self):
-    """Service class associated with this factory."""
-    return self.__service_class
+  def service_factory(self):
+    """Service factory associated with this factory."""
+    return self.__service_factory
 
   @staticmethod
   def __check_path(path):
@@ -347,14 +354,14 @@ class ServiceHandlerFactory(object):
     return service_url_pattern, self
 
   @classmethod
-  def default(cls, service_class, parameter_prefix=''):
+  def default(cls, service_factory, parameter_prefix=''):
     """Convenience method to map default factory configuration to application.
 
     Creates a standardized default service factory configuration that pre-maps
     the URL encoded protocol handler to the factory.
 
     Args:
-      service_class: Service class to instantiate and provide to
+      service_factory: Service factory to instantiate and provide to
         service handler.
       method_parameter: The name of the form parameter used to determine the
         method to invoke used by the URLEncodedRPCMapper.  If None, no
@@ -366,7 +373,7 @@ class ServiceHandlerFactory(object):
     Returns:
       Mapping from service URL to service handler factory.
     """
-    factory = cls(service_class)
+    factory = cls(service_factory)
 
     factory.add_request_mapper(URLEncodedRPCMapper(parameter_prefix))
     factory.add_request_mapper(ProtobufRPCMapper())
@@ -613,3 +620,47 @@ class JSONRPCMapper(RPCMapper):
         _JSON_CONTENT_TYPE,
         protojson,
         content_types=_EXTRA_JSON_CONTENT_TYPES)
+
+
+def service_mapping(services,
+                    registry_path=DEFAULT_REGISTRY_PATH):
+  """Create a services mapping for use with webapp.
+
+  Creates basic default configuration and registration for ProtoRPC services.
+  Each service listed in the service mapping has a standard service handler
+  factory created for it.
+
+  Args:
+    services: List of tuples (path, service):
+      path: Path on server to map service to.
+      service: Service type, service factory or string definition name of
+        service being mapped.
+      Can also be a dict.  If so, the keys are treated as the path and values as
+      the service.
+    registry_path: Path to give to registry service.  Use None to disable
+      registry service.
+
+  Returns:
+    List of tuples defining a mapping of request handlers compatible with a
+    webapp application.
+  """
+  if isinstance(services, dict):
+    services = services.iteritems()
+  mapping = []
+  registry_map = {}
+
+  if registry_path is not None:
+    registry_service = registry.RegistryService.new_factory(registry_map)
+    services = list(services) + [(registry_path, registry_service)]
+  
+  for path, service in services:
+    service_class = getattr(service, 'service_class', service)
+
+    # Create service mapping for webapp.
+    new_mapping = ServiceHandlerFactory.default(service).mapping(path)
+    mapping.append(new_mapping)
+
+    # Update registry with service class.
+    registry_map[path] = service_class
+
+  return mapping
