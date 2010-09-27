@@ -129,7 +129,7 @@ class RegistryService(remote.Service):
     #   __definition_to_modules: Mapping of definition types to set of modules
     #     that they refer to.  This cache is used to make repeated look-ups
     #     faster and to prevent circular references from causing endless loops.
-    
+
     self.__registry = registry
     if modules is None:
       modules = sys.modules
@@ -145,7 +145,7 @@ class RegistryService(remote.Service):
     referred to fields within its referred messages.
 
     Args:
-      message_type: Message type to find all referring modules for. 
+      message_type: Message type to find all referring modules for.
 
     Returns:
       Set of modules referred to by message_types by traversing all its
@@ -153,6 +153,22 @@ class RegistryService(remote.Service):
     """
     # TODO(rafek): Maybe this should be a method on Message and Service?
     def get_dependencies(message_type, seen=None):
+      """Get all dependency definitions of a message type.
+
+      This function works by collecting the types of all enumeration and message
+      fields defined within the message type.  When encountering a message
+      field, it will recursivly find all of the associated message's
+      dependencies.  It will terminate on circular dependencies by keeping track
+      of what definitions it already via the seen set.
+
+      Args:
+        message_type: Message type to get dependencies for.
+        seen: Set of definitions that have already been visited.
+
+      Returns:
+        All dependency message and enumerated types associated with this message
+        including the message itself.
+      """
       if seen is None:
         seen = set()
       seen.add(message_type)
@@ -163,15 +179,15 @@ class RegistryService(remote.Service):
             get_dependencies(field.type, seen)
         elif isinstance(field, messages.EnumField):
           seen.add(field.type)
-      
+
       return seen
-    
+
     found_modules = self.__definition_to_modules.setdefault(message_type, set())
     if not found_modules:
       dependencies = get_dependencies(message_type)
       found_modules.update(self.__modules[definition.__module__]
                            for definition in dependencies)
-      
+
     return found_modules
 
   def __describe_file_set(self, names):
@@ -195,7 +211,7 @@ class RegistryService(remote.Service):
                                method.remote.response_type):
             found_modules.update(self.__find_modules_for_message(message_type))
       service_modules.update(found_modules)
-          
+
     return descriptor.describe_file_set(service_modules)
 
   @property
@@ -213,7 +229,7 @@ class RegistryService(remote.Service):
       mapping.name = name.decode('utf-8')
       mapping.definition = service_class.definition_name().decode('utf-8')
       response.services.append(mapping)
-      
+
     return response
 
   @remote.remote(GetFileSetRequest, GetFileSetResponse)

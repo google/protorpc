@@ -652,7 +652,7 @@ def service_mapping(services,
   if registry_path is not None:
     registry_service = registry.RegistryService.new_factory(registry_map)
     services = list(services) + [(registry_path, registry_service)]
-  
+
   for path, service in services:
     service_class = getattr(service, 'service_class', service)
 
