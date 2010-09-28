@@ -1310,6 +1310,21 @@ def find_definition(name, relative_to=None, importer=__import__):
   algorithm searches any Messages or sub-modules found in its path.
   Non-Message values are not searched.
 
+  A name that begins with '.' is considered to be a fully qualified name.  The
+  name is always searched for from the topmost package.  For example, assume
+  two message types:
+
+    abc.xyz.SomeMessage
+    xyz.SomeMessage
+
+  Searching for '.xyz.SomeMessage' relative to 'abc' will resolve to
+  'xyz.SomeMessage' and not 'abc.xyz.SomeMessage'.  For this kind of name,
+  the relative_to parameter is effectively ignored and always set to None.
+
+  For more information about package name resolution, please see:
+
+    http://code.google.com/apis/protocolbuffers/docs/proto.html#packages
+
   Args:
     name: Name of definition to find.  May be fully qualified or relative name.
     relative_to: Search for definition relative to message definition or module.
@@ -1330,6 +1345,11 @@ def find_definition(name, relative_to=None, importer=__import__):
                     'Found: %s' % relative_to)
 
   name_path = name.split('.')
+
+  # Handle absolute path reference.
+  if not name_path[0]:
+    relative_to = None
+    name_path = name_path[1:]
 
   def search_path():
     """Performs a single iteration searching the path from relative_to.

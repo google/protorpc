@@ -1506,6 +1506,22 @@ class FindDefinitionTest(test_util.TestCase):
     self.assertEquals(D, messages.find_definition(
         'b.A.B.D', C, importer=self.Importer))
 
+  def testAbsoluteReference(self):
+    """Test finding absolute definition names."""
+    # Define modules.
+    a = self.DefineModule('a')
+    b = self.DefineModule('a.a')
+
+    # Define messages.
+    aA = self.DefineMessage('a', 'A')
+    aaA = self.DefineMessage('a.a', 'A')
+
+    # Always find a.A.
+    self.assertEquals(aA, messages.find_definition('.a.A', None, self.Importer))
+    self.assertEquals(aA, messages.find_definition('.a.A', a, self.Importer))
+    self.assertEquals(aA, messages.find_definition('.a.A', aA, self.Importer))
+    self.assertEquals(aA, messages.find_definition('.a.A', aaA, self.Importer))
+
   def testFindEnum(self):
     """Test that Enums are found."""
     class Color(messages.Enum):
