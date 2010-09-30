@@ -22,9 +22,9 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import sys
 import unittest
 
-import test_util
 from protorpc import messages
 from protorpc import protojson
+from protorpc import test_util
 
 from django.utils import simplejson
 
@@ -261,7 +261,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
     original_import = __builtins__.__import__
 
     def block_simplejson(name, *args):
-      if name == 'django.utils':
+      if name.startswith('django.utils'):
         raise ImportError('Django is not installed')
       return original_import(name, *args)
     __builtins__.__import__ = block_simplejson
@@ -275,7 +275,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
     # Bad module without simplejson back raises errors.
     self.assertRaisesWithRegexpMatch(
         ImportError,
-        'json library is not compatible with ProtoRPC\.',
+        'json library "json" is not compatible with ProtoRPC\.',
         reload,
         protojson)
 

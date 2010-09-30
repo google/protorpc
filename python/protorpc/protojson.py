@@ -61,7 +61,7 @@ def _load_json_module():
     try:
       module = __import__(module_name, {}, {}, 'json')
       if not hasattr(module, 'JSONEncoder'):
-        message = ('json library %s is not compatible with ProtoRPC.' %
+        message = ('json library "%s" is not compatible with ProtoRPC.' %
                    module_name)
         logging.warning(message)
         raise ImportError(message)

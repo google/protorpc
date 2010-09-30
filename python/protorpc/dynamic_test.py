@@ -21,8 +21,8 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import unittest
 
-import test_util
 from protorpc import dynamic
+from protorpc import test_util
 from google.protobuf import descriptor
 
 

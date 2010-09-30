@@ -21,10 +21,10 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import unittest
 
-import protorpc_test_pb2
-import test_util
 from protorpc import messages
 from protorpc import protobuf
+from protorpc import protorpc_test_pb2
+from protorpc import test_util
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,

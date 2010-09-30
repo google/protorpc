@@ -22,10 +22,10 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import new
 import unittest
 
-import test_util
 from protorpc import descriptor
 from protorpc import messages
 from protorpc import remote
+from protorpc import test_util
 
 
 RUSSIA = u'\u0420\u043e\u0441\u0441\u0438\u044f'

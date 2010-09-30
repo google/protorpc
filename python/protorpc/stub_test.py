@@ -26,12 +26,12 @@ import sys
 import unittest
 import urllib2
 
-import test_util
 from protorpc import descriptor
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import remote
 from protorpc import stub
+from protorpc import test_util
 
 import mox
 

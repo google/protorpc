@@ -583,8 +583,8 @@ class URLEncodedRPCMapper(RPCMapper):
       parameters.
     """
     request = request_type()
-    builder = protourlencode.URLEncodedRequestBuilder(request,
-                                                      self.__parameter_prefix)
+    builder = protourlencode.URLEncodedRequestBuilder(
+        request, prefix=self.__parameter_prefix)
     for argument in sorted(handler.request.arguments()):
       values = handler.request.get_all(argument)
       try:

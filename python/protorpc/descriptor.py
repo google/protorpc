@@ -463,7 +463,7 @@ def describe_file(module):
   # file
   # TODO(rafek): Straighten out this dependency.  Possibly move these functions
   # from descriptor to their own module.
-  import remote
+  from protorpc import remote
 
   descriptor = FileDescriptor()
   try:

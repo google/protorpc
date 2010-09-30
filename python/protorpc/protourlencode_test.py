@@ -24,9 +24,9 @@ import logging
 import unittest
 import urllib
 
-import test_util
 from protorpc import messages
 from protorpc import protourlencode
+from protorpc import test_util
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,

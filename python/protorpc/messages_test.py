@@ -26,7 +26,7 @@ import sys
 import types
 import unittest
 
-import test_util
+from protorpc import test_util
 from protorpc import descriptor
 from protorpc import messages
 
@@ -1517,10 +1517,14 @@ class FindDefinitionTest(test_util.TestCase):
     aaA = self.DefineMessage('a.a', 'A')
 
     # Always find a.A.
-    self.assertEquals(aA, messages.find_definition('.a.A', None, self.Importer))
-    self.assertEquals(aA, messages.find_definition('.a.A', a, self.Importer))
-    self.assertEquals(aA, messages.find_definition('.a.A', aA, self.Importer))
-    self.assertEquals(aA, messages.find_definition('.a.A', aaA, self.Importer))
+    self.assertEquals(aA, messages.find_definition('.a.A', None,
+                                                   importer=self.Importer))
+    self.assertEquals(aA, messages.find_definition('.a.A', a,
+                                                   importer=self.Importer))
+    self.assertEquals(aA, messages.find_definition('.a.A', aA,
+                                                   importer=self.Importer))
+    self.assertEquals(aA, messages.find_definition('.a.A', aaA,
+                                                   importer=self.Importer))
 
   def testFindEnum(self):
     """Test that Enums are found."""

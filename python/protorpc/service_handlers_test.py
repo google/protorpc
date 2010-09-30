@@ -25,9 +25,6 @@ import re
 import unittest
 import urllib
 
-import test_util
-import webapp_test_util
-
 from google.appengine.ext import webapp
 from protorpc import messages
 from protorpc import protobuf
@@ -36,6 +33,8 @@ from protorpc import protourlencode
 from protorpc import registry
 from protorpc import remote
 from protorpc import service_handlers
+from protorpc import test_util
+from protorpc import webapp_test_util
 
 import mox
 

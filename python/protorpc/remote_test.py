@@ -23,11 +23,11 @@ import sys
 import types
 import unittest
 
-import test_util
 from protorpc import descriptor
 from protorpc import message_types
 from protorpc import messages
 from protorpc import remote
+from protorpc import test_util
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
