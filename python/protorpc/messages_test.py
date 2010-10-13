@@ -567,7 +567,7 @@ class FieldTest(test_util.TestCase):
       # Required.
       field = field_class(1, required=True)
       self.assertRaisesWithRegexpMatch(messages.ValidationError,
-                                       'Required field is missing.',
+                                       'Required field is missing',
                                        field.validate,
                                        None)
 
@@ -575,7 +575,7 @@ class FieldTest(test_util.TestCase):
       field = field_class(1, repeated=True)
       field.validate(None)
       self.assertRaisesWithRegexpMatch(messages.ValidationError,
-                                       'Repeated values may not be None.',
+                                       'Repeated values may not be None',
                                        field.validate,
                                        [None])
       self.assertRaises(messages.ValidationError,
@@ -1041,7 +1041,7 @@ class MessageTest(test_util.TestCase):
 
     self.assertRaisesWithRegexpMatch(
         AttributeError,
-        'Message \'SomeMessage\' has no field \'no_such_field\'',
+        'Message SomeMessage has no field no_such_field',
         message.get_assigned_value,
         'no_such_field')
 

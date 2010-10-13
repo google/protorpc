@@ -348,7 +348,7 @@ def import_file(file_descriptor, modules=None):
     Module found in modules, else a new module.
   """
   if not file_descriptor.package:
-    raise ValueError('File descriptor must have package name.')
+    raise ValueError('File descriptor must have package name')
 
   if modules is None:
     modules = sys.modules

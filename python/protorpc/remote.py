@@ -244,12 +244,20 @@ def remote(request_type, response_type):
         InvalidResponseError: Response object is not of the correct type.
       """
       if not isinstance(request, request_type):
-        raise InvalidRequestError('Expected request type %s, received %s.' %
-                                  (request_type, type(request)))
+        raise InvalidRequestError('Method %s.%s expected request type %s, '
+                                  'received %s' %
+                                  (type(service_instance).__name__,
+                                   method.__name__,
+                                   request_type,
+                                   type(request)))
       response = method(service_instance, request)
       if not isinstance(response, response_type):
-        raise InvalidResponseError('Expected response type %s, sending %s.' %
-                                   (response_type, type(response)))
+        raise InvalidResponseError('Method %s.%s expected response type %s, '
+                                   'sent %s' %
+                                   (type(service_instance).__name__,
+                                    method.__name__,
+                                    response_type,
+                                    type(response)))
       return response
 
     remote_method_info = _RemoteMethodInfo(method, request_type, response_type)

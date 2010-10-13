@@ -266,10 +266,10 @@ def decode_message(message_type, encoded_message):
       try:
         found_wire_type_decoder = _WIRE_TYPE_TO_DECODER_MAP[wire_type]
       except:
-        raise messages.DecodeError('No such wire type %d.' % wire_type)
+        raise messages.DecodeError('No such wire type %d' % wire_type)
 
       if tag < 1:
-        raise messages.DecodeError('Invalid tag value %d.' % tag)
+        raise messages.DecodeError('Invalid tag value %d' % tag)
 
       try:
         field = message.field_by_number(tag)
@@ -280,7 +280,7 @@ def decode_message(message_type, encoded_message):
       else:
         expected_wire_type = _VARIANT_TO_WIRE_TYPE[field.variant]
         if expected_wire_type != wire_type:
-          raise messages.DecodeError('Expected wire type %s but found %s.' % (
+          raise messages.DecodeError('Expected wire type %s but found %s' % (
               _WIRE_TYPE_NAME[expected_wire_type],
               _WIRE_TYPE_NAME[wire_type]))
 

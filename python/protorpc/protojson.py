@@ -61,7 +61,7 @@ def _load_json_module():
     try:
       module = __import__(module_name, {}, {}, 'json')
       if not hasattr(module, 'JSONEncoder'):
-        message = ('json library "%s" is not compatible with ProtoRPC.' %
+        message = ('json library "%s" is not compatible with ProtoRPC' %
                    module_name)
         logging.warning(message)
         raise ImportError(message)
@@ -72,7 +72,7 @@ def _load_json_module():
         first_import_error = err
 
   logging.error('Must use valid json library (Python 2.6 json, simplejson or '
-                'django.utils.simplejson).')
+                'django.utils.simplejson)')
   raise first_import_error
 json = _load_json_module()
 

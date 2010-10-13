@@ -457,7 +457,8 @@ class ProtoConformanceTestBase(object):
     """Test that cannot encode uninitialized message."""
     required = NestedMessage()
     self.assertRaisesWithRegexpMatch(messages.ValidationError,
-                                     'Missing required field a_value.',
+                                     "Message NestedMessage is missing "
+                                     "required field a_value",
                                      self.PROTOLIB.encode_message,
                                      required)
 

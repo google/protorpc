@@ -275,7 +275,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
     # Bad module without simplejson back raises errors.
     self.assertRaisesWithRegexpMatch(
         ImportError,
-        'json library "json" is not compatible with ProtoRPC\.',
+        'json library "json" is not compatible with ProtoRPC',
         reload,
         protojson)
 

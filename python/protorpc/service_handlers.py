@@ -335,7 +335,7 @@ class ServiceHandlerFactory(object):
       ValueError if path does not start with /, path ends with /.
     """
     if path.endswith('/'):
-      raise ValueError('Path must not end with /.')
+      raise ValueError('Path %s must not end with /.' % path)
 
   def mapping(self, path):
     """Convenience method to map service to application.

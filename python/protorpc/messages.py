@@ -215,7 +215,7 @@ class _DefinitionClass(type):
 
   def __delattr__(cls, name):
     """Overridden so that cannot delete varaibles on definition classes."""
-    raise TypeError('May not delete attributes on definition class.')
+    raise TypeError('May not delete attributes on definition class')
 
   def definition_name(cls):
     """Helper method for creating definition name.
@@ -275,7 +275,8 @@ class _EnumClass(_DefinitionClass):
   def __init__(cls, name, bases, dct):
     # Can only define one level of sub-classes below Enum.
     if not (bases == (object,) or bases == (Enum,)):
-      raise EnumDefinitionError('Enum types may only inherit from Enum')
+      raise EnumDefinitionError('Enum type %s may only inherit from Enum' %
+                                (name,))
 
     cls.__by_number = {}
     cls.__by_name = {}
@@ -292,22 +293,24 @@ class _EnumClass(_DefinitionClass):
         # Reject anything that is not an int.
         if not isinstance(value, (int, long)):
           raise EnumDefinitionError(
-              'May only use integers in Enum definitions.  Found: %s' % value)
+              'May only use integers in Enum definitions.  Found: %s = %s' %
+              (attribute, value))
 
         # Values may not be zero, as according to the protocol buffer standard.
         if value <= 0:
           raise EnumDefinitionError(
-              'Must use enum values greater than zero.  Found: %d' % value)
+              'Must use enum values greater than zero.  Found: %s = %d' %
+              (attribute, value))
 
         if value > MAX_ENUM_VALUE:
           raise EnumDefinitionError(
-              'Must use enum values less than or equal %d.  Found: %d' %
-              (MAX_ENUM_VALUE, value))
+              'Must use enum values less than or equal %d.  Found: %s = %d' %
+              (MAX_ENUM_VALUE, attribute, value))
 
         if value in cls.__by_number:
           raise EnumDefinitionError(
-              'Value for %d is already defined: %s' %
-              (value, cls.__by_number[value].name))
+              'Value for %s = %d is already defined: %s' %
+              (attribute, value, cls.__by_number[value].name))
 
         # Create enum instance and list in new Enum type.
         instance = object.__new__(cls)
@@ -566,11 +569,12 @@ class _MessageClass(_DefinitionClass):
         # Reject anything that is not a field.
         if type(field) is _Field or not isinstance(field, _Field):
           raise MessageDefinitionError(
-              'May only use fields in message definitions.  Found: %s' % field)
+              'May only use fields in message definitions.  Found: %s = %s' %
+              (key, field))
 
         if field.number in by_number:
           raise DuplicateNumberError(
-              'Field with number %d declared more than once in %s.' %
+              'Field with number %d declared more than once in %s' %
               (field.number, name))
 
         field.name = key
@@ -691,12 +695,14 @@ class Message(object):
     for name, field in self.__by_name.iteritems():
       value = getattr(self, name)
       if value is None and field.required:
-        raise ValidationError('Missing required field %s.' % name)
+        raise ValidationError("Message %s is missing required field %s" %
+                              (type(self).__name__, name))
       else:
         try:
           field.validate(value)
         except ValidationError, err:
           err.field_name = name
+          err.message_name = type(self).__name__
           raise
 
   def is_initialized(self):
@@ -763,7 +769,7 @@ class Message(object):
     try:
       field = message_type.field_by_name(name)
     except KeyError:
-      raise AttributeError('Message \'%s\' has no field \'%s\'' % (
+      raise AttributeError('Message %s has no field %s' % (
           message_type.__name__, name))
     return self.__tags.get(field.number)
 
@@ -780,7 +786,7 @@ class Message(object):
       field = message_type.field_by_name(name)
     except KeyError:
       if name not in message_type.__by_name:
-        raise AttributeError('Message \'%s\' has no field \'%s\'' % (
+        raise AttributeError('Message %s has no field %s' % (
             message_type.__name__, name))
     self.__tags.pop(field.number, None)
 
@@ -801,7 +807,8 @@ class Message(object):
     if name in self.__by_name or name.startswith('_Message__'):
       object.__setattr__(self, name, value)
     else:
-      raise AttributeError('May not assign arbitrary values to messages.')
+      raise AttributeError("May not assign arbitrary value %s "
+                           "to message %s" % (name, type(self).__name__))
 
   def __repr__(self):
     """Make string representation of message.
@@ -924,19 +931,26 @@ class _Field(object):
       InvalidNumberError when the field number is out of range or reserved.
     """
     if not isinstance(number, int) or not 1 <= number <= MAX_FIELD_NUMBER:
-      raise InvalidNumberError('Invalid number for field: %s' % number)
+      raise InvalidNumberError('Invalid number for field: %s\n'
+                               'Number must be 1 or greater and %d or less' %
+                               (number, MAX_FIELD_NUMBER))
 
     if FIRST_RESERVED_FIELD_NUMBER <= number <= LAST_RESERVED_FIELD_NUMBER:
-      raise InvalidNumberError('Tag number %d is a reserved number.' % number)
+      raise InvalidNumberError('Tag number %d is a reserved number.\n'
+                               'Numbers %d to %d are reserved' %
+                               (number, FIRST_RESERVED_FIELD_NUMBER,
+                                LAST_RESERVED_FIELD_NUMBER))
 
     if repeated and required:
-      raise FieldDefinitionError('Cannot set both repeated and required.')
+      raise FieldDefinitionError('Cannot set both repeated and required')
 
     if variant is None:
       variant = self.DEFAULT_VARIANT
 
     if variant not in self.VARIANTS:
-      raise InvalidVariantError('Invalid variant: %s' % variant)
+      raise InvalidVariantError(
+          'Invalid variant: %s\nValid variants for %s are %r'
+          % (variant, type(self).__name__, sorted(self.VARIANTS)))
 
     self.number = number
     self.required = required
@@ -972,7 +986,7 @@ class _Field(object):
       # Not initialized yet, allow assignment.
       object.__setattr__(self, name, value)
     else:
-      raise AttributeError('Field objects are read-only.')
+      raise AttributeError('Field objects are read-only')
 
   def __set__(self, message_instance, value):
     """Set value on message.
@@ -1012,12 +1026,10 @@ class _Field(object):
     if not isinstance(value, self.type):
       if value is None:
         if self.required:
-          raise ValidationError('Required field is missing.')
+          raise ValidationError('Required field is missing')
       else:
-        raise ValidationError('Expected %s. Found %s'
-                              ' (type %s)' % (self.type,
-                                              value,
-                                              type(value)))
+        raise ValidationError('Expected type %s, found %s (type %s)' %
+                              (self.type, value, type(value)))
 
   def validate(self, value):
     """Validate value assigned to field.
@@ -1035,7 +1047,7 @@ class _Field(object):
       if isinstance(value, (list, tuple)):
         for element in value:
           if element is None:
-            raise ValidationError('Repeated values may not be None.')
+            raise ValidationError('Repeated values may not be None')
           self.validate_element(element)
       elif value is not None:
         raise ValidationError('Field is repeated. Found: %s' % value)
@@ -1408,8 +1420,8 @@ def find_definition(name, relative_to=None, importer=__import__):
       #   does this part of search
       if relative_to is None:
         # Fully qualified search was done.  Nothing found.  Fail.
-        raise DefinitionNotFoundError('Could not find definition for \'%s\'.'
-                                      % name)
+        raise DefinitionNotFoundError('Could not find definition for %s'
+                                      % (name,))
       else:
         if isinstance(relative_to, types.ModuleType):
           # Find parent module.

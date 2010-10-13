@@ -161,7 +161,7 @@ class DefineFieldTest(test_util.TestCase):
     self.assertTrue(field.repeated)
     self.assertRaisesWithRegexpMatch(messages.DefinitionNotFoundError,
                                      'Could not find definition for '
-                                     "'something.yet.to.be.Defined'.",
+                                     "something.yet.to.be.Defined",
                                      getattr, field, 'type')
 
   def testDefineField_Enum(self):
@@ -186,7 +186,7 @@ class DefineFieldTest(test_util.TestCase):
     self.assertTrue(field.repeated)
     self.assertRaisesWithRegexpMatch(messages.DefinitionNotFoundError,
                                      'Could not find definition for '
-                                     "'something.yet.to.be.Defined'.",
+                                     "something.yet.to.be.Defined",
                                      getattr, field, 'type')
 
 
@@ -525,7 +525,7 @@ class ModuleTest(test_util.TestCase):
     file_descriptor = self.MakeFileDescriptor('does not matter')
     file_descriptor.reset('package')
     self.assertRaisesWithRegexpMatch(ValueError,
-                                     'File descriptor must have package name.',
+                                     'File descriptor must have package name',
                                      stub.import_file,
                                      file_descriptor)
 

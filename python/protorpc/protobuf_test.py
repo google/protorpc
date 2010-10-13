@@ -153,7 +153,7 @@ class EncodeMessageTest(test_util.TestCase,
     original = WrongVariant()
     original.value = 10
     self.assertErrorIs(messages.DecodeError,
-                       'Expected wire type STRING but found NUMERIC.',
+                       'Expected wire type STRING but found NUMERIC',
                        protobuf.decode_message,
                        ExpectedProto,
                        protobuf.encode_message(original))
@@ -164,7 +164,7 @@ class EncodeMessageTest(test_util.TestCase,
     bad_wire_type_message = chr((1 << protobuf._WIRE_TYPE_BITS) | 3)
 
     self.assertErrorIs(messages.DecodeError,
-                       'No such wire type 3.',
+                       'No such wire type 3',
                        protobuf.decode_message,
                        test_util.OptionalMessage,
                        bad_wire_type_message)
@@ -175,7 +175,7 @@ class EncodeMessageTest(test_util.TestCase,
     invalid_tag_message = chr(protobuf._Encoder.NUMERIC)
 
     self.assertErrorIs(messages.DecodeError,
-                       'Invalid tag value 0.',
+                       'Invalid tag value 0',
                        protobuf.decode_message,
                        test_util.OptionalMessage,
                        invalid_tag_message)
