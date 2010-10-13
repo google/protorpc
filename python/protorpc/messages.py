@@ -949,8 +949,8 @@ class _Field(object):
 
     if variant not in self.VARIANTS:
       raise InvalidVariantError(
-          'Invalid variant: %s\nValid variants for %s are %r'
-          % (variant, type(self).__name__, sorted(self.VARIANTS)))
+          'Invalid variant: %s\nValid variants for %s are %r' %
+          (variant, type(self).__name__, sorted(self.VARIANTS)))
 
     self.number = number
     self.required = required
