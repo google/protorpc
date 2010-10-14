@@ -192,6 +192,7 @@ class ServiceRegistry(object):
     service_factory.add_request_mapper(FormURLEncodedRPCMapper())
     service_factory.add_request_mapper(service_handlers.URLEncodedRPCMapper())
     service_factory.add_request_mapper(service_handlers.ProtobufRPCMapper())
+    service_factory.add_request_mapper(service_handlers.JSONRPCMapper())
 
     self.__registration_order.append(url_path)
 
@@ -264,7 +265,7 @@ class _HandlerBase(webapp.RequestHandler):
 
   @property
   def service_class(self):
-    return self.registry.services[self.url_path].service_class
+    return self.registry.services[self.url_path].service_factory
 
 
 class FormHandler(_HandlerBase):
@@ -277,7 +278,7 @@ class FormHandler(_HandlerBase):
     registry_view = []
     services = self.registry.services
     for url_path in sorted(services):
-      service_class = services[url_path].service_class
+      service_class = services[url_path].service_factory
       service_descriptor = descriptor.describe_service(service_class)
       registry_view.append((url_path,
                             service_class.definition_name(),
