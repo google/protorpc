@@ -847,6 +847,17 @@ class FieldTest(test_util.TestCase):
     self.assertEquals(MyMessage,
                       MyMessage.field_by_name('my_field').message_definition())
 
+  def testNoneAssignment(self):
+    """Test that assigning None does not change comparison."""
+    class MyMessage(messages.Message):
+
+      my_field = messages.StringField(1)
+
+    m1 = MyMessage()
+    m2 = MyMessage()
+    m2.my_field = None
+    self.assertEquals(m1, m2)
+
 
 class MessageTest(test_util.TestCase):
   """Tests for message class."""

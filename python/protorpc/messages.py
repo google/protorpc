@@ -996,7 +996,10 @@ class _Field(object):
       value: Value to set on message.
     """
     # Reaches in to message instance directly to assign to private tags.
-    message_instance._Message__tags[self.number] = value
+    if value is None:
+      message_instance._Message__tags.pop(self.number, None)
+    else:
+      message_instance._Message__tags[self.number] = value
 
   def __get__(self, message_instance, message_class):
     if message_instance is None:
