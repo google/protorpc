@@ -131,7 +131,7 @@ def define_message(message_descriptor, module_name):
   """
   class_dict = {'__module__': module_name}
 
-  for enum in message_descriptor.enums or []:
+  for enum in message_descriptor.enum_types or []:
     enum_instance = define_enum(enum, module_name)
     class_dict[enum.name] = enum_instance
 
@@ -314,15 +314,15 @@ def define_file(file_descriptor, module=None):
   if module is None:
     module = new.module(file_descriptor.package)
 
-  for enum_descriptor in file_descriptor.enums or []:
+  for enum_descriptor in file_descriptor.enum_types or []:
     enum_class = define_enum(enum_descriptor, module.__name__)
     setattr(module, enum_descriptor.name, enum_class)
 
-  for message_descriptor in file_descriptor.messages or []:
+  for message_descriptor in file_descriptor.message_types or []:
     message_class = define_message(message_descriptor, module.__name__)
     setattr(module, message_descriptor.name, message_class)
 
-  for service_descriptor in file_descriptor.services or []:
+  for service_descriptor in file_descriptor.service_types or []:
     service_class = define_service(service_descriptor, module)
     setattr(module, service_descriptor.name, service_class)
 

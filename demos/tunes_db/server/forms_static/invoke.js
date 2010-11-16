@@ -45,9 +45,9 @@ function findMessage(fileSet, name) {
   var fileDescriptor = findFileDescriptor(fileSet, name);
   var name = name.substr(fileDescriptor.package.length + 1);
 
-  if (fileDescriptor.messages) {
-    for (var index = 0; index < fileDescriptor.messages.length; index++) {
-      var message = fileDescriptor.messages[index];
+  if (fileDescriptor.message_types) {
+    for (var index = 0; index < fileDescriptor.message_types.length; index++) {
+      var message = fileDescriptor.message_types[index];
       if (message.name == name) {
         return message;
       }
@@ -65,9 +65,9 @@ function findService(fileSet, name) {
   var fileDescriptor = findFileDescriptor(fileSet, name);
   var name = name.substr(fileDescriptor.package.length + 1);
 
-  if (fileDescriptor.services) {
-    for (var index = 0; index < fileDescriptor.services.length; index++) {
-      var service = fileDescriptor.services[index];
+  if (fileDescriptor.service_types) {
+    for (var index = 0; index < fileDescriptor.service_types.length; index++) {
+      var service = fileDescriptor.service_types[index];
       if (service.name == name) {
         return service;
       }
@@ -170,7 +170,7 @@ function populateForm(element, fileSet, requestType) {
   }
 }
 
-VOID_MESSAGE_TYPE = 'google.appengine.ext.services.message_types.VoidMessage';
+VOID_MESSAGE_TYPE = 'protorpc.message_types.VoidMessage';
 $(function() {
     $.getJSON(servicePath + '/form/file_set',
               function(fileSet, textStatus) {

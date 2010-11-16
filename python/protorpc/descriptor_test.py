@@ -232,14 +232,27 @@ class DescribeMessageTest(test_util.TestCase):
     expected = descriptor.MessageDescriptor()
     expected.name = 'MessageWithEnum'
 
-    expected.enums = [descriptor.describe_enum(MessageWithEnum.Mood),
-                      descriptor.describe_enum(MessageWithEnum.Music)]
+    expected.enum_types = [descriptor.describe_enum(MessageWithEnum.Mood),
+                           descriptor.describe_enum(MessageWithEnum.Music)]
 
     described = descriptor.describe_message(MessageWithEnum)
     described.check_initialized()
     self.assertEquals(expected, described)
 
-  # TODO(rafek): Add support for nested messages names.
+  def testNestedMessage(self):
+    class MessageWithMessage(messages.Message):
+      class Nesty(messages.Message):
+        pass
+
+    expected = descriptor.MessageDescriptor()
+    expected.name = 'MessageWithMessage'
+
+    expected.message_types = [
+      descriptor.describe_message(MessageWithMessage.Nesty)]
+
+    described = descriptor.describe_message(MessageWithMessage)
+    described.check_initialized()
+    self.assertEquals(expected, described)
 
 
 class DescribeMethodTest(test_util.TestCase):
@@ -357,7 +370,7 @@ class DescribeFileTest(test_util.TestCase):
 
     expected = descriptor.FileDescriptor()
     expected.package = 'my.package'
-    expected.messages = [message1, message2]
+    expected.message_types = [message1, message2]
 
     described = descriptor.describe_file(module)
     described.check_initialized()
@@ -377,7 +390,7 @@ class DescribeFileTest(test_util.TestCase):
 
     expected = descriptor.FileDescriptor()
     expected.package = 'my.package'
-    expected.enums = [enum1, enum2]
+    expected.enum_types = [enum1, enum2]
 
     described = descriptor.describe_file(module)
     described.check_initialized()
@@ -397,7 +410,7 @@ class DescribeFileTest(test_util.TestCase):
 
     expected = descriptor.FileDescriptor()
     expected.package = 'my.package'
-    expected.services = [service1, service2]
+    expected.service_types = [service1, service2]
 
     described = descriptor.describe_file(module)
     described.check_initialized()

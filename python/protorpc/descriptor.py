@@ -219,14 +219,16 @@ class MessageDescriptor(messages.Message):
   Fields:
     name: Name of Message without any qualification.
     fields: Fields defined for message.
-    enums: Nested Enum classes defined on message.
+    message_types: Nested Message classes defined on message.
+    enum_types: Nested Enum classes defined on message.
   """
 
   name = messages.StringField(1)
   fields = messages.MessageField(FieldDescriptor, 2, repeated=True)
 
-  # TODO(rafek): Support nested type.  Requires self-referencing.
-  enums = messages.MessageField(EnumDescriptor, 4, repeated=True)
+  message_types = messages.MessageField(
+    'protorpc.descriptor.MessageDescriptor', 3, repeated=True)
+  enum_types = messages.MessageField(EnumDescriptor, 4, repeated=True)
 
 
 class MethodDescriptor(messages.Message):
@@ -262,23 +264,18 @@ class FileDescriptor(messages.Message):
 
   Fields:
     package: Fully qualified name of package that definitions belong to.
-    messages: Message definitions contained in file.
-    enums: Enum definitions contained in file.
-    services: Service definitions contained in file.
+    message_types: Message definitions contained in file.
+    enum_types: Enum definitions contained in file.
+    service_types: Service definitions contained in file.
   """
 
-  # Temporary local variable to disambiguate message module from message field.
-  messages_module = messages
-
-  package = messages_module.StringField(2)
+  package = messages.StringField(2)
 
   # TODO(rafek): Add dependency field
 
-  messages = messages_module.MessageField(MessageDescriptor, 4, repeated=True)
-  enums = messages_module.MessageField(EnumDescriptor, 5, repeated=True)
-  services = messages_module.MessageField(ServiceDescriptor, 6, repeated=True)
-
-  del messages_module
+  message_types = messages.MessageField(MessageDescriptor, 4, repeated=True)
+  enum_types = messages.MessageField(EnumDescriptor, 5, repeated=True)
+  service_types = messages.MessageField(ServiceDescriptor, 6, repeated=True)
 
 
 class FileSet(messages.Message):
@@ -395,17 +392,28 @@ def describe_message(message_definition):
     message_descriptor.fields = [describe_field(field) for field in fields]
 
   try:
+    nested_messages = message_definition.__messages__
+  except AttributeError:
+    pass
+  else:
+    message_descriptors = []
+    for name in nested_messages:
+      value = getattr(message_definition, name)
+      message_descriptors.append(describe_message(value))
+
+    message_descriptor.message_types = message_descriptors
+
+  try:
     nested_enums = message_definition.__enums__
   except AttributeError:
     pass
   else:
-    enums = []
+    enum_descriptors = []
     for name in nested_enums:
       value = getattr(message_definition, name)
-      if isinstance(value, type) and issubclass(value, messages.Enum):
-        enums.append(describe_enum(value))
+      enum_descriptors.append(describe_enum(value))
 
-    message_descriptor.enums = enums
+    message_descriptor.enum_types = enum_descriptors
 
   return message_descriptor
 
@@ -497,13 +505,13 @@ def describe_file(module):
         service_descriptors.append(describe_service(value))
 
   if message_descriptors:
-    descriptor.messages = message_descriptors
+    descriptor.message_types = message_descriptors
 
   if enum_descriptors:
-    descriptor.enums = enum_descriptors
+    descriptor.enum_types = enum_descriptors
 
   if service_descriptors:
-    descriptor.services = service_descriptors
+    descriptor.service_types = service_descriptors
 
   return descriptor
 

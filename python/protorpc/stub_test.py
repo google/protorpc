@@ -445,9 +445,9 @@ class ModuleTest(test_util.TestCase):
 
     file_descriptor = descriptor.FileDescriptor()
     file_descriptor.package = package
-    file_descriptor.enums = [enum_descriptor]
-    file_descriptor.messages = [message_descriptor]
-    file_descriptor.services = [service_descriptor]
+    file_descriptor.enum_types = [enum_descriptor]
+    file_descriptor.message_types = [message_descriptor]
+    file_descriptor.service_types = [service_descriptor]
 
     return file_descriptor
 
