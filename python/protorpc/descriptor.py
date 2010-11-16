@@ -98,8 +98,10 @@ Public Functions:
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import codecs
+import types
 
 from protorpc import messages
+from protorpc import util
 
 
 __all__ = ['EnumDescriptor',
@@ -110,6 +112,7 @@ __all__ = ['EnumDescriptor',
            'FileDescriptor',
            'FileSet',
            'ServiceDescriptor',
+           'DescriptorLibrary',
 
            'describe_enum',
            'describe_enum_value',
@@ -119,6 +122,8 @@ __all__ = ['EnumDescriptor',
            'describe_file',
            'describe_file_set',
            'describe_service',
+           'describe',
+           'import_descriptor_loader',
           ]
 
 
@@ -521,3 +526,183 @@ def describe_file_set(modules):
     descriptor.files = file_descriptors
 
   return descriptor
+
+
+def describe(value):
+  """Describe any value as a descriptor.
+
+  Helper function for describing any object with an appropriate descriptor
+  object.
+
+  Args:
+    value: Value to describe as a descriptor.
+
+  Returns:
+    Descriptor message class if object is describable as a descriptor, else
+    None.
+  """
+  from protorpc import remote
+  if isinstance(value, types.ModuleType):
+    return describe_file(value)
+  elif callable(value) and hasattr(value, 'remote'):
+    return describe_method(value)
+  elif isinstance(value, messages._Field):
+    return describe_field(value)
+  elif isinstance(value, messages.Enum):
+    return describe_enum_value(value)
+  elif isinstance(value, type):
+    if issubclass(value, messages.Message):
+      return describe_message(value)
+    elif issubclass(value, messages.Enum):
+      return describe_enum(value)
+    elif issubclass(value, remote.Service):
+      return describe_service(value)
+  return None
+
+
+@util.positional(1)
+def import_descriptor_loader(definition_name, importer=__import__):
+  """Find objects by importing modules as needed.
+
+  A definition loader is a function that resolves a definition name to a
+  descriptor.
+
+  The import finder resolves definitions to their names by importing modules
+  when necessary.
+
+  Args:
+    definition_name: Name of definition to find.
+    importer: Import function used for importing new modules.
+
+  Returns:
+    Appropriate descriptor for any describable type located by name.
+
+  Raises:
+    DefinitionNotFoundError when a name does not refer to either a definition
+    or a module.
+  """
+  # Attempt to import descriptor as a module.
+  if definition_name.startswith('.'):
+    definition_name = definition_name[1:]
+  if not definition_name.startswith('.'):
+    leaf = definition_name.split('.')[-1]
+    if definition_name:
+      try:
+        module = importer(definition_name, fromlist=[leaf])
+      except ImportError:
+        pass
+      else:
+        return describe(module)
+
+  try:
+    # Attempt to use messages.find_definition to find item.
+    return describe(messages.find_definition(definition_name,
+                                             importer=__import__))
+  except messages.DefinitionNotFoundError, err:
+    # There are things that find_definition will not find, but if the parent
+    # is loaded, its children can be searched for a match.
+    split_name = definition_name.rsplit('.', 1)
+    if len(split_name) > 1:
+      parent, child = split_name
+      try:
+        parent_definition = import_descriptor_loader(parent, importer=importer)
+      except messages.DefinitionNotFoundError:
+        # Fall through to original error.
+        pass
+      else:
+        # Check the parent definition for a matching descriptor.
+        if isinstance(parent_definition, FileDescriptor):
+          search_list = parent_definition.services or []
+        elif isinstance(parent_definition, ServiceDescriptor):
+          search_list = parent_definition.methods or []
+        elif isinstance(parent_definition, EnumDescriptor):
+          search_list = parent_definition.values or []
+        elif isinstance(parent_definition, MessageDescriptor):
+          search_list = parent_definition.fields or []
+        else:
+          search_list = []
+
+        for definition in search_list:
+          if definition.name == child:
+            return definition
+
+    # Still didn't find.  Reraise original exception.
+    raise err
+
+
+class DescriptorLibrary(object):
+  """A descriptor library is an object that contains known definitions.
+
+  A descriptor library contains a cache of descriptor objects mapped by
+  definition name.  It contains all types of descriptors except for
+  file sets.
+
+  When a definition name is requested that the library does not know about
+  it can be provided with a descriptor loader which attempt to resolve the
+  missing descriptor.
+  """
+
+  @util.positional(1)
+  def __init__(self,
+               descriptors=None,
+               descriptor_loader=import_descriptor_loader):
+    """Constructor.
+
+    Args:
+      descriptors: A dictionary or dictionary-like object that can be used
+        to store and cache descriptors by definition name.
+      definition_loader: A function used for resolving missing descriptors.
+        The function takes a definition name as its parameter and returns
+        an appropriate descriptor.  It may raise DefinitionNotFoundError.
+    """
+    self.__descriptor_loader = descriptor_loader
+    self.__descriptors = descriptors or {}
+
+  def lookup_descriptor(self, definition_name):
+    """Lookup descriptor by name.
+
+    Get descriptor from library by name.  If descriptor is not found will
+    attempt to find via descriptor loader if provided.
+
+    Args:
+      definition_name: Definition name to find.
+
+    Returns:
+      Descriptor that describes definition name.
+
+    Raises:
+      DefinitionNotFoundError if not descriptor exists for definition name.
+    """
+    try:
+      return self.__descriptors[definition_name]
+    except KeyError:
+      pass
+
+    if self.__descriptor_loader:
+      definition = self.__descriptor_loader(definition_name)
+      self.__descriptors[definition_name] = definition
+      return definition
+    else:  
+      raise messages.DefinitionNotFoundError(
+        'Could not find definition for %s' % definition_name)
+
+  def lookup_package(self, definition_name):
+    """Determines the package name for any definition.
+
+    Determine the package that any definition name belongs to.  May check
+    parent for package name and will resolve missing descriptors if provided
+    descriptor loader.
+
+    Args:
+      definition_name: Definition name to find package for.
+    """
+    while True:
+      descriptor = self.lookup_descriptor(definition_name)
+      if isinstance(descriptor, FileDescriptor):
+        return descriptor.package
+      else:
+        index = definition_name.rfind('.')
+        if index < 0:
+          return None
+        definition_name = definition_name[:index]
+

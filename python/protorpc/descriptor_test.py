@@ -24,6 +24,7 @@ import unittest
 
 from protorpc import descriptor
 from protorpc import messages
+from protorpc import registry
 from protorpc import remote
 from protorpc import test_util
 
@@ -428,6 +429,162 @@ class DescribeFileSetTest(test_util.TestCase):
     described = descriptor.describe_file_set(modules)
     described.check_initialized()
     self.assertEquals(expected, described)
+
+
+class DescribeTest(test_util.TestCase):
+
+  def testModule(self):
+    self.assertEquals(descriptor.describe_file(test_util),
+                      descriptor.describe(test_util))
+
+  def testMethod(self):
+    class Param(messages.Message):
+      pass
+
+    class Service(remote.Service):
+
+      @remote.remote(Param, Param)
+      def fn(self):
+        return Param()
+
+    self.assertEquals(descriptor.describe_method(Service.fn),
+                      descriptor.describe(Service.fn))
+
+  def testField(self):
+    self.assertEquals(
+      descriptor.describe_field(test_util.NestedMessage.a_value),
+      descriptor.describe(test_util.NestedMessage.a_value))
+
+  def testEnumValue(self):
+    self.assertEquals(
+      descriptor.describe_enum_value(
+        test_util.OptionalMessage.SimpleEnum.VAL1),
+      descriptor.describe(test_util.OptionalMessage.SimpleEnum.VAL1))
+
+  def testMessage(self):
+    self.assertEquals(descriptor.describe_message(test_util.NestedMessage),
+                      descriptor.describe(test_util.NestedMessage))
+
+  def testEnum(self):
+    self.assertEquals(
+      descriptor.describe_enum(test_util.OptionalMessage.SimpleEnum),
+      descriptor.describe(test_util.OptionalMessage.SimpleEnum))
+      
+  def testService(self):
+    class Service(remote.Service):
+      pass
+
+    self.assertEquals(descriptor.describe_service(Service),
+                      descriptor.describe(Service))
+
+  def testService(self):
+    class Service(remote.Service):
+      pass
+
+    self.assertEquals(descriptor.describe_service(Service),
+                      descriptor.describe(Service))
+
+  def testUndescribable(self):
+    class NonService(object):
+
+      def fn(self):
+        pass
+
+    for value in (NonService,
+                  NonService.fn,
+                  1,
+                  'string',
+                  1.2,
+                  None):
+      self.assertEquals(None, descriptor.describe(value))
+
+
+class ModuleFinderTest(test_util.TestCase):
+
+  def testFindModule(self):
+    self.assertEquals(descriptor.describe_file(registry),
+                      descriptor.import_descriptor_loader('protorpc.registry'))
+
+  def testFindMessage(self):
+    self.assertEquals(
+      descriptor.describe_message(descriptor.FileSet),
+      descriptor.import_descriptor_loader('protorpc.descriptor.FileSet'))
+
+  def testFindField(self):
+    self.assertEquals(
+      descriptor.describe_field(descriptor.FileSet.files),
+      descriptor.import_descriptor_loader('protorpc.descriptor.FileSet.files'))
+
+  def testFindEnumValue(self):
+    self.assertEquals(
+      descriptor.describe_enum_value(test_util.OptionalMessage.SimpleEnum.VAL1),
+      descriptor.import_descriptor_loader(
+        'protorpc.test_util.OptionalMessage.SimpleEnum.VAL1'))
+
+  def testFindMethod(self):
+    self.assertEquals(
+      descriptor.describe_method(registry.RegistryService.services),
+      descriptor.import_descriptor_loader(
+        'protorpc.registry.RegistryService.services'))
+
+  def testFindService(self):
+    self.assertEquals(
+      descriptor.describe_service(registry.RegistryService),
+      descriptor.import_descriptor_loader('protorpc.registry.RegistryService'))
+
+  def testFindWithAbsoluteName(self):
+    self.assertEquals(
+      descriptor.describe_service(registry.RegistryService),
+      descriptor.import_descriptor_loader('.protorpc.registry.RegistryService'))
+
+  def testFindWrongThings(self):
+    for name in ('a', 'protorpc.registry.RegistryService.__init__', '', ):
+      self.assertRaisesWithRegexpMatch(
+        messages.DefinitionNotFoundError,
+        'Could not find definition for %s' % name,
+        descriptor.import_descriptor_loader, name)
+
+
+class DescriptorLibraryTest(test_util.TestCase):
+
+  def setUp(self):
+    self.packageless = descriptor.MessageDescriptor()
+    self.packageless.name = 'Packageless'
+    self.library = descriptor.DescriptorLibrary(
+      descriptors={
+        'not.real.Packageless': self.packageless,
+        'Packageless': self.packageless,
+      })
+
+  def testLookupPackage(self):
+    self.assertEquals('csv', self.library.lookup_package('csv'))
+    self.assertEquals('protorpc', self.library.lookup_package('protorpc'))
+    self.assertEquals('protorpc.registry',
+                      self.library.lookup_package('protorpc.registry'))
+    self.assertEquals('protorpc.registry',
+                      self.library.lookup_package('.protorpc.registry'))
+    self.assertEquals(
+      'protorpc.registry',
+      self.library.lookup_package('protorpc.registry.RegistryService'))
+    self.assertEquals(
+      'protorpc.registry',
+      self.library.lookup_package(
+        'protorpc.registry.RegistryService.services'))
+
+  def testLookupNonPackages(self):
+    for name in ('', 'a', 'protorpc.descriptor.DescriptorLibrary'):
+      self.assertRaisesWithRegexpMatch(
+        messages.DefinitionNotFoundError,
+        'Could not find definition for %s' % name,
+        self.library.lookup_package, name)
+
+  def testNoPackage(self):
+    self.assertRaisesWithRegexpMatch(
+      messages.DefinitionNotFoundError,
+      'Could not find definition for not.real',
+      self.library.lookup_package, 'not.real.Packageless')
+
+    self.assertEquals(None, self.library.lookup_package('Packageless'))
 
 
 def main():
