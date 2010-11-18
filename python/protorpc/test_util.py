@@ -35,6 +35,12 @@ import unittest
 
 from protorpc import messages
 
+# Unicode of the word "Russian" in cyrillic.
+RUSSIAN = u'\u0440\u0443\u0441\u0441\u043a\u0438\u0439'
+
+# All characters binary value interspersed with nulls.
+BINARY = ''.join(chr(value) + '\0' for value in range(256))
+
 
 class TestCase(unittest.TestCase):
 
@@ -453,6 +459,20 @@ class ProtoConformanceTestBase(object):
 
     self.EncodeDecode(self.encoded_repeated_nested, message)
 
+  def testStringTypes(self):
+    """Test that encoding str on StringField works."""
+    message = OptionalMessage()
+    message.string_value = 'Latin'
+    self.EncodeDecode(self.encoded_string_types, message)
+
+  def testDoNotEncodeNonAscii(self):
+    """Test that non-ascii values on StringFields are not encoded."""
+    message = OptionalMessage()
+    message.string_value = RUSSIAN.encode('utf-8')
+
+    self.assertRaises(messages.ValidationError,
+                      self.PROTOLIB.encode_message, message)
+   
   def testEncodeUninitialized(self):
     """Test that cannot encode uninitialized message."""
     required = NestedMessage()

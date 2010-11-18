@@ -142,6 +142,12 @@ class EncodeMessageTest(test_util.TestCase,
     proto.add_int64_value(6000)
     return proto.SerializeToString()
 
+  @property
+  def encoded_string_types(self):
+    proto = protorpc_test_pb2.OptionalMessage()
+    proto.string_value = u'Latin'
+    return proto.SerializeToString()
+
   def testDecodeWrongWireFormat(self):
     """Test what happens when wrong wire format found in protobuf."""
     class ExpectedProto(messages.Message):

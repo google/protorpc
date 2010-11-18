@@ -19,6 +19,7 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import base64
 import sys
 import unittest
 
@@ -128,6 +129,8 @@ class ProtojsonTest(test_util.TestCase,
   encoded_repeated_nested_empty = '{"repeated_nested": [{}, {}]}'
 
   encoded_extend_message = '{"int64_value": [400, 50, 6000]}'
+
+  encoded_string_types = '{"string_value": "Latin"}'
 
   def testConvertIntegerToFloat(self):
     """Test that integers passed in to float fields are converted.

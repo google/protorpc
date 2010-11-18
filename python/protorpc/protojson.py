@@ -177,8 +177,6 @@ def decode_message(message_type, encoded_message):
         if isinstance(field, messages.EnumField):
           item = field.type(item)
         elif isinstance(field, messages.BytesField):
-          if isinstance(item, unicode):
-            item = item.encode('utf-8')
           item = base64.b64decode(item)
         elif isinstance(field, messages.MessageField):
           item = decode_dictionary(field.type, item)

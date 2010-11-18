@@ -22,6 +22,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import imp
 import inspect
 import new
+import re
 import sys
 import types
 import unittest
@@ -407,13 +408,17 @@ class FieldTest(test_util.TestCase):
       field_class(1, default=defaults[field_class])
     self.ActionOnAllFieldClasses(action)
 
+    # Run defaults test again checking for str/unicode compatiblity.
+    defaults[messages.StringField] = 'abc'
+    self.ActionOnAllFieldClasses(action)
+
   def testDefaultFields_Repeated(self):
     """Test default field is correct type."""
     defaults = {messages.IntegerField: [10, 20],
                 messages.FloatField: [1.5, 4.5],
                 messages.BooleanField: [False, True],
                 messages.BytesField: ['abc', 'xyz'],
-                messages.StringField: [u'abc', u'xyz'],
+                messages.StringField: [u'abc', 'xyz'],
                }
 
     def action(field_class):
@@ -857,6 +862,20 @@ class FieldTest(test_util.TestCase):
     m2 = MyMessage()
     m2.my_field = None
     self.assertEquals(m1, m2)
+
+  def testNonAsciiStr(self):
+    """Test validation fails for non-ascii StringField values."""
+    class Thing(messages.Message):
+      string_field = messages.StringField(2)
+
+    thing = Thing()
+    thing.string_field = test_util.BINARY
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      re.escape("Field string_field: Encountered non-ASCII string %s: 'ascii' "
+                "codec can't decode byte 0x80 in position 256: ordinal not in "
+                "range(128)" % thing.string_field),
+      thing.check_initialized)
 
 
 class MessageTest(test_util.TestCase):

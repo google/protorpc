@@ -158,7 +158,7 @@ _VARIANT_TO_ENCODER_MAP = {
     messages.Variant.BOOL: _Encoder.putBoolean,
     messages.Variant.STRING: _Encoder.encode_unicode_string,
     messages.Variant.MESSAGE: _Encoder.encode_message,
-    messages.Variant.BYTES: _Encoder.putPrefixedString,
+    messages.Variant.BYTES: _Encoder.encode_unicode_string,
     messages.Variant.UINT32: _Encoder.no_encoding,
     messages.Variant.ENUM: _Encoder.encode_enum,
     messages.Variant.SINT32: _Encoder.no_encoding,
