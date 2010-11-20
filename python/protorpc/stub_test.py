@@ -261,118 +261,11 @@ class DefineMessageTest(test_util.TestCase):
                       descriptor.describe_message(message_class))
 
 
-class HTTPTransportTest(test_util.TestCase):
-  """Test the HTTP transport."""
-
-  def setUp(self):
-    """Set up mox."""
-    self.mox = mox.Mox()
-    self.mox.StubOutWithMock(urllib2, 'urlopen')
-
-  def tearDown(self):
-    """Tear down and verify mox."""
-    self.mox.UnsetStubs()
-    self.mox.VerifyAll()
-
-  def testSendRPC(self):
-    """Test sending a blocking RPC."""
-    transport = stub.HTTPTransport('http://myserver/myservice')
-
-    class MyRequest(messages.Message):
-      request_value = messages.StringField(1)
-
-    class MyResponse(messages.Message):
-      response_value = messages.StringField(1)
-
-    @remote.remote(MyRequest, MyResponse)
-    def mymethod(request):
-      self.fail('mymethod should not be directly invoked.')
-
-    request = MyRequest()
-    request.request_value = u'The request value'
-    encoded_request = protobuf.encode_message(request)
-
-    response = MyResponse()
-    response.response_value = u'The response value'
-    encoded_response = protobuf.encode_message(response)
-
-    def verify_request(urllib2_request):
-      self.assertEquals('http://myserver/myservice.mymethod',
-                        urllib2_request.get_full_url())
-      self.assertEquals(urllib2_request.get_data(), encoded_request)
-      self.assertEquals('application/x-google-protobuf',
-                        urllib2_request.headers['Content-type'])
-
-      return True
-
-    # First call succeeds.
-    urllib2.urlopen(mox.Func(verify_request)).AndReturn(
-        StringIO.StringIO(encoded_response))
-
-    # Second call raises an HTTP error.
-    urllib2.urlopen(mox.Func(verify_request)).AndRaise(
-        urllib2.HTTPError('http://whatever',
-                          404,
-                          'Not Found',
-                          {},
-                          StringIO.StringIO('')))
-
-    self.mox.ReplayAll()
-
-    actual_response = transport.send_rpc(mymethod.remote, request)
-    self.assertEquals(response, actual_response)
-
-    self.assertRaises(stub.RPCError,
-                      transport.send_rpc, mymethod.remote, request)
-
-
-class ServiceProxyTest(test_util.TestCase):
-  """Test the ServiceProxy class."""
-
-  def setUp(self):
-    self.mox = mox.Mox()
-
-  def testInvokeProxyMethod(self):
-    """Test creating an invoking a proxy method."""
-
-    class MyRequest(messages.Message):
-      request_value = messages.StringField(1)
-
-    class MyResponse(messages.Message):
-      response_value = messages.StringField(1)
-
-    class MyService(stub.ServiceProxy):
-      remote_method = stub.ServiceProxy.define_proxy_method(
-          'remote_method',
-          MyRequest,
-          MyResponse)
-
-    transport = self.mox.CreateMock(stub.HTTPTransport)
-    service = MyService(transport)
-
-    request = MyRequest()
-    request.request_value = u'Request value'
-
-    response = MyResponse()
-    response.response_value = u'Response value'
-
-    transport.send_rpc(MyService.remote_method.remote, request).AndReturn(
-        response)
-
-    self.mox.ReplayAll()
-
-    self.assertEquals(service.remote_method(request), response)
-
-    self.mox.VerifyAll()
-
-
 class DefineServiceTest(test_util.TestCase):
   """Test service proxy definition."""
 
   def setUp(self):
     """Set up mock and request classes."""
-    self.mox = mox.Mox()
-
     self.module = new.module('stocks')
 
     class GetQuoteRequest(messages.Message):
@@ -401,23 +294,18 @@ class DefineServiceTest(test_util.TestCase):
 
     StockService = stub.define_service(service_descriptor, self.module)
 
-    transport = self.mox.CreateMock(stub.HTTPTransport)
+    self.assertTrue(issubclass(StockService, remote.Service))
+    self.assertTrue(issubclass(StockService.Stub, remote.StubBase))
 
     request = self.module.GetQuoteRequest()
-    request.symbols = ['GOOG', 'AAPL']
+    service = StockService()
+    self.assertRaises(NotImplementedError,
+                      service.get_quote, request)
 
-    response = self.module.GetQuoteResponse()
-    response.prices = [70000, 13000]
-
-    transport.send_rpc(StockService.get_quote.remote, request).AndReturn(
-        response)
-
-    self.mox.ReplayAll()
-
-    service = StockService(transport)
-    service.get_quote(request)
-
-    self.mox.VerifyAll()
+    self.assertEquals(self.module.GetQuoteRequest,
+                      service.get_quote.remote.request_type)
+    self.assertEquals(self.module.GetQuoteResponse,
+                      service.get_quote.remote.response_type)
 
 
 class ModuleTest(test_util.TestCase):

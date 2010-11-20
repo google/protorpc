@@ -145,126 +145,6 @@ def define_message(message_descriptor, module_name):
   return type(class_name, (messages.Message,), class_dict)
 
 
-class HTTPTransport(object):
-  """Transport for communicating with HTTP servers."""
-
-  def __init__(self, service_url):
-    """Constructor.
-
-    Args:
-      service_url: URL where the service is located.  All communication via
-        the transport will go to this URL.
-    """
-    self.__service_url = service_url
-
-  def send_rpc(self, remote_info, request):
-    """Send RPC to server.
-
-    This RPC call is blocking.
-
-    Args:
-      remote_info: Object containing method, request and response types.
-      request: Request message to send to server.  Must be instance of
-        remote_info.request_type.
-
-    Returns:
-      remote_info.response_message instance as returned in HTTP response
-      from server.
-
-    Raises:
-      RPCError when there is an HTTP error.
-    """
-    request.check_initialized()
-
-    encoded_request = protobuf.encode_message(request)
-
-    method_url = '%s.%s' % (self.__service_url, remote_info.method.func_name)
-    http_request = urllib2.Request(method_url, encoded_request)
-    http_request.add_header('content-type', 'application/x-google-protobuf')
-
-    try:
-      http_response = urllib2.urlopen(http_request)
-    except urllib2.HTTPError, err:
-      raise RPCError('HTTP error: %s' % str(err))
-
-    encoded_response = http_response.read()
-
-    return protobuf.decode_message(remote_info.response_type, encoded_response)
-
-
-class ServiceProxy(remote.Service):
-  """Base class for remote service proxies.
-
-  This class should not be instantiated directly.  Subclasses are created
-  via calls to 'define_service'.
-  """
-
-  def __init__(self, transport):
-    """Constructor.
-
-    Args:
-      transport: Transport to use for communicating with server.  If this
-        is a string, it is assumed that it is a URL and an instance of
-        HTTPTransport will be instantiated by default.
-    """
-    if isinstance(transport, basestring):
-      transport = HTTPTransport(transport)
-    self.__transport = transport
-
-  def initialize_request_state(self, request_state):
-    """Not implemented."""
-    raise NotImplementedError()
-
-
-  @property
-  def request_state(self):
-    """Not implemented."""
-    raise NotImplementedError()
-
-  @staticmethod
-  def define_proxy_method(method_name, request_type, response_type):
-    """Define a proxy method for use with a ServiceProxy class.
-
-    This creates a callable method that can be used to place on a ServiceProxy
-    class.  In practice, this method should not be called directly but is used
-    by the define_service function.  It can be used, however, to define
-    arbitrary proxy classes that are not derived from a descriptor object.
-    For example:
-
-      class RequestType(messages.Message):
-        ...
-
-      class ResponseType(messages.Message):
-        ...
-
-      class ArbitraryService(ServiceProxy):
-
-        method1 = ServiceProxy.define_proxy_method('method1',
-                                                   RequestType,
-                                                   ResponseType)
-
-      arbitrary_service = ArbitraryService('http://localhost/arbitrary')
-      response = arbitrary_service.method1(RequestType())
-
-    Args:
-      method_name: Name of new remote method.
-      request_type: Message type of the request.
-      response_type: Message type of the response.
-
-    Returns:
-      An instance method that can be assigned to a class attribute.
-    """
-    def proxy_method_wrapper(self, request):
-      """Actual method that is invoked."""
-      return self.__transport.send_rpc(this_method.remote, request)
-
-    proxy_method_wrapper.func_name = method_name
-    this_method = remote.remote(request_type, response_type)(
-        proxy_method_wrapper)
-    this_method.func_name = method_name
-    return this_method
-
-
 def define_service(service_descriptor, module):
   """Define a new service proxy.
 
@@ -286,14 +166,16 @@ def define_service(service_descriptor, module):
         method_descriptor.response_type, module)
 
     method_name = method_descriptor.name.encode('utf-8')
-    remote_method = ServiceProxy.define_proxy_method(method_name,
-                                                     request_definition,
-                                                     response_definition)
+    def remote_method(self, request):
+      """Actual service method."""
+      raise NotImplementedError('Method is not implemented')
+    remote_method.__name__ = method_name
+    remote_method_decorator = remote.remote(request_definition,
+                                            response_definition)
+    
+    class_dict[method_name] = remote_method_decorator(remote_method)
 
-
-    class_dict[method_name] = remote_method
-
-  service_class = type(class_name, (ServiceProxy,), class_dict)
+  service_class = type(class_name, (remote.Service,), class_dict)
   return service_class
 
 

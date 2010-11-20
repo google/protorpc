@@ -40,9 +40,12 @@ from protorpc import messages
 from google.net.proto import ProtocolBuffer
 
 
-__all__ = ['encode_message',
+__all__ = ['CONTENT_TYPE',
+           'encode_message',
            'decode_message',
           ]
+
+CONTENT_TYPE = 'application/x-google-protobuf'
 
 
 class _Encoder(ProtocolBuffer.Encoder):

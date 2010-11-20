@@ -516,3 +516,6 @@ class ProtoConformanceTestBase(object):
     message.repeated_nested = [OptionalMessage(), OptionalMessage()]
 
     self.EncodeDecode(self.encoded_repeated_nested_empty, message)
+
+  def testContentType(self):
+    self.assertTrue(isinstance(self.PROTOLIB.CONTENT_TYPE, str))

@@ -34,9 +34,12 @@ import logging
 from protorpc import messages
 
 __all__ = [
+    'CONTENT_TYPE',
     'encode_message',
     'decode_message',
 ]
+
+CONTENT_TYPE = 'application/json'
 
 
 def _load_json_module():

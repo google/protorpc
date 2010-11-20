@@ -29,6 +29,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util
 
+from protorpc import transport
 import tunes_db
 
 if os.environ['SERVER_SOFTWARE'].startswith('Development'):
@@ -39,7 +40,8 @@ else:
 TUNES_DB_URL = 'http://%s/music' % TUNES_DB_HOST
 PAGE_SIZE = 10
 
-music_service = tunes_db.MusicLibraryService(TUNES_DB_URL)
+music_service = tunes_db.MusicLibraryService.Stub(
+  transport.HttpTransport(TUNES_DB_URL))
 
 
 class MainHandler(webapp.RequestHandler):
