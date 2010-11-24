@@ -438,6 +438,8 @@ class ServiceHandler(webapp.RequestHandler):
   def __match_request(self, mapper, http_method, remote_method):
     content_type = self.request.headers.get('content-type', None)
     if not content_type:
+      content_type = self.request.environ.get('HTTP_CONTENT_TYPE', None)
+    if not content_type:
       return False
 
     # Lop off parameters from the end (for example content-encoding)
