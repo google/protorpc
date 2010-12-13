@@ -1125,6 +1125,22 @@ class StringField(_Field):
 
   type = unicode
 
+  def validate_element(self, value):
+    """Validate StringField allowing for str and unicode.
+
+    Raises:
+      ValidationError if a str value is not 7-bit ascii.
+    """
+    # If value is str is it considered valid.  Satisfies "required=True".
+    if isinstance(value, str):
+      try:
+        unicode(value)
+      except UnicodeDecodeError, err:
+        raise ValidationError('Encountered non-ASCII string %s: %s' % (
+          value, err))
+    else:
+      super(StringField, self).validate_element(value)
+
 
 class MessageField(_Field):
   """Field definition for sub-message values.

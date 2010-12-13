@@ -19,6 +19,7 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import base64
 import sys
 import unittest
 
@@ -129,6 +130,8 @@ class ProtojsonTest(test_util.TestCase,
 
   encoded_extend_message = '{"int64_value": [400, 50, 6000]}'
 
+  encoded_string_types = '{"string_value": "Latin"}'
+
   def testConvertIntegerToFloat(self):
     """Test that integers passed in to float fields are converted.
 
@@ -197,9 +200,14 @@ class ProtojsonTest(test_util.TestCase,
     message = protojson.decode_message(test_util.OptionalMessage, ' ')
     self.assertEquals(test_util.OptionalMessage(), message)
 
-  def testLoadProtojsonWithValidJson(self):
-    """Test loads simplejson when missing json module."""
-    self.assertEquals(simplejson, protojson.json)
+
+class InvalidJsonModule(object):
+  pass
+
+
+class ValidJsonModule(object):
+  class JSONEncoder(object):
+    pass
 
 
 class TestJsonDependencyLoading(test_util.TestCase):
@@ -207,70 +215,65 @@ class TestJsonDependencyLoading(test_util.TestCase):
 
   def setUp(self):
     """Save original import function."""
+    self.django_simplejson = sys.modules.pop('django.utils.simplejson', None)
+    self.simplejson = sys.modules.pop('simplejson', None)
+    self.json = sys.modules.pop('json', None)
     self.original_import = __builtins__.__import__
+    def block_all_jsons(name, *args, **kwargs):
+      if 'json' in name:
+        if name in sys.modules:
+          module = sys.modules[name]
+          module.name = name
+          return module
+        raise ImportError('Unable to find %s' % name)
+      else:
+        return self.original_import(name, *args, **kwargs)
+    __builtins__.__import__ = block_all_jsons
 
   def tearDown(self):
     """Restore original import functions and any loaded modules."""
     __builtins__.__import__ = self.original_import
-    sys.modules['django.utils.simplejson'] = simplejson
-    sys.modules.pop('simplejson', None)
-    sys.modules.pop('json', None)
+
+    def reset_module(name, module):
+      if module:
+        sys.modules[name] = module
+      else:
+        sys.modules.pop(name, None)
+    reset_module('django.utils.simplejson', self.django_simplejson)
+    reset_module('simplejson', self.simplejson)
+    reset_module('json', self.json)
     reload(protojson)
 
   def testLoadProtojsonWithValidJsonModule(self):
     """Test loading protojson module with a valid json dependency."""
-    class JsonModule(object):
-      class JSONEncoder(object):
-        pass
-
-    sys.modules['json'] = JsonModule
-    sys.modules.pop('django.utils.simplejson')
+    sys.modules['json'] = ValidJsonModule
 
     # This will cause protojson to reload with the default json module
     # instead of simplejson.
     reload(protojson)
-    self.assertEquals(JsonModule, protojson.json)
+    self.assertEquals('json', protojson.json.name)
 
   def testLoadProtojsonWithSimplejsonModule(self):
     """Test loading protojson module with simplejson dependency."""
-    class JsonModule(object):
-      class JSONEncoder(object):
-        pass
-
-    sys.modules['simplejson'] = JsonModule
-    sys.modules.pop('django.utils.simplejson')
+    sys.modules['simplejson'] = ValidJsonModule
 
     # This will cause protojson to reload with the default json module
     # instead of simplejson.
     reload(protojson)
-    self.assertEquals(JsonModule, protojson.json)
+    self.assertEquals('simplejson', protojson.json.name)
 
   def testLoadProtojsonWithInvalidJsonModule(self):
     """Loading protojson module with an invalid json defaults to simplejson."""
-    class JsonModule(object):
-      pass
-
-    sys.modules['json'] = JsonModule
+    sys.modules['json'] = InvalidJsonModule
+    sys.modules['simplejson'] = ValidJsonModule
 
     # Ignore bad module and default back to simplejson.
     reload(protojson)
-    self.assertEquals(simplejson, protojson.json)
+    self.assertEquals('simplejson', protojson.json.name)
 
   def testLoadProtojsonWithInvalidJsonModuleAndNoSimplejson(self):
     """Loading protojson module with invalid json and no simplejson."""
-    original_import = __builtins__.__import__
-
-    def block_simplejson(name, *args):
-      if name.startswith('django.utils'):
-        raise ImportError('Django is not installed')
-      return original_import(name, *args)
-    __builtins__.__import__ = block_simplejson
-
-    class JsonModule(object):
-      pass
-
-    sys.modules['json'] = JsonModule
-    sys.modules.pop('django.utils.simplejson')
+    sys.modules['json'] = InvalidJsonModule
 
     # Bad module without simplejson back raises errors.
     self.assertRaisesWithRegexpMatch(
@@ -281,24 +284,10 @@ class TestJsonDependencyLoading(test_util.TestCase):
 
   def testLoadProtojsonWithNoJsonModules(self):
     """Loading protojson module with invalid json and no simplejson."""
-    original_import = __builtins__.__import__
-
-    def block_simplejson(name, *args):
-      if 'json' in name:
-        raise ImportError('Unable to find %s.' % name)
-      return original_import(name, *args)
-    __builtins__.__import__ = block_simplejson
-
-    class JsonModule(object):
-      pass
-
-    sys.modules['json'] = JsonModule
-    sys.modules.pop('django.utils.simplejson')
-
     # No json modules raise the first exception.
     self.assertRaisesWithRegexpMatch(
         ImportError,
-        'Unable to find json\.',
+        'Unable to find json',
         reload,
         protojson)
 

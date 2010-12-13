@@ -25,8 +25,6 @@ a service must be like the following class:
   # Make these objects light weight.
   class Service(object):
 
-
-
     # It must be possible to construct service objects without any parameters.
     # If your constructor needs extra information you should provide a
     # no-argument factory function to create service instances.
@@ -90,6 +88,26 @@ the sub-classes methods.  For example:
       ... do something with response ...
       return response
 
+A Service subclass also has a Stub class that can be used with a transport for
+making RPCs.  When a stub is created, it is capable of doing both synchronous
+and asynchronous RPCs if the underlying transport supports it.  To make a stub
+using an HTTP transport do:
+
+  my_service = MyService.Stub(HttpTransport('<my service URL>'))
+
+For synchronous calls, just call the expected methods on the service stub:
+
+  request = DoSomethingRequest()
+  ...
+  response = my_service.do_something(request)
+
+Each stub instance has an async object that can be used for initiating
+asynchronous RPCs if the underlying protocol transport supports it.  To
+make an asynchronous call, do:
+
+  rpc = my_service.async.do_something(request)
+  response = rpc.get_response()
+
 Public Classes:
   RequestState: Encapsulates information specific to an individual request.
   Service: Base class useful for implementing service objects.
@@ -101,7 +119,7 @@ Public Exceptions:
   InvalidRequestError: Raised when wrong request objects received by service.
   InvalidResponseError: Raised when wrong response object sent from service.
 """
-# TODO(rafek): Turn the 'should implement get_descriptor' to 'must'.
+# TODO(rafek): Get rid of 'get_descriptor'
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -118,6 +136,7 @@ __all__ = [
     'InvalidResponseError',
 
     'Service',
+    'StubBase',
     'RequestState',
     'remote',
 ]
@@ -263,26 +282,154 @@ def remote(request_type, response_type):
     remote_method_info = _RemoteMethodInfo(method, request_type, response_type)
 
     invoke_remote_method.remote = remote_method_info
+    invoke_remote_method.__name__ = method.__name__
     return invoke_remote_method
 
   return remote_method_wrapper
 
 
+class StubBase(object):
+  """Base class for client side service stubs.
+
+  The remote method stubs are created by the _ServiceClass meta-class
+  when a Service class is first created.  The resulting stub will
+  extend both this class and the service class it handles communications for.
+  """
+
+  def __init__(self, transport):
+    """Constructor.
+
+    Args:
+      transport: Underlying transport to communicate with remote service.
+    """
+    self.__transport = transport
+
+  @property
+  def transport(self):
+    """Transport used to communicate with remote service."""
+    return self.__transport
+
+  @classmethod
+  def definition_name(self):
+    """Delegates to underlying service instance."""
+    return super(StubBase, self).definition_name()
+
+
 class _ServiceClass(type):
   """Meta-class for service class."""
+
+  def __new_async_method(cls, remote):
+    """Create asynchronous method for Async handler.
+
+    Args:
+      remote: RemoteInfo to create method for.
+    """
+    def async_method(self, request):
+      """Asynchronous remote method.
+
+      Args:
+        self: Instance of StubBase.Async subclass.
+        request: Request message to send over transport.
+
+      Returns:
+        Rpc instance used to represent asynchronous RPC.
+      """
+      return self.transport.send_rpc(remote, request)
+    async_method.__name__ = remote.method.__name__
+    async_method.remote = remote
+    return async_method
+
+  def __new_sync_method(cls, async_method):
+    """Create synchronous method for stub.
+
+    Args:
+      async_method: asynchronous method to delegate calls to.
+    """
+    def sync_method(self, request):
+      """Synchronous remote method.
+
+      Args:
+        self: Instance of StubBase subclass.
+        request: Request message to send over transport.
+
+      Returns:
+        Response message from synchronized RPC.
+      """
+      return async_method(self.async, request).get_response()
+    sync_method.__name__ = async_method.__name__
+    sync_method.remote = async_method.remote
+    return sync_method
+
+  def __create_async_methods(cls, remote_methods):
+    """Construct a dictionary of asynchronous methods based on remote methods.
+
+    Args:
+      remote_methods: Dictionary of methods with associated RemoteInfo objects.
+
+    Returns:
+      Dictionary of asynchronous methods with assocaited RemoteInfo objects.
+      Results added to AsyncStub subclass.
+    """
+    async_methods = {}
+    for method_name, method in remote_methods.iteritems():
+      async_methods[method_name] = cls.__new_async_method(method.remote)
+    return async_methods
+
+  def __create_sync_methods(cls, async_methods):
+    """Construct a dictionary of synchronous methods based on remote methods.
+
+    Args:
+      async_methods: Dictionary of async methods to delegate calls to.
+
+    Returns:
+      Dictionary of synchronous methods with assocaited RemoteInfo objects.
+      Results added to Stub subclass.
+    """
+    sync_methods = {}
+    for method_name, async_method in async_methods.iteritems():
+      sync_methods[method_name] = cls.__new_sync_method(async_method)
+    return sync_methods
 
   def __init__(cls, name, bases, dct):
     """Create uninitialized state on new class."""
     type.__init__(cls, name, bases, dct)
 
-    # Initialize remote methods map.
-    cls.__remote_methods = {}
-    for attribute in dir(cls):
-      value = getattr(cls, attribute)
-      if (callable(value) and
-          hasattr(value, 'remote') and
-          attribute != 'get_descriptor'):
-        cls.__remote_methods[attribute] = value
+    # Only service implementation classes should have remote methods and stub
+    # sub classes created.  Stub implementations have their own methods passed
+    # in to the type constructor.
+    if StubBase not in bases:
+      # Create list of remote methods.
+      cls.__remote_methods = {}
+      for attribute in dir(cls):
+        value = getattr(cls, attribute)
+        if (callable(value) and
+            hasattr(value, 'remote') and
+            attribute != 'get_descriptor'):
+          cls.__remote_methods[attribute] = value
+
+      # Build asynchronous stub class.
+      stub_attributes = {'Service': cls}
+      async_methods = cls.__create_async_methods(cls.__remote_methods)
+      stub_attributes.update(async_methods)
+      async_class = type('AsyncStub', (StubBase, cls), stub_attributes)
+      cls.AsyncStub = async_class
+
+      # Constructor for synchronous stub class.
+      def __init__(self, transport):
+        """Constructor.
+
+        Args:
+          transport: Underlying transport to communicate with remote service.
+        """
+        super(cls.Stub, self).__init__(transport)
+        self.async = cls.AsyncStub(transport)
+
+      # Build synchronous stub class.
+      stub_attributes = {'Service': cls,
+                         '__init__': __init__}
+      stub_attributes.update(cls.__create_sync_methods(async_methods))
+     
+      cls.Stub = type('Stub', (StubBase, cls), stub_attributes)
 
   @staticmethod
   def all_remote_methods(cls):

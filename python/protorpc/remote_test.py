@@ -28,6 +28,9 @@ from protorpc import message_types
 from protorpc import messages
 from protorpc import remote
 from protorpc import test_util
+from protorpc import transport
+
+import mox
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
@@ -63,7 +66,7 @@ class SimpleResponse(messages.Message):
   """Simple response message type used for tests."""
 
 
-class BasicService(object):
+class BasicService(remote.Service):
   """A basic service with decorated remote method."""
 
   def __init__(self):
@@ -343,6 +346,55 @@ class ServiceTest(test_util.TestCase):
       self.assertEquals('TheService', TheService.definition_name())
     finally:
       sys.modules[__name__] = module
+
+
+class StubTest(test_util.TestCase):
+
+  def setUp(self):
+    self.mox = mox.Mox()
+    self.transport = self.mox.CreateMockAnything()
+
+  def testDefinitionName(self):
+    self.assertEquals(BasicService.definition_name(),
+                      BasicService.Stub.definition_name())
+
+  def testRemoteMethods(self):
+    self.assertEquals(BasicService.all_remote_methods(),
+                      BasicService.Stub.all_remote_methods())
+
+  def testSync(self):
+    stub = BasicService.Stub(self.transport)
+
+    request = SimpleRequest()
+    response = SimpleResponse()
+
+    rpc = transport.Rpc(request)
+    rpc.set_response(response)
+    self.transport.send_rpc(BasicService.remote_method.remote,
+                            request).AndReturn(rpc)
+
+    self.mox.ReplayAll()
+
+    self.assertEquals(SimpleResponse(), stub.remote_method(request))
+
+    self.mox.VerifyAll()
+
+  def testAsync(self):
+    stub = BasicService.Stub(self.transport)
+
+    request = SimpleRequest()
+    response = SimpleResponse()
+
+    rpc = transport.Rpc(request)
+
+    self.transport.send_rpc(BasicService.remote_method.remote,
+                            request).AndReturn(rpc)
+
+    self.mox.ReplayAll()
+
+    self.assertEquals(rpc, stub.async.remote_method(request))
+
+    self.mox.VerifyAll()
 
 
 def main():

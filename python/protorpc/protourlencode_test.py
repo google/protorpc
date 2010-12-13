@@ -307,6 +307,9 @@ class ProtourlencodeConformanceTest(test_util.TestCase,
                                              ('int64_value-1', 50),
                                              ('int64_value-2', 6000)])
 
+  encoded_string_types = urllib.urlencode(
+    [('string_value', 'Latin')])
+
   def testParameterPrefix(self):
     """Test using the 'prefix' parameter to encode_message."""
     class MyMessage(messages.Message):

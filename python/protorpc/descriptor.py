@@ -620,7 +620,7 @@ def import_descriptor_loader(definition_name, importer=__import__):
       else:
         # Check the parent definition for a matching descriptor.
         if isinstance(parent_definition, FileDescriptor):
-          search_list = parent_definition.services or []
+          search_list = parent_definition.service_types or []
         elif isinstance(parent_definition, ServiceDescriptor):
           search_list = parent_definition.methods or []
         elif isinstance(parent_definition, EnumDescriptor):
@@ -713,4 +713,3 @@ class DescriptorLibrary(object):
         if index < 0:
           return None
         definition_name = definition_name[:index]
-

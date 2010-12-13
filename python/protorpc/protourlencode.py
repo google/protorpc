@@ -95,10 +95,13 @@ import urllib
 from protorpc import messages
 from protorpc import util
 
-__all__ = ['URLEncodedRequestBuilder',
+__all__ = ['CONTENT_TYPE',
+           'URLEncodedRequestBuilder',
            'encode_message',
            'decode_message',
            ]
+
+CONTENT_TYPE = 'application/x-www-form-urlencoded'
 
 _FIELD_NAME_REGEX = re.compile(r'^([a-zA-Z_][a-zA-Z_0-9]*)(?:-([0-9]+))?$')
 

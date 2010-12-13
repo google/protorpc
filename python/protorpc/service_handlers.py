@@ -142,9 +142,9 @@ class ResponseError(Error):
   """Error occurred when building response."""
 
 
-_URLENCODED_CONTENT_TYPE = 'application/x-www-form-urlencoded'
-_PROTOBUF_CONTENT_TYPE = 'application/x-google-protobuf'
-_JSON_CONTENT_TYPE = 'application/json'
+_URLENCODED_CONTENT_TYPE = protourlencode.CONTENT_TYPE
+_PROTOBUF_CONTENT_TYPE = protobuf.CONTENT_TYPE
+_JSON_CONTENT_TYPE = protojson.CONTENT_TYPE
 
 _EXTRA_JSON_CONTENT_TYPES = ['application/x-javascript',
                              'text/javascript',
@@ -437,6 +437,8 @@ class ServiceHandler(webapp.RequestHandler):
 
   def __match_request(self, mapper, http_method, remote_method):
     content_type = self.request.headers.get('content-type', None)
+    if not content_type:
+      content_type = self.request.environ.get('HTTP_CONTENT_TYPE', None)
     if not content_type:
       return False
 
