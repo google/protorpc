@@ -20,20 +20,24 @@
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import new
-import os
 import StringIO
 import sys
 import unittest
-import urllib2
 
+from protorpc import definition
 from protorpc import descriptor
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import remote
-from protorpc import stub
 from protorpc import test_util
 
 import mox
+
+
+class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
+                          test_util.TestCase):
+
+  MODULE = definition
 
 
 class DefineEnumTest(test_util.TestCase):
@@ -44,7 +48,7 @@ class DefineEnumTest(test_util.TestCase):
     enum_descriptor = descriptor.EnumDescriptor()
     enum_descriptor.name = 'Empty'
 
-    enum_class = stub.define_enum(enum_descriptor, 'whatever')
+    enum_class = definition.define_enum(enum_descriptor, 'whatever')
 
     self.assertEquals('Empty', enum_class.__name__)
     self.assertEquals('whatever', enum_class.__module__)
@@ -68,7 +72,7 @@ class DefineEnumTest(test_util.TestCase):
     enum_descriptor.name = 'Colors'
     enum_descriptor.values = [red, green, blue]
 
-    enum_class = stub.define_enum(enum_descriptor, 'whatever')
+    enum_class = definition.define_enum(enum_descriptor, 'whatever')
 
     self.assertEquals('Colors', enum_class.__name__)
     self.assertEquals('whatever', enum_class.__module__)
@@ -88,7 +92,7 @@ class DefineFieldTest(test_util.TestCase):
     field_descriptor.variant = descriptor.FieldDescriptor.Variant.INT32
     field_descriptor.label = descriptor.FieldDescriptor.Label.OPTIONAL
 
-    field = stub.define_field(field_descriptor)
+    field = definition.define_field(field_descriptor)
 
     # Name will not be set from the original descriptor.
     self.assertFalse(hasattr(field, 'name'))
@@ -108,7 +112,7 @@ class DefineFieldTest(test_util.TestCase):
     field_descriptor.variant = descriptor.FieldDescriptor.Variant.STRING
     field_descriptor.label = descriptor.FieldDescriptor.Label.REQUIRED
 
-    field = stub.define_field(field_descriptor)
+    field = definition.define_field(field_descriptor)
 
     # Name will not be set from the original descriptor.
     self.assertFalse(hasattr(field, 'name'))
@@ -128,7 +132,7 @@ class DefineFieldTest(test_util.TestCase):
     field_descriptor.variant = descriptor.FieldDescriptor.Variant.DOUBLE
     field_descriptor.label = descriptor.FieldDescriptor.Label.REPEATED
 
-    field = stub.define_field(field_descriptor)
+    field = definition.define_field(field_descriptor)
 
     # Name will not be set from the original descriptor.
     self.assertFalse(hasattr(field, 'name'))
@@ -149,7 +153,7 @@ class DefineFieldTest(test_util.TestCase):
     field_descriptor.type_name = 'something.yet.to.be.Defined'
     field_descriptor.label = descriptor.FieldDescriptor.Label.REPEATED
 
-    field = stub.define_field(field_descriptor)
+    field = definition.define_field(field_descriptor)
 
     # Name will not be set from the original descriptor.
     self.assertFalse(hasattr(field, 'name'))
@@ -161,7 +165,7 @@ class DefineFieldTest(test_util.TestCase):
     self.assertTrue(field.repeated)
     self.assertRaisesWithRegexpMatch(messages.DefinitionNotFoundError,
                                      'Could not find definition for '
-                                     "something.yet.to.be.Defined",
+                                     'something.yet.to.be.Defined',
                                      getattr, field, 'type')
 
   def testDefineField_Enum(self):
@@ -174,7 +178,7 @@ class DefineFieldTest(test_util.TestCase):
     field_descriptor.type_name = 'something.yet.to.be.Defined'
     field_descriptor.label = descriptor.FieldDescriptor.Label.REPEATED
 
-    field = stub.define_field(field_descriptor)
+    field = definition.define_field(field_descriptor)
 
     # Name will not be set from the original descriptor.
     self.assertFalse(hasattr(field, 'name'))
@@ -186,7 +190,7 @@ class DefineFieldTest(test_util.TestCase):
     self.assertTrue(field.repeated)
     self.assertRaisesWithRegexpMatch(messages.DefinitionNotFoundError,
                                      'Could not find definition for '
-                                     "something.yet.to.be.Defined",
+                                     'something.yet.to.be.Defined',
                                      getattr, field, 'type')
 
 
@@ -195,12 +199,13 @@ class DefineMessageTest(test_util.TestCase):
 
   def testDefineMessageEmpty(self):
     """Test definition a message with no fields or enums."""
+
     class AMessage(messages.Message):
       pass
 
     message_descriptor = descriptor.describe_message(AMessage)
 
-    message_class = stub.define_message(message_descriptor, '__main__')
+    message_class = definition.define_message(message_descriptor, '__main__')
 
     self.assertEquals('AMessage', message_class.__name__)
     self.assertEquals('__main__', message_class.__module__)
@@ -210,13 +215,14 @@ class DefineMessageTest(test_util.TestCase):
 
   def testDefineMessageEnumOnly(self):
     """Test definition a message with only enums."""
+
     class AMessage(messages.Message):
       class NestedEnum(messages.Enum):
         pass
 
     message_descriptor = descriptor.describe_message(AMessage)
 
-    message_class = stub.define_message(message_descriptor, '__main__')
+    message_class = definition.define_message(message_descriptor, '__main__')
 
     self.assertEquals('AMessage', message_class.__name__)
     self.assertEquals('__main__', message_class.__module__)
@@ -226,6 +232,7 @@ class DefineMessageTest(test_util.TestCase):
 
   def testDefineMessageFieldsOnly(self):
     """Test definition a message with only fields."""
+
     class AMessage(messages.Message):
 
       field1 = messages.IntegerField(1)
@@ -233,7 +240,7 @@ class DefineMessageTest(test_util.TestCase):
 
     message_descriptor = descriptor.describe_message(AMessage)
 
-    message_class = stub.define_message(message_descriptor, '__main__')
+    message_class = definition.define_message(message_descriptor, '__main__')
 
     self.assertEquals('AMessage', message_class.__name__)
     self.assertEquals('__main__', message_class.__module__)
@@ -243,6 +250,7 @@ class DefineMessageTest(test_util.TestCase):
 
   def testDefineMessage(self):
     """Test defining Message class from descriptor."""
+
     class AMessage(messages.Message):
       class NestedEnum(messages.Enum):
         pass
@@ -252,7 +260,7 @@ class DefineMessageTest(test_util.TestCase):
 
     message_descriptor = descriptor.describe_message(AMessage)
 
-    message_class = stub.define_message(message_descriptor, '__main__')
+    message_class = definition.define_message(message_descriptor, '__main__')
 
     self.assertEquals('AMessage', message_class.__name__)
     self.assertEquals('__main__', message_class.__module__)
@@ -292,7 +300,7 @@ class DefineServiceTest(test_util.TestCase):
     service_descriptor.name = 'Stocks'
     service_descriptor.methods = [method_descriptor]
 
-    StockService = stub.define_service(service_descriptor, self.module)
+    StockService = definition.define_service(service_descriptor, self.module)
 
     self.assertTrue(issubclass(StockService, remote.Service))
     self.assertTrue(issubclass(StockService.Stub, remote.StubBase))
@@ -343,7 +351,7 @@ class ModuleTest(test_util.TestCase):
     """Test define_module function."""
     file_descriptor = self.MakeFileDescriptor('my.package')
 
-    module = stub.define_file(file_descriptor)
+    module = definition.define_file(file_descriptor)
 
     self.assertEquals('my.package', module.__name__)
     self.assertEquals('my.package', module.MyEnum.__module__)
@@ -357,7 +365,7 @@ class ModuleTest(test_util.TestCase):
     file_descriptor = self.MakeFileDescriptor('my.package')
 
     module = new.module('override')
-    self.assertEquals(module, stub.define_file(file_descriptor, module))
+    self.assertEquals(module, definition.define_file(file_descriptor, module))
 
     self.assertEquals('override', module.MyEnum.__module__)
     self.assertEquals('override', module.MyMessage.__module__)
@@ -371,7 +379,7 @@ class ModuleTest(test_util.TestCase):
     """Test importing FileDescriptor in to module space."""
     modules = {}
     file_descriptor = self.MakeFileDescriptor('standalone')
-    stub.import_file(file_descriptor, modules=modules)
+    definition.import_file(file_descriptor, modules=modules)
     self.assertEquals(file_descriptor,
                       descriptor.describe_file(modules['standalone']))
 
@@ -380,7 +388,7 @@ class ModuleTest(test_util.TestCase):
     module = new.module('standalone')
     modules = {'standalone': module}
     file_descriptor = self.MakeFileDescriptor('standalone')
-    stub.import_file(file_descriptor, modules=modules)
+    definition.import_file(file_descriptor, modules=modules)
     self.assertEquals(module, modules['standalone'])
     self.assertEquals(file_descriptor,
                       descriptor.describe_file(modules['standalone']))
@@ -393,7 +401,7 @@ class ModuleTest(test_util.TestCase):
       if 'standalone' in sys.modules:
         del sys.modules['standalone']
       file_descriptor = self.MakeFileDescriptor('standalone')
-      stub.import_file(file_descriptor)
+      definition.import_file(file_descriptor)
       self.assertEquals(file_descriptor,
                         descriptor.describe_file(sys.modules['standalone']))
     finally:
@@ -403,7 +411,7 @@ class ModuleTest(test_util.TestCase):
     """Test importing FileDescriptor in to existing nested module."""
     modules = {}
     file_descriptor = self.MakeFileDescriptor('root.nested')
-    stub.import_file(file_descriptor, modules=modules)
+    definition.import_file(file_descriptor, modules=modules)
     self.assertEquals(modules['root'].nested, modules['root.nested'])
     self.assertEquals(file_descriptor,
                       descriptor.describe_file(modules['root.nested']))
@@ -414,7 +422,7 @@ class ModuleTest(test_util.TestCase):
     file_descriptor.reset('package')
     self.assertRaisesWithRegexpMatch(ValueError,
                                      'File descriptor must have package name',
-                                     stub.import_file,
+                                     definition.import_file,
                                      file_descriptor)
 
   def testImportFileSet(self):
@@ -423,7 +431,7 @@ class ModuleTest(test_util.TestCase):
     file_set.files = [self.MakeFileDescriptor(u'standalone'),
                       self.MakeFileDescriptor(u'root.nested'),
                       self.MakeFileDescriptor(u'root.nested.nested'),
-    ]
+                     ]
 
     root = new.module('root')
     nested = new.module('root.nested')
@@ -433,7 +441,7 @@ class ModuleTest(test_util.TestCase):
         'root.nested': nested,
     }
 
-    stub.import_file_set(file_set, modules=modules)
+    definition.import_file_set(file_set, modules=modules)
 
     self.assertEquals(root, modules['root'])
     self.assertEquals(nested, modules['root.nested'])
@@ -452,7 +460,7 @@ class ModuleTest(test_util.TestCase):
     file_set.files = [self.MakeFileDescriptor(u'standalone'),
                       self.MakeFileDescriptor(u'root.nested'),
                       self.MakeFileDescriptor(u'root.nested.nested'),
-    ]
+                     ]
 
     stream = StringIO.StringIO(protobuf.encode_message(file_set))
 
@@ -463,7 +471,7 @@ class ModuleTest(test_util.TestCase):
     self.mox.ReplayAll()
 
     modules = {}
-    stub.import_file_set('my-file.dat', modules=modules, _open=opener)
+    definition.import_file_set('my-file.dat', modules=modules, _open=opener)
 
     self.assertEquals(file_set,
                       descriptor.describe_file_set(
