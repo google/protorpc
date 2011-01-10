@@ -166,6 +166,53 @@ class RemoteTest(test_util.TestCase):
       self.assertRaises(TypeError, declare)
 
 
+class GetRemoteMethodTest(test_util.TestCase):
+  """Test for is_remote_method."""
+
+  def testGetRemoteMethod(self):
+    """Test valid remote method detection."""
+
+    class Service(object):
+
+      @remote.remote(Request, Response)
+      def remote_method(self, request):
+        pass
+
+    self.assertEquals(Service.remote_method.remote,
+                      remote.get_remote_method_info(Service.remote_method))
+    self.assertTrue(Service.remote_method.remote,
+                    remote.get_remote_method_info(Service().remote_method))
+
+  def testGetNotRemoteMethod(self):
+    """Test positive result on a remote method."""
+
+    class NotService(object):
+
+      def not_remote_method(self, request):
+        pass
+
+    def fn(self):
+      pass
+
+    class NotReallyRemote(object):
+      """Test negative result on many bad values for remote methods."""
+
+      def not_really(self, request):
+        pass
+
+      not_really.remote = 'something else'
+
+    for not_remote in [NotService.not_remote_method,
+                       NotService().not_remote_method,
+                       NotReallyRemote.not_really,
+                       NotReallyRemote().not_really,
+                       None,
+                       1,
+                       'a string',
+                       fn]:
+      self.assertEquals(None, remote.get_remote_method_info(not_remote))
+
+
 class RequestStateTest(test_util.TestCase):
   """Test request state."""
 
@@ -224,14 +271,6 @@ class ServiceTest(test_util.TestCase):
     """Test that service base class has no remote methods."""
     self.assertEquals({}, remote.Service.all_remote_methods())
 
-  def testServiceBase_GetDescriptor(self):
-    """Test that get_descriptor on the Service base class returns descriptor."""
-    expected = descriptor.describe_service(remote.Service)
-    service = remote.Service()
-
-    self.assertEquals(expected,
-                      service.get_descriptor(message_types.VoidMessage()))
-
   def testAllRemoteMethods(self):
     """Test all_remote_methods with properly Service subclass."""
     self.assertEquals({'remote_method': MyService.remote_method},
@@ -250,13 +289,44 @@ class ServiceTest(test_util.TestCase):
                       },
                       SubClass.all_remote_methods())
 
-  def testGetDescriptor(self):
-    """Test calling get descriptor on a complex subclass."""
-    expected = descriptor.describe_service(MyService)
-    service = MyService()
+  def testOverrideMethod(self):
+    """Test that trying to override a remote method with remote decorator."""
+    class SubClass(MyService):
 
-    self.assertEquals(expected,
-                      service.get_descriptor(message_types.VoidMessage()))
+      def remote_method(self, request):
+        pass
+
+    self.assertEquals({'remote_method': SubClass.remote_method,
+                      },
+                      SubClass.all_remote_methods())
+
+  def testOverrideMethodWithRemote(self):
+    """Test trying to override a remote method with remote decorator."""
+    def do_override():
+      class SubClass(MyService):
+
+        @remote.remote(Request, Response)
+        def remote_method(self, request):
+          pass
+
+    self.assertRaisesWithRegexpMatch(remote.ServiceDefinitionError,
+                                     'Do not use remote decorator when '
+                                     'overloading remote method remote_method '
+                                     'on service SubClass',
+                                     do_override)
+
+  def testOverrideMethodWithInvalidValue(self):
+    """Test trying to override a remote method with remote decorator."""
+    def do_override(bad_value):
+      class SubClass(MyService):
+
+        remote_method = bad_value
+
+    for bad_value in [None, 1, 'string', {}]:
+      self.assertRaisesWithRegexpMatch(remote.ServiceDefinitionError,
+                                       'Must override remote_method in '
+                                       'SubClass with a method',
+                                       do_override, bad_value)
 
   def testCallingRemoteMethod(self):
     """Test invoking a remote method."""
