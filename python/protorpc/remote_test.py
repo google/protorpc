@@ -90,6 +90,41 @@ class RemoteTest(test_util.TestCase):
     self.assertTrue(isinstance(BasicService.remote_method.remote.method,
                                types.FunctionType))
 
+  def testRemoteMessageResolution(self):
+    """Test use of remote decorator to resolve message types by name."""
+    class OtherService(remote.Service):
+
+      @remote.remote('SimpleRequest', 'SimpleResponse')
+      def remote_method(self, request):
+        pass
+
+    self.assertEquals(SimpleRequest,
+                      OtherService.remote_method.remote.request_type)
+    self.assertEquals(SimpleResponse,
+                      OtherService.remote_method.remote.response_type)
+
+  def testRemoteMessageResolution_NotFound(self):
+    """Test failure to find message types."""
+    class OtherService(remote.Service):
+
+      @remote.remote('NoSuchRequest', 'NoSuchResponse')
+      def remote_method(self, request):
+        pass
+
+    self.assertRaisesWithRegexpMatch(
+      messages.DefinitionNotFoundError,
+      'Could not find definition for NoSuchRequest',
+      getattr,
+      OtherService.remote_method.remote,
+      'request_type')
+
+    self.assertRaisesWithRegexpMatch(
+      messages.DefinitionNotFoundError,
+      'Could not find definition for NoSuchResponse',
+      getattr,
+      OtherService.remote_method.remote,
+      'response_type')
+
   def testInvocation(self):
     """Test that invocation passes request through properly."""
     service = BasicService()
@@ -140,7 +175,7 @@ class RemoteTest(test_util.TestCase):
   def testBadRequestType(self):
     """Test bad request types used in remote definition."""
 
-    for request_type in (None, 'wrong', messages.Message, str):
+    for request_type in (None, 1020, messages.Message, str):
 
       def declare():
         class BadService(object):
@@ -154,7 +189,7 @@ class RemoteTest(test_util.TestCase):
   def testBadResponseType(self):
     """Test bad response types used in remote definition."""
 
-    for response_type in (None, 'wrong', messages.Message, str):
+    for response_type in (None, 1020, messages.Message, str):
 
       def declare():
         class BadService(object):

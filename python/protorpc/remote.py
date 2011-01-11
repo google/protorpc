@@ -183,11 +183,19 @@ class _RemoteMethodInfo(object):
   @property
   def request_type(self):
     """Expected request type for remote method."""
+    if isinstance(self.__request_type, basestring):
+      self.__request_type = messages.find_definition(
+        self.__request_type,
+        relative_to=sys.modules[self.__method.__module__])
     return self.__request_type
 
   @property
   def response_type(self):
     """Expected response type for remote method."""
+    if isinstance(self.__response_type, basestring):
+      self.__response_type = messages.find_definition(
+        self.__response_type,
+        relative_to=sys.modules[self.__method.__module__])
     return self.__response_type
 
 
@@ -206,16 +214,18 @@ def remote(request_type, response_type):
       proper subclasses of messages.Message.
   """
 
-  if (not isinstance(request_type, type) or
-      not issubclass(request_type, messages.Message) or
-      request_type is messages.Message):
+  if (not isinstance(request_type, basestring) and
+      (not isinstance(request_type, type) or
+       not issubclass(request_type, messages.Message) or
+       request_type is messages.Message)):
     raise TypeError(
         'Must provide message class for request-type.  Found %s',
         request_type)
 
-  if (not isinstance(response_type, type) or
-      not issubclass(response_type, messages.Message) or
-      response_type is messages.Message):
+  if (not isinstance(response_type, basestring) and
+      (not isinstance(response_type, type) or
+       not issubclass(response_type, messages.Message) or
+       response_type is messages.Message)):
     raise TypeError(
         'Must provide message class for response-type.  Found %s',
         response_type)
@@ -259,24 +269,26 @@ def remote(request_type, response_type):
         InvalidRequestError: Request object is not of the correct type.
         InvalidResponseError: Response object is not of the correct type.
       """
-      if not isinstance(request, request_type):
+      if not isinstance(request, remote_method_info.request_type):
         raise InvalidRequestError('Method %s.%s expected request type %s, '
                                   'received %s' %
                                   (type(service_instance).__name__,
                                    method.__name__,
-                                   request_type,
+                                   remote_method_info.request_type,
                                    type(request)))
       response = method(service_instance, request)
-      if not isinstance(response, response_type):
+      if not isinstance(response, remote_method_info.response_type):
         raise InvalidResponseError('Method %s.%s expected response type %s, '
                                    'sent %s' %
                                    (type(service_instance).__name__,
                                     method.__name__,
-                                    response_type,
+                                    remote_method_info.response_type,
                                     type(response)))
       return response
 
-    remote_method_info = _RemoteMethodInfo(method, request_type, response_type)
+    remote_method_info = _RemoteMethodInfo(method,
+                                           request_type,
+                                           response_type)
 
     invoke_remote_method.remote = remote_method_info
     invoke_remote_method.__name__ = method.__name__
