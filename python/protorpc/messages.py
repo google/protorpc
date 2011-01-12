@@ -146,7 +146,11 @@ _RESERVED_ATTRIBUTE_NAMES = frozenset(
     ['__module__', '__doc__'])
 
 _POST_INIT_FIELD_ATTRIBUTE_NAMES = frozenset(
-    ['name', '_message_definition', '_MessageField__type', '_EnumField__type'])
+    ['name',
+     '_message_definition',
+     '_MessageField__type',
+     '_EnumField__type',
+     '_EnumField__resolved_default'])
 
 _POST_INIT_ATTRIBUTE_NAMES = frozenset(
     ['_message_definition'])
@@ -959,14 +963,14 @@ class _Field(object):
 
     if default is not None:
       try:
-        self.validate(default)
+        self.validate_default(default)
       except ValidationError, err:
         raise InvalidDefaultError('Invalid default value for field: %s: %s' %
                                   (default, err))
       if isinstance(default, list):
         default = tuple(default)
 
-    self.default = default
+    self.__default = default
     self.__initialized = True
 
   def __setattr__(self, name, value):
@@ -1034,6 +1038,30 @@ class _Field(object):
         raise ValidationError('Expected type %s, found %s (type %s)' %
                               (self.type, value, type(value)))
 
+  def __validate(self, value, validate_element):
+    """Internal validation function.
+
+    Validate an internal value using a function to validate individual elements.
+
+    Args:
+      value: Value to validate.
+      validate_element: Function to use to validate individual elements.
+
+    Raises:
+      ValidationError if value is not expected type.
+    """
+    if not self.repeated:
+      validate_element(value)
+    else:
+      # Must be a list or tuple, may not be a string.
+      if isinstance(value, (list, tuple)):
+        for element in value:
+          if element is None:
+            raise ValidationError('Repeated values may not be None')
+          validate_element(element)
+      elif value is not None:
+        raise ValidationError('Field is repeated. Found: %s' % value)
+
   def validate(self, value):
     """Validate value assigned to field.
 
@@ -1043,17 +1071,34 @@ class _Field(object):
     Raises:
       ValidationError if value is not expected type.
     """
-    if not self.repeated:
-      self.validate_element(value)
-    else:
-      # Special case strings.  Always invalid.
-      if isinstance(value, (list, tuple)):
-        for element in value:
-          if element is None:
-            raise ValidationError('Repeated values may not be None')
-          self.validate_element(element)
-      elif value is not None:
-        raise ValidationError('Field is repeated. Found: %s' % value)
+    self.__validate(value, self.validate_element)
+
+  def validate_default_element(self, value):
+    """Validate value as assigned to field default field.
+
+    Some fields may allow for delayed resolution of default types necessary
+    in the case of circular definition references.  In this case, the default
+    value might be a place holder that is resolved when needed after all the
+    message classes are defined.
+
+    Args:
+      value: Default value to validate.
+
+    Raises:
+      ValidationError if value is not expected type.
+    """
+    self.validate_element(value)
+
+  def validate_default(self, value):
+    """Validate default value assigned to field.
+
+    Args:
+      value: Value to validate.
+
+    Raises:
+      ValidationError if value is not expected type.
+    """
+    self.__validate(value, self.validate_default_element)
 
   def message_definition(self):
     """Get Message definition that contains this Field definition.
@@ -1066,6 +1111,11 @@ class _Field(object):
       return self._message_definition()
     except AttributeError:
       return None
+
+  @property
+  def default(self):
+    """Get default value for field."""
+    return self.__default
 
 
 class IntegerField(_Field):
@@ -1258,7 +1308,36 @@ class MessageField(_Field):
 
 
 class EnumField(_Field):
-  """Field definition for enum values."""
+  """Field definition for enum values.
+
+  Enum fields may have default values that are delayed until the associated enum
+  type is resolved.  This is necessary to support certain circular references.
+
+  For example:
+
+    class Message1(Message):
+
+      class Color(Enum):
+
+        RED = 1
+        GREEN = 2
+        BLUE = 3
+
+      # This field default value  will be validated when default is accessed.
+      animal = EnumField('Message2.Animal', 1, default='HORSE')
+
+    class Message2(Message):
+
+      class Animal(Enum):
+
+        DOG = 1
+        CAT = 2
+        HORSE = 3
+
+      # This fields default value will be validated right away since Color is
+      # already fully resolved.
+      color = EnumField(Message1.Color, 1, default='RED')
+  """
 
   VARIANTS = frozenset([Variant.ENUM])
 
@@ -1296,6 +1375,29 @@ class EnumField(_Field):
 
     super(EnumField, self).__init__(number, **kwargs)
 
+  def validate_default_element(self, value):
+    """Validate default element of Enum field.
+
+    Enum fields allow for delayed resolution of default values when the type
+    of the field has not been resolved.  The default value of a field may be
+    a string or an integer.  If the Enum type of the field has been resolved,
+    the default value is validated against that type.
+
+    Args:
+      value: Value to validate.
+
+    Raises:
+      ValidationError if value is not expected message type.
+    """
+    if isinstance(value, (basestring, int, long)):
+      # Validation of the value does not happen for delayed resolution
+      # enumerated types.  Ignore if type is not yet resolved.
+      if self.__type:
+        self.__type(value)
+      return
+
+    super(EnumField, self).validate_default_element(value)
+
   @property
   def type(self):
     """Enum type used for field."""
@@ -1308,6 +1410,21 @@ class EnumField(_Field):
 
       self.__type = found_type
     return self.__type
+
+  @property
+  def default(self):
+    """Default for enum field.
+
+    Will cause resolution of Enum type and unresolved default value.
+    """
+    try:
+      return self.__resolved_default
+    except AttributeError:
+      resolved_default = super(EnumField, self).default
+      if isinstance(resolved_default, (basestring, int, long)):
+        resolved_default = self.type(resolved_default)
+      self.__resolved_default = resolved_default
+      return self.__resolved_default
 
 
 @util.positional(2)

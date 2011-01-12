@@ -497,6 +497,64 @@ class FieldTest(test_util.TestCase):
       self.assertTrue(isinstance(field.default, tuple))
     self.ActionOnAllFieldClasses(action)
 
+  def testDefaultFields_Enum(self):
+    """Test the default for enum fields."""
+    class Symbol(messages.Enum):
+
+      ALPHA = 1
+      BETA = 2
+      GAMMA = 3
+
+    field = messages.EnumField(Symbol, 1, default=Symbol.ALPHA)
+
+    self.assertEquals(Symbol.ALPHA, field.default)
+
+  def testDefaultFields_EnumStringDelayedResolution(self):
+    """Test that enum fields resolve default strings."""
+    field = messages.EnumField('protorpc.descriptor.FieldDescriptor.Label',
+                               1,
+                               default='OPTIONAL')
+
+    self.assertEquals(descriptor.FieldDescriptor.Label.OPTIONAL, field.default)
+
+  def testDefaultFields_EnumIntDelayedResolution(self):
+    """Test that enum fields resolve default integers."""
+    field = messages.EnumField('protorpc.descriptor.FieldDescriptor.Label',
+                               1,
+                               default=2)
+
+    self.assertEquals(descriptor.FieldDescriptor.Label.REQUIRED, field.default)
+
+  def testDefaultFields_EnumOkIfTypeKnown(self):
+    """Test that enum fields accept valid default values when type is known."""
+    field = messages.EnumField(descriptor.FieldDescriptor.Label,
+                               1,
+                               default='REPEATED')
+
+    self.assertEquals(descriptor.FieldDescriptor.Label.REPEATED, field.default)
+
+  def testDefaultFields_EnumForceCheckIfTypeKnown(self):
+    """Test that enum fields validate default values if type is known."""
+    self.assertRaisesWithRegexpMatch(TypeError,
+                                     'No such value for NOT_A_LABEL in '
+                                     'Enum Label',
+                                     messages.EnumField,
+                                     descriptor.FieldDescriptor.Label,
+                                     1,
+                                     default='NOT_A_LABEL')
+
+  def testDefaultFields_EnumInvalidDelayedResolution(self):
+    """Test that enum fields raise errors upon delayed resolution error."""
+    field = messages.EnumField('protorpc.descriptor.FieldDescriptor.Label',
+                               1,
+                               default=200)
+
+    self.assertRaisesWithRegexpMatch(TypeError,
+                                     'No such value for 200 in Enum Label',
+                                     getattr,
+                                     field,
+                                     'default')
+
   def testValidate_Valid(self):
     """Test validation of valid values."""
     values = {messages.IntegerField: 10,
