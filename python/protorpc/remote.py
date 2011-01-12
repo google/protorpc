@@ -39,14 +39,6 @@ a service must be like the following class:
     def remote_method(self, request):
       # Return an instance of ResponseMessage.
 
-    # A service object should implement a 'get_descriptor' method.  This method
-    # will return a descriptor.ServiceDescriptor object that details the remote
-    # methods of that service class except.  Descriptor should not include
-    # 'get_descriptor' itself.
-    @remote(message_types.VoidMessage, descriptor.ServiceDescriptor)
-    def get_descriptor(self):
-      ...
-
     # A service object may optionally implement a 'initialize_request_state'
     # method that takes as a parameter a single instance of a RequestState.  If
     # a service does not implement this method it will not receive the request
@@ -119,7 +111,6 @@ Public Exceptions:
   InvalidRequestError: Raised when wrong request objects received by service.
   InvalidResponseError: Raised when wrong response object sent from service.
 """
-# TODO(rafek): Get rid of 'get_descriptor'
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -134,10 +125,12 @@ from protorpc import util
 __all__ = [
     'InvalidRequestError',
     'InvalidResponseError',
+    'ServiceDefinitionError',
 
     'Service',
     'StubBase',
     'RequestState',
+    'get_remote_method_info',
     'remote',
 ]
 
@@ -148,6 +141,10 @@ class InvalidRequestError(messages.Error):
 
 class InvalidResponseError(messages.Error):
   """Raised when wrong response objects returned during method invocation."""
+
+
+class ServiceDefinitionError(messages.Error):
+  """Raised when a service is improperly defined."""
 
 
 class _RemoteMethodInfo(object):
@@ -186,11 +183,19 @@ class _RemoteMethodInfo(object):
   @property
   def request_type(self):
     """Expected request type for remote method."""
+    if isinstance(self.__request_type, basestring):
+      self.__request_type = messages.find_definition(
+        self.__request_type,
+        relative_to=sys.modules[self.__method.__module__])
     return self.__request_type
 
   @property
   def response_type(self):
     """Expected response type for remote method."""
+    if isinstance(self.__response_type, basestring):
+      self.__response_type = messages.find_definition(
+        self.__response_type,
+        relative_to=sys.modules[self.__method.__module__])
     return self.__response_type
 
 
@@ -209,16 +214,18 @@ def remote(request_type, response_type):
       proper subclasses of messages.Message.
   """
 
-  if (not isinstance(request_type, type) or
-      not issubclass(request_type, messages.Message) or
-      request_type is messages.Message):
+  if (not isinstance(request_type, basestring) and
+      (not isinstance(request_type, type) or
+       not issubclass(request_type, messages.Message) or
+       request_type is messages.Message)):
     raise TypeError(
         'Must provide message class for request-type.  Found %s',
         request_type)
 
-  if (not isinstance(response_type, type) or
-      not issubclass(response_type, messages.Message) or
-      response_type is messages.Message):
+  if (not isinstance(response_type, basestring) and
+      (not isinstance(response_type, type) or
+       not issubclass(response_type, messages.Message) or
+       response_type is messages.Message)):
     raise TypeError(
         'Must provide message class for response-type.  Found %s',
         response_type)
@@ -262,30 +269,52 @@ def remote(request_type, response_type):
         InvalidRequestError: Request object is not of the correct type.
         InvalidResponseError: Response object is not of the correct type.
       """
-      if not isinstance(request, request_type):
+      if not isinstance(request, remote_method_info.request_type):
         raise InvalidRequestError('Method %s.%s expected request type %s, '
                                   'received %s' %
                                   (type(service_instance).__name__,
                                    method.__name__,
-                                   request_type,
+                                   remote_method_info.request_type,
                                    type(request)))
       response = method(service_instance, request)
-      if not isinstance(response, response_type):
+      if not isinstance(response, remote_method_info.response_type):
         raise InvalidResponseError('Method %s.%s expected response type %s, '
                                    'sent %s' %
                                    (type(service_instance).__name__,
                                     method.__name__,
-                                    response_type,
+                                    remote_method_info.response_type,
                                     type(response)))
       return response
 
-    remote_method_info = _RemoteMethodInfo(method, request_type, response_type)
+    remote_method_info = _RemoteMethodInfo(method,
+                                           request_type,
+                                           response_type)
 
     invoke_remote_method.remote = remote_method_info
     invoke_remote_method.__name__ = method.__name__
     return invoke_remote_method
 
   return remote_method_wrapper
+
+
+def get_remote_method_info(method):
+  """Get remote method info object from remote method.
+
+  Returns:
+    Remote method info object if method is a remote method, else None.
+  """
+  if not callable(method):
+    return None
+
+  try:
+    method_info = method.remote
+  except AttributeError:
+    return None
+
+  if not isinstance(method_info, _RemoteMethodInfo):
+    return None
+
+  return method_info
 
 
 class StubBase(object):
@@ -390,6 +419,46 @@ class _ServiceClass(type):
       sync_methods[method_name] = cls.__new_sync_method(async_method)
     return sync_methods
 
+  def __new__(cls, name, bases, dct):
+    """Instantiate new service class instance."""
+    if StubBase not in bases:
+      # Collect existing remote methods.
+      base_methods = {}
+      for base in bases:
+        try:
+          remote_methods = base.__remote_methods
+        except AttributeError:
+          pass
+        else:
+          base_methods.update(remote_methods)
+
+      # Set this class private attribute so that base_methods do not have
+      # to be recacluated in __init__.
+      dct['_ServiceClass__base_methods'] = base_methods
+
+      for attribute, value in dct.iteritems():
+        base_method = base_methods.get(attribute, None)
+        if base_method:
+          if not callable(value):
+            raise ServiceDefinitionError(
+              'Must override %s in %s with a method.' % (
+                attribute, name))
+
+          if get_remote_method_info(value):
+            raise ServiceDefinitionError(
+              'Do not use remote decorator when overloading remote method %s '
+              'on service %s.' %
+              (attribute, name))
+
+          base_remote_method_info = get_remote_method_info(base_method)
+          remote_decorator = remote(
+            base_remote_method_info.request_type,
+            base_remote_method_info.response_type)
+          new_remote_method = remote_decorator(value)
+          dct[attribute] = new_remote_method
+
+    return type.__new__(cls, name, bases, dct)
+
   def __init__(cls, name, bases, dct):
     """Create uninitialized state on new class."""
     type.__init__(cls, name, bases, dct)
@@ -399,12 +468,12 @@ class _ServiceClass(type):
     # in to the type constructor.
     if StubBase not in bases:
       # Create list of remote methods.
-      cls.__remote_methods = {}
-      for attribute in dir(cls):
+      cls.__remote_methods = dict(cls.__base_methods)
+
+      for attribute, value in dct.iteritems():
         value = getattr(cls, attribute)
-        if (callable(value) and
-            hasattr(value, 'remote') and
-            attribute != 'get_descriptor'):
+        remote_method_info = get_remote_method_info(value)
+        if remote_method_info:
           cls.__remote_methods[attribute] = value
 
       # Build asynchronous stub class.
@@ -434,8 +503,6 @@ class _ServiceClass(type):
   @staticmethod
   def all_remote_methods(cls):
     """Get all remote methods of service.
-
-    Will not include built-in service method 'get_descriptor'.
 
     Returns:
       Dict from method name to unbound method.
@@ -526,10 +593,6 @@ class Service(object):
     new_instance = my_service_factory()
     assert new_instance.state is global_state
 
-  Build-in remote methods:
-    get_descriptor: Get a ServiceDescriptor message that describes the interface
-      to this service.
-
   Attributes:
     request_state: RequestState set via initialize_request_state.
   """
@@ -546,21 +609,6 @@ class Service(object):
       Dictionary mapping method name to remote method.
     """
     return _ServiceClass.all_remote_methods(cls)
-
-  @remote(message_types.VoidMessage, descriptor.ServiceDescriptor)
-  def get_descriptor(self, request):
-    """Get descriptor for Service instance.
-
-    Built in remote method so that all Service methods can remotely describe
-    themselves.
-
-    Args:
-      request: VoidMessage, not used.
-
-    Returns:
-      ServiceDescriptor instance that desribes the service.
-    """
-    return descriptor.describe_service(type(self))
 
   @classmethod
   def new_factory(cls, *args, **kwargs):

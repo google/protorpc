@@ -32,7 +32,7 @@ from protorpc import util
 
 __all__ = [
   'RpcError',
-  
+
   'HttpTransport',
   'Rpc',
   'Transport',

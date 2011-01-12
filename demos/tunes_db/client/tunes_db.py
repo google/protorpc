@@ -19,7 +19,7 @@
 
 import os
 
-from protorpc import stub
+from protorpc import definition
 
-stub.import_file_set(os.path.join(os.path.dirname(__file__),
-                                  'music_service.descriptor'))
+definition.import_file_set(os.path.join(os.path.dirname(__file__),
+                                        'music_service.descriptor'))

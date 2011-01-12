@@ -29,9 +29,15 @@ from protorpc import protobuf
 from protorpc import remote
 from protorpc import util
 
-
-class RPCError(messages.Error):
-  """Error occurred during RPC."""
+__all__ = [
+    'define_enum',
+    'define_field',
+    'define_file',
+    'define_message',
+    'define_service',
+    'import_file',
+    'import_file_set',
+]
 
 
 # Map variant back to message field classes.
@@ -172,7 +178,7 @@ def define_service(service_descriptor, module):
     remote_method.__name__ = method_name
     remote_method_decorator = remote.remote(request_definition,
                                             response_definition)
-    
+
     class_dict[method_name] = remote_method_decorator(remote_method)
 
   service_class = type(class_name, (remote.Service,), class_dict)
