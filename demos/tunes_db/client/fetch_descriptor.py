@@ -28,6 +28,12 @@ import os
 import sys
 import urllib2
 
+from protorpc import message_types
+from protorpc import protobuf
+from protorpc import protojson
+from protorpc import registry
+from protorpc import transport
+
 
 def parse_options(argv):
   """Parse options.
@@ -35,13 +41,11 @@ def parse_options(argv):
   Args:
     argv: List of original unparsed options.
 
-  Results:
-    Tuple (service_url, options):
-      service_url: Service URL read from parameter list.
-      options: Options object as parsed by optparse.
+  Returns:
+    Options object as parsed by optparse.
   """
   program = os.path.split(__file__)[-1]
-  parser = optparse.OptionParser(usage='%s [options] <service-url>' % program)
+  parser = optparse.OptionParser(usage='%s [options]' % program)
 
   parser.add_option('-o', '--output',
                     dest='output',
@@ -49,29 +53,48 @@ def parse_options(argv):
                     metavar='FILE',
                     default='music_service.descriptor')
 
+  parser.add_option('-r', '--registry_path',
+                    dest='registry_path',
+                    help='Path to registry service.',
+                    metavar='REGISTRY_PATH',
+                    default='/protorpc')
+
+  parser.add_option('-s', '--server',
+                    dest='server',
+                    help='Tunes DB server.',
+                    metavar='SERVER',
+                    default='tunes-db.appspot.com')
+
   options, args = parser.parse_args(argv)
 
-  if len(args) != 2:
+  if args:
     parser.print_help()
     sys.exit(1)
 
-  return args[1], options
+  return options
 
 
 def main(argv):
-  service_url, options = parse_options(argv)
+  options = parse_options(argv[1:])
 
-  get_file_set_url = '%s.get_file_set' % service_url
+  registry_url =  'http://%s%s' % (options.server,
+                                   options.registry_path)
 
-  request = urllib2.Request(
-      get_file_set_url,
-      data='',
-      headers={'content-type': 'application/x-google-protobuf'})
-  connection = urllib2.urlopen(request)
+  http_transport = transport.HttpTransport(registry_url, protocol=protojson)
+  remote_registry = registry.RegistryService.Stub(http_transport)
 
+  # Get complete list of services.
+  services = remote_registry.services(message_types.VoidMessage())
+
+  # Get file set for all services on server.
+  get_file_set = registry.GetFileSetRequest()
+  get_file_set.names = [service.name for service in services.services]
+  file_set = remote_registry.get_file_set(get_file_set).file_set
+
+  # Save file sets to disk.
   output = open(options.output, 'wb')
   try:
-    output.write(connection.read())
+    output.write(protobuf.encode_message(file_set))
   finally:
     output.close()
 

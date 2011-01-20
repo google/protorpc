@@ -49,15 +49,16 @@ import tunes_db
 class MainHandler(webapp.RequestHandler):
 
   def get(self):
-    self.redirect('/forms')
+    self.redirect('/protorpc/form')
 
 
-service_registry = forms.ServiceRegistry()
-service_registry.register_service('/music', tunes_db.MusicLibraryService)
+service_mappings = service_handlers.service_mapping(
+  [('/music', tunes_db.MusicLibraryService),
+  ])
 
 # Register mapping with application.
 application = webapp.WSGIApplication(
-    [('/', MainHandler)] + service_registry.mappings(),
+    [('/', MainHandler)] + service_mappings,
     debug=True)
 
 

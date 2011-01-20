@@ -270,4 +270,6 @@ def import_file_set(file_set, modules=None, _open=open):
     file_set = protobuf.decode_message(descriptor.FileSet, encoded_file_set)
 
   for file_descriptor in file_set.files:
-    import_file(file_descriptor, modules=modules)
+    # Do not reload built in protorpc classes.
+    if not file_descriptor.package.startswith('protorpc.'):
+      import_file(file_descriptor, modules=modules)

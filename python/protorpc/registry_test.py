@@ -95,6 +95,13 @@ class RegistryServiceTest(test_util.TestCase):
     self.assertEquals(expected_file_set.files,
                       response.file_set.files)
 
+  def testGetFileSet_None(self):
+    request = registry.GetFileSetRequest()
+    response = self.registry_service.get_file_set(request)
+
+    self.assertEquals(descriptor.FileSet(),
+                      response.file_set)
+
   def testGetFileSet_ReferenceOtherModules(self):
     request = registry.GetFileSetRequest()
     request.names = ['my-service1']

@@ -35,11 +35,6 @@ handlers:
 - url: /protorpc.*
   script: main.py
 
-- url: /_ah/stats/service.*
-  script: protorpc_appstats/main.py
-
-- url: /_ah/stats.*
-  script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
-
 - url: /
   script: main.py
+

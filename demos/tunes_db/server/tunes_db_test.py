@@ -111,6 +111,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.name = 'Elvis Costello'
 
     response = self.service.add_artist(request)
+    response.check_initialized()
 
     elvis = model.ArtistInfo.get(response.artist_id)
     self.assertEquals('Elvis Costello', elvis.name)
@@ -124,6 +125,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.artist = artist
 
     response = self.service.update_artist(request)
+    response.check_initialized()
 
     self.assertTrue(response.artist_updated)
     walter_carlos = model.ArtistInfo.get(self.wendy_carlos.key())
@@ -141,6 +143,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.artist = artist
 
     response = self.service.update_artist(request)
+    response.check_initialized()
 
     self.assertFalse(response.artist_updated)
     self.assertEquals(None, model.ArtistInfo.get(wendy_carlos_key))
@@ -151,6 +154,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.artist_id = str(self.go_team.key())
 
     response = self.service.delete_artist(request)
+    response.check_initialized()
     self.assertEquals(True, response.artist_deleted)
 
     self.assertEquals(None, model.AlbumInfo.get(self.go_team.key()))
@@ -167,6 +171,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.artist_id = str(self.wendy_carlos.key())
 
     response = self.service.fetch_artist(request)
+    response.check_initialized()
 
     self.AssertArtistMatches(self.wendy_carlos, response.artist)
 
@@ -176,6 +181,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.name_prefix = u'Duke'
 
     response = self.service.search_artists(request)
+    response.check_initialized()
     self.assertFalse(hasattr(response, 'artist_count'))
 
   def testSearchArtist_All(self):
@@ -184,17 +190,18 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.fetch_size = 3
 
     response = self.service.search_artists(request)
+    response.check_initialized()
 
     self.assertEquals(3, len(response.artists))
     self.AssertArtistMatches(self.abba, response.artists[0])
     self.AssertArtistMatches(self.aem, response.artists[1])
     self.AssertArtistMatches(self.beatles, response.artists[2])
-    self.assertTrue(isinstance(response.continuation, str))
 
     request = tunes_db.SearchArtistsRequest()
     request.continuation = response.continuation
     request.fetch_size = 3
     response = self.service.search_artists(request)
+    response.check_initialized()
 
     self.assertEquals(3, len(response.artists))
     self.AssertArtistMatches(self.furnaces, response.artists[0])
@@ -204,6 +211,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request = tunes_db.SearchArtistsRequest()
     request.continuation = response.continuation
     response = self.service.search_artists(request)
+    response.check_initialized()
 
     self.assertEquals(None, response.artists)
 
@@ -214,6 +222,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.fetch_size = 2
 
     response = self.service.search_artists(request)
+    response.check_initialized()
 
     self.assertEquals(2, len(response.artists))
     self.AssertArtistMatches(self.beatles, response.artists[0])
@@ -223,6 +232,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.continuation = response.continuation
 
     response = self.service.search_artists(request)
+    response.check_initialized()
 
     self.assertEquals(1, len(response.artists))
     self.assertEquals(None, response.continuation)
@@ -236,6 +246,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.released = 2004
 
     response = self.service.add_album(request)
+    response.check_initialized()
 
     blueberry = model.AlbumInfo.get(response.album_id)
     self.assertEquals(self.furnaces.key(), blueberry.artist.key())
@@ -252,6 +263,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.album = album
 
     response = self.service.update_album(request)
+    response.check_initialized()
 
     self.assertTrue(response.album_updated)
     proof_of_age = model.AlbumInfo.get(self.proof_of_youth.key())
@@ -271,6 +283,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.album = album
 
     response = self.service.update_album(request)
+    response.check_initialized()
 
     self.assertFalse(response.album_updated)
     self.assertEquals(None, model.AlbumInfo.get(proof_of_youth_key))
@@ -281,16 +294,17 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.fetch_size = 2
 
     response = self.service.search_albums(request)
+    response.check_initialized()
 
     self.assertEquals(2, len(response.albums))
     self.AssertAlbumMatches(self.get_it_together, response.albums[0])
     self.AssertAlbumMatches(self.help, response.albums[1])
-    self.assertTrue(isinstance(response.continuation, str))
 
     request = tunes_db.SearchAlbumsRequest()
     request.continuation = response.continuation
 
     response = self.service.search_albums(request)
+    response.check_initialized()
 
     self.assertEquals(2, len(response.albums))
     self.AssertAlbumMatches(self.proof_of_youth, response.albums[0])
@@ -300,6 +314,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.continuation = response.continuation
 
     response = self.service.search_albums(request)
+    response.check_initialized()
     self.assertEquals(1, len(response.albums))
     self.assertEquals(None, response.continuation)
     self.AssertAlbumMatches(self.yellow_submarine, response.albums[0])
@@ -308,9 +323,10 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     """Test searching albums for specific artist in library."""
     request = tunes_db.SearchAlbumsRequest()
     request.fetch_size = 2
-    request.artist_id = str(self.go_team.key())
+    request.artist_id = unicode(self.go_team.key())
 
     response = self.service.search_albums(request)
+    response.check_initialized()
 
     self.assertEquals(2, len(response.albums))
     self.AssertAlbumMatches(self.get_it_together, response.albums[0])
@@ -320,6 +336,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     request.continuation = response.continuation
 
     response = self.service.search_albums(request)
+    response.check_initialized()
 
     self.assertEquals(1, len(response.albums))
     self.assertEquals(None, response.continuation)
@@ -331,7 +348,9 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
 
     expected = descriptor.describe_file_set([tunes_db])
 
-    self.assertEquals(expected, self.service.get_file_set(request))
+    response = self.service.get_file_set(request)
+    response.check_initialized()
+    self.assertEquals(expected, response)
 
 
 if __name__ == '__main__':

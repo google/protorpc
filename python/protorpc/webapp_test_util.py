@@ -87,10 +87,7 @@ class RequestHandlerTestBase(unittest.TestCase):
 
   def setUp(self):
     """Set up test for request handler."""
-    self.request = webapp.Request(self.GetEnvironment())
-    self.response = webapp.Response()
-    self.handler = self.CreateRequestHandler()
-    self.handler.initialize(self.request, self.response)
+    self.ResetHandler()
 
   def GetEnvironment(self):
     """Get environment.
@@ -111,3 +108,58 @@ class RequestHandlerTestBase(unittest.TestCase):
       RequestHandler instance used in test.
     """
     return webapp.RequestHandler()
+
+  def CheckResponse(self,
+                    expected_status,
+                    expected_headers,
+                    expected_content):
+    """Check that the web response is as expected.
+
+    Args:
+      expected_status: Expected status message.
+      expected_headers: Dictionary of expected headers.  Will ignore unexpected
+        headers and only check the value of those expected.
+      expected_content: Expected body.
+    """
+    def check_content(content):
+      self.assertEquals(expected_content, content)
+
+    def start_response(status, headers):
+      self.assertEquals(expected_status, status)
+
+      found_keys = set()
+      for name, value in headers:
+        name = name.lower()
+        try:
+          expected_value = expected_headers[name]
+        except KeyError:
+          pass
+        else:
+          found_keys.add(name)
+          self.assertEquals(expected_value, value)
+
+      missing_headers = set(expected_headers.iterkeys()) - found_keys
+      if missing_headers:
+        self.fail('Expected keys %r not found' % (list(missing_headers),))
+
+      return check_content
+
+    self.handler.response.wsgi_write(start_response)
+
+  def ResetHandler(self, change_environ=None):
+    """Reset this tests environment with environment changes.
+
+    Resets the entire test with a new handler which includes some changes to
+    the default request environment.
+
+    Args:
+      change_environ: Dictionary of values that are added to default
+        environment.
+    """
+    environment = self.GetEnvironment()
+    environment.update(change_environ or {})
+    
+    self.request = webapp.Request(environment)
+    self.response = webapp.Response()
+    self.handler = self.CreateRequestHandler()
+    self.handler.initialize(self.request, self.response)

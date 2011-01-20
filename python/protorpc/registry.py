@@ -201,16 +201,18 @@ class RegistryService(remote.Service):
       ultimately referred to by all service types request by names parameter.
     """
     service_modules = set()
-    for service in (self.__registry[name] for name in names):
-      found_modules = self.__definition_to_modules.setdefault(service, set())
-      if not found_modules:
-        found_modules.add(self.__modules[service.__module__])
-        for method_name in service.all_remote_methods():
-          method = getattr(service, method_name)
-          for message_type in (method.remote.request_type,
-                               method.remote.response_type):
-            found_modules.update(self.__find_modules_for_message(message_type))
-      service_modules.update(found_modules)
+    if names:
+      for service in (self.__registry[name] for name in names):
+        found_modules = self.__definition_to_modules.setdefault(service, set())
+        if not found_modules:
+          found_modules.add(self.__modules[service.__module__])
+          for method_name in service.all_remote_methods():
+            method = getattr(service, method_name)
+            for message_type in (method.remote.request_type,
+                                 method.remote.response_type):
+              found_modules.update(
+                self.__find_modules_for_message(message_type))
+        service_modules.update(found_modules)
 
     return descriptor.describe_file_set(service_modules)
 

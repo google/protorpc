@@ -1,0 +1,32 @@
+Echo Service
+============
+
+The echo service is a service that echos a request back to the caller.  Useful
+for testing and illustrates all data types in the forms interface.
+
+Google App Engine
+=================
+
+For more information about Google App Engine, and to download the SDK, see:
+
+  http://code.google.com/appengine
+
+Running locally
+===============
+
+ProtoRPC must be installed in the echo directory in order for it to work.
+
+Example on a unix-like OS:
+
+  $ cp -r $PROTORPC/python/protorpc $PROTORPC/demos/echo
+
+To run this demo locally, you need to run an instance of the Google App
+Engine dev-appserver.  The server defaults on port 8080.
+
+Example on a unix-like OS:
+
+  $ python $GAE_SDK/dev_appserver.py $PROTORPC/demos/echo
+
+
+
+

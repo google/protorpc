@@ -480,6 +480,39 @@ class ModuleTest(test_util.TestCase):
                            modules['root.nested.nested'],
                           ]))
 
+  def testImportBuiltInProtorpcClasses(self):
+    """Test that built in Protorpc classes are skipped."""
+    file_set = descriptor.FileSet()
+    file_set.files = [self.MakeFileDescriptor(u'standalone'),
+                      self.MakeFileDescriptor(u'root.nested'),
+                      self.MakeFileDescriptor(u'root.nested.nested'),
+                      descriptor.describe_file(descriptor),
+    ]
+
+    root = new.module('root')
+    nested = new.module('root.nested')
+    root.nested = nested
+    modules = {
+        'root': root,
+        'root.nested': nested,
+        'protorpc.descriptor': descriptor,
+    }
+
+    stub.import_file_set(file_set, modules=modules)
+
+    self.assertEquals(root, modules['root'])
+    self.assertEquals(nested, modules['root.nested'])
+    self.assertEquals(nested.nested, modules['root.nested.nested'])
+    self.assertEquals(descriptor, modules['protorpc.descriptor'])
+
+    self.assertEquals(file_set,
+                      descriptor.describe_file_set(
+                          [modules['standalone'],
+                           modules['root.nested'],
+                           modules['root.nested.nested'],
+                           modules['protorpc.descriptor'],
+                          ]))
+
 
 if __name__ == '__main__':
   unittest.main()

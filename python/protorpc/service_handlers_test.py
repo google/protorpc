@@ -26,6 +26,7 @@ import unittest
 import urllib
 
 from google.appengine.ext import webapp
+from protorpc import forms
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import protojson
@@ -943,102 +944,74 @@ class MyService(remote.Service):
 
 class ServiceMappingTest(test_util.TestCase):
 
+  def CheckFormMappings(self, mapping):
+    """Check to make sure that form mapping is configured as expected.
+
+    Args:
+      mapping: Mapping that should contain forms handlers.
+    """
+    pattern, factory = mapping[0]
+    self.assertEquals('/myreg/form(?:/)?', pattern)
+    handler = factory()
+    self.assertTrue(isinstance(handler, forms.FormsHandler))
+    self.assertEquals('/myreg', handler.registry_path)
+
+    pattern, factory = mapping[1]
+    self.assertEquals('/myreg/form/(.+)', pattern)
+    self.assertEquals(forms.ResourceHandler, factory)
+
+  def DoMappingTest(self, services, registry_path='/myreg'):
+    mapped_services = mapping = service_handlers.service_mapping(services,
+                                                                 registry_path)
+    if registry_path:
+      form_mapping = mapping[:2]
+      mapped_registry_path, mapped_registry_factory = mapping[-1]
+      mapped_services = mapping[2:-1]
+      self.CheckFormMappings(form_mapping)
+
+      self.assertEquals(registry_path + service_handlers._METHOD_PATTERN,
+                        mapped_registry_path)
+      self.assertEquals(registry.RegistryService,
+                        mapped_registry_factory.service_factory.service_class)
+
+      # Verify registry knows about other services.
+      expected_registry = {registry_path: registry.RegistryService}
+      for path, factory in dict(services).iteritems():
+        if isinstance(factory, type) and issubclass(factory, remote.Service):
+          expected_registry[path] = factory
+        else:
+          expected_registry[path] = factory.service_class
+      self.assertEquals(expected_registry, mapped_registry_factory().service.registry)
+
+    # Verify that services are mapped to URL.
+    self.assertEquals(len(services), len(mapped_services))
+    for path, service in dict(services).iteritems():
+      mapped_path = path + service_handlers._METHOD_PATTERN
+      mapped_factory = dict(mapped_services)[mapped_path]
+      self.assertEquals(service, mapped_factory.service_factory)
+
   def testServiceMapping_Empty(self):
     """Test an empty service mapping."""
-    mapping = service_handlers.service_mapping({}, '/myreg')
-    self.assertEquals(1, len(mapping))
-    pattern, factory = mapping[0]
-    self.assertEquals('/myreg' + service_handlers._METHOD_PATTERN, pattern)
-    self.assertEquals(registry.RegistryService,
-                      factory.service_factory.service_class)
-    registry_service = factory.service_factory()
-    self.assertEquals({'/myreg': registry.RegistryService},
-                      registry_service.registry)
+    self.DoMappingTest({})
 
   def testServiceMapping_ByClass(self):
     """Test mapping a service by class."""
-    mapping = service_handlers.service_mapping({'/my-service': MyService},
-                                               '/myreg')
-    self.assertEquals(2, len(mapping))
-    pattern, factory = mapping[0]
-    self.assertEquals('/my-service' + service_handlers._METHOD_PATTERN, pattern)
-    self.assertEquals(MyService,
-                      factory.service_factory)
-
-    pattern, factory = mapping[1]
-    self.assertEquals('/myreg' + service_handlers._METHOD_PATTERN, pattern)
-    self.assertEquals(registry.RegistryService,
-                      factory.service_factory.service_class)
-    registry_service = factory.service_factory()
-    self.assertEquals({'/myreg': registry.RegistryService,
-                       '/my-service': MyService,
-                      },
-                      registry_service.registry)
+    self.DoMappingTest({'/my-service': MyService})
 
   def testServiceMapping_ByFactory(self):
     """Test mapping a service by factory."""
-    mapping = service_handlers.service_mapping(
-      {'/my-service': MyService.new_factory('new-value')},
-      '/myreg')
-    self.assertEquals(2, len(mapping))
-    pattern, factory = mapping[0]
-    self.assertEquals('/my-service' + service_handlers._METHOD_PATTERN, pattern)
-    self.assertEquals(MyService, factory.service_factory.service_class)
-    self.assertEquals('new-value',
-                      factory.service_factory().value)
-
-    pattern, factory = mapping[1]
-    self.assertEquals('/myreg' + service_handlers._METHOD_PATTERN, pattern)
-    self.assertEquals(registry.RegistryService,
-                      factory.service_factory.service_class)
-    registry_service = factory.service_factory()
-    self.assertEquals({'/myreg': registry.RegistryService,
-                       '/my-service': MyService,
-                      },
-                      registry_service.registry)
+    self.DoMappingTest({'/my-service': MyService.new_factory('new-value')})
 
   def testServiceMapping_ByList(self):
     """Test mapping a service by factory."""
-    mapping = service_handlers.service_mapping(
+    self.DoMappingTest(
       [('/my-service1', MyService.new_factory('service1')),
        ('/my-service2', MyService.new_factory('service2')),
-      ],
-      '/myreg')
-    self.assertEquals(3, len(mapping))
-    pattern, factory = mapping[0]
-    self.assertEquals('/my-service1' + service_handlers._METHOD_PATTERN,
-                      pattern)
-    self.assertEquals(MyService, factory.service_factory.service_class)
-    self.assertEquals('service1',
-                      factory.service_factory().value)
-
-    pattern, factory = mapping[1]
-    self.assertEquals('/my-service2' + service_handlers._METHOD_PATTERN,
-                      pattern)
-    self.assertEquals(MyService, factory.service_factory.service_class)
-    self.assertEquals('service2',
-                      factory.service_factory().value)
-
-    pattern, factory = mapping[2]
-    self.assertEquals('/myreg' + service_handlers._METHOD_PATTERN, pattern)
-    self.assertEquals(registry.RegistryService,
-                      factory.service_factory.service_class)
-    registry_service = factory.service_factory()
-    self.assertEquals({'/myreg': registry.RegistryService,
-                       '/my-service1': MyService,
-                       '/my-service2': MyService,
-                      },
-                      registry_service.registry)
+      ])
 
   def testServiceMapping_NoRegistry(self):
     """Test mapping a service by class."""
-    mapping = service_handlers.service_mapping({'/my-service': MyService},
-                                               None)
-    self.assertEquals(1, len(mapping))
-    pattern, factory = mapping[0]
-    self.assertEquals('/my-service' + service_handlers._METHOD_PATTERN, pattern)
-    self.assertEquals(MyService,
-                      factory.service_factory)
+    mapping = self.DoMappingTest({'/my-service': MyService}, None)
 
 
 def main():

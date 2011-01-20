@@ -44,7 +44,7 @@ class Artist(messages.Message):
     album_count: Number of albums produced by artist.
   """
 
-  artist_id = messages.BytesField(1, required=True)
+  artist_id = messages.StringField(1, required=True)
   name = messages.StringField(2, required=True)
 
   album_count = messages.IntegerField(3)
@@ -60,8 +60,8 @@ class Album(messages.Message):
     released: Year when album was released.
   """
 
-  album_id = messages.BytesField(1, required=True)
-  artist_id = messages.BytesField(2, required=True)
+  album_id = messages.StringField(1, required=True)
+  artist_id = messages.StringField(2, required=True)
   name = messages.StringField(3, required=True)
   released = messages.IntegerField(4)
 
@@ -83,7 +83,7 @@ class AddArtistResponse(messages.Message):
     artist_id: Unique opaque ID of new artist.
   """
 
-  artist_id = messages.BytesField(1, required=True)
+  artist_id = messages.StringField(1, required=True)
 
 
 class UpdateArtistRequest(messages.Message):
@@ -113,7 +113,7 @@ class DeleteArtistRequest(messages.Message):
     artist_id: Unique opaque ID of artist to delete.
   """
 
-  artist_id = messages.BytesField(1, required=True)
+  artist_id = messages.StringField(1, required=True)
 
 
 class DeleteArtistResponse(messages.Message):
@@ -133,7 +133,7 @@ class FetchArtistRequest(messages.Message):
     artist_id: Unique opaque ID of artist to fetch.
   """
 
-  artist_id = messages.BytesField(1, required=True)
+  artist_id = messages.StringField(1, required=True)
 
 
 class FetchArtistResponse(messages.Message):
@@ -159,7 +159,7 @@ class SearchArtistsRequest(messages.Message):
       is ignored.
   """
 
-  continuation = messages.BytesField(1)
+  continuation = messages.StringField(1)
   fetch_size = messages.IntegerField(2, default=10)
   name_prefix = messages.StringField(3, default=u'')
 
@@ -177,7 +177,7 @@ class SearchArtistsResponse(messages.Message):
   """
 
   artists = messages.MessageField(Artist, 1, repeated=True)
-  continuation = messages.BytesField(2)
+  continuation = messages.StringField(2)
 
 
 class AddAlbumRequest(messages.Message):
@@ -190,7 +190,7 @@ class AddAlbumRequest(messages.Message):
   """
 
   name = messages.StringField(1, required=True)
-  artist_id = messages.BytesField(2, required=True)
+  artist_id = messages.StringField(2, required=True)
   released = messages.IntegerField(3)
 
 
@@ -201,7 +201,7 @@ class AddAlbumResponse(messages.Message):
     album_id: Unique opaque ID of new album.
   """
 
-  album_id = messages.BytesField(1, required=True)
+  album_id = messages.StringField(1, required=True)
 
 
 class UpdateAlbumRequest(messages.Message):
@@ -231,7 +231,7 @@ class DeleteAlbumRequest(messages.Message):
     album_id: Unique opaque ID of album to delete.
   """
 
-  album_id = messages.BytesField(1, required=True)
+  album_id = messages.StringField(1, required=True)
 
 
 class DeleteAlbumResponse(messages.Message):
@@ -251,7 +251,7 @@ class FetchAlbumRequest(messages.Message):
     album_id: Unique opaque ID of album to fetch.
   """
 
-  album_id = messages.BytesField(1, required=True)
+  album_id = messages.StringField(1, required=True)
 
 
 class FetchAlbumResponse(messages.Message):
@@ -278,10 +278,10 @@ class SearchAlbumsRequest(messages.Message):
     artist_id: Restrict search to albums of single artist.
   """
 
-  continuation = messages.BytesField(1)
+  continuation = messages.StringField(1)
   fetch_size = messages.IntegerField(2, default=10)
   name_prefix = messages.StringField(3, default=u'')
-  artist_id = messages.BytesField(4)
+  artist_id = messages.StringField(4)
 
 
 class SearchAlbumsResponse(messages.Message):
@@ -297,7 +297,7 @@ class SearchAlbumsResponse(messages.Message):
   """
 
   albums = messages.MessageField(Album, 1, repeated=True)
-  continuation = messages.BytesField(2)
+  continuation = messages.StringField(2)
 
 
 class MusicLibraryService(remote.Service):
@@ -316,7 +316,7 @@ class MusicLibraryService(remote.Service):
       New Artist message with contents of artist_model copied in to it.
     """
     artist = Artist()
-    artist.artist_id = str(artist_model.key())
+    artist.artist_id = unicode(artist_model.key())
     artist.name = artist_model.name
     artist.album_count = artist_model.album_count
     return artist
@@ -332,8 +332,8 @@ class MusicLibraryService(remote.Service):
       New Album message with contents of album_model copied in to it.
     """
     album = Album()
-    album.album_id = str(album_model.key())
-    album.artist_id = str(model.AlbumInfo.artist.get_value_for_datastore(
+    album.album_id = unicode(album_model.key())
+    album.artist_id = unicode(model.AlbumInfo.artist.get_value_for_datastore(
         album_model))
     album.name = album_model.name
     if album_model.released:
@@ -370,12 +370,12 @@ class MusicLibraryService(remote.Service):
     # over what is stored in continuation.
     if request.continuation:
       encoded_search, continuation = request.continuation.split(':', 1)
-      decoded_search = base64.urlsafe_b64decode(encoded_search)
+      decoded_search = base64.urlsafe_b64decode(encoded_search.encode('utf-8'))
       request = protobuf.decode_message(type(request), decoded_search)
     else:
       continuation = None
-      encoded_search = base64.urlsafe_b64encode(
-          protobuf.encode_message(request))
+      encoded_search = unicode(base64.urlsafe_b64encode(
+          protobuf.encode_message(request)))
 
     name_prefix = request.name_prefix
 
@@ -398,7 +398,7 @@ class MusicLibraryService(remote.Service):
       results = [model_to_message(i) for i in model_instance]
       if len(model_instance) == fetch_size:
         cursor = query.cursor()
-        continuation = '%s:%s' % (encoded_search, query.cursor())
+        continuation = u'%s:%s' % (encoded_search, query.cursor())
 
     return results, continuation
 
@@ -414,7 +414,7 @@ class MusicLibraryService(remote.Service):
     artist = db.run_in_transaction(do_add)
 
     response = AddArtistResponse()
-    response.artist_id = str(artist.key())
+    response.artist_id = unicode(artist.key())
     return response
 
   @remote.remote(UpdateArtistRequest, UpdateArtistResponse)
@@ -490,7 +490,7 @@ class MusicLibraryService(remote.Service):
     album = db.run_in_transaction(create_album)
 
     response = AddAlbumResponse()
-    response.album_id = str(album.key())
+    response.album_id = unicode(album.key())
     return response
 
   @remote.remote(UpdateAlbumRequest, UpdateAlbumResponse)
@@ -555,16 +555,3 @@ class MusicLibraryService(remote.Service):
     if continuation:
       response.continuation = continuation
     return response
-
-  @remote.remote(message_types.VoidMessage, descriptor.FileSet)
-  def get_file_set(self, request):
-    """Get package set for service.
-
-    Returns:
-      Initialized PackageSet representing this module as a package.
-    """
-    if not MusicLibraryService.__file_set:
-      module = sys.modules[__name__]
-      MusicLibraryService.__file_set = (
-          descriptor.describe_file_set([module]))
-    return MusicLibraryService.__file_set

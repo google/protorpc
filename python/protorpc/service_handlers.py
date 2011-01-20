@@ -100,6 +100,7 @@ import urllib
 import weakref
 
 from google.appengine.ext import webapp
+from protorpc import forms
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import protojson
@@ -158,7 +159,7 @@ _EXTRA_JSON_CONTENT_TYPES = ['application/x-javascript',
 # parameters of 'get' and 'post' on the ServiceHandler.
 _METHOD_PATTERN = r'(?:\.([^?]*))?'
 
-DEFAULT_REGISTRY_PATH = '/protorpc'
+DEFAULT_REGISTRY_PATH = forms.DEFAULT_REGISTRY_PATH
 
 
 class RPCMapper(object):
@@ -654,6 +655,9 @@ def service_mapping(services,
   if registry_path is not None:
     registry_service = registry.RegistryService.new_factory(registry_map)
     services = list(services) + [(registry_path, registry_service)]
+    mapping.append((registry_path + r'/form(?:/)?',
+                    forms.FormsHandler.new_factory(registry_path)))
+    mapping.append((registry_path + r'/form/(.+)', forms.ResourceHandler))
 
   for path, service in services:
     service_class = getattr(service, 'service_class', service)
