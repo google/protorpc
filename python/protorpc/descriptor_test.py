@@ -344,6 +344,16 @@ class DescribeFileTest(test_util.TestCase):
     described.check_initialized()
     self.assertEquals(expected, described)
 
+  def testNoPackageName(self):
+    """Test describing a module with no module name."""
+    module = new.module('')
+
+    expected = descriptor.FileDescriptor()
+
+    described = descriptor.describe_file(module)
+    described.check_initialized()
+    self.assertEquals(expected, described)
+
   def testPackageName(self):
     """Test using the 'package' module attribute."""
     module = new.module('my.module.name')

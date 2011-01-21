@@ -41,7 +41,6 @@ Public Exceptions (indentation indications class hierarchy):
   DefinitionNotFoundError: Raised when definition not found.
 """
 
-
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
@@ -59,6 +58,7 @@ __all__ = ['MAX_ENUM_VALUE',
            'LAST_RESERVED_FIELD_NUMBER',
 
            'Enum',
+           'Field',
            'Variant',
            'Message',
            'IntegerField',
@@ -541,10 +541,12 @@ class _MessageClass(_DefinitionClass):
     """Create new Message class instance.
 
     The __new__ method of the _MessageClass type is overridden so as to
-    allow the translation of _Field instances to slots.
+    allow the translation of Field instances to slots.
     """
     by_number = {}
     by_name = {}
+
+    variant_map = {}
 
     if bases != (object,):
       # Can only define one level of sub-classes below Message.
@@ -571,7 +573,7 @@ class _MessageClass(_DefinitionClass):
           continue
 
         # Reject anything that is not a field.
-        if type(field) is _Field or not isinstance(field, _Field):
+        if type(field) is Field or not isinstance(field, Field):
           raise MessageDefinitionError(
               'May only use fields in message definitions.  Found: %s = %s' %
               (key, field))
@@ -897,7 +899,16 @@ class Message(object):
 
 
 # TODO(rafek): Prevent additional field subclasses.
-class _Field(object):
+class Field(object):
+
+  __variant_to_type = {}
+
+  class __metaclass__(type):
+
+    def __init__(cls, name, bases, dct):
+      getattr(cls, '_Field__variant_to_type').update(
+        (variant, cls) for variant in getattr(cls, 'VARIANTS', []))
+      type.__init__(cls, name, bases, dct)
 
   __initialized = False
 
@@ -914,7 +925,7 @@ class _Field(object):
     to True will raise a FieldDefinitionError.
 
     Sub-class Attributes:
-      Each sub-class of _Field must define the following:
+      Each sub-class of Field must define the following:
         VARIANTS: Set of variant types accepted by that field.
         DEFAULT_VARIANT: Default variant type if not specified in constructor.
 
@@ -1117,8 +1128,12 @@ class _Field(object):
     """Get default value for field."""
     return self.__default
 
+  @classmethod
+  def lookup_field_type_by_variant(cls, variant):
+    return cls.__variant_to_type[variant]
 
-class IntegerField(_Field):
+
+class IntegerField(Field):
   """Field definition for integer values."""
 
   VARIANTS = frozenset([Variant.INT32,
@@ -1134,7 +1149,7 @@ class IntegerField(_Field):
   type = (int, long)
 
 
-class FloatField(_Field):
+class FloatField(Field):
   """Field definition for float values."""
 
   VARIANTS = frozenset([Variant.FLOAT,
@@ -1146,7 +1161,7 @@ class FloatField(_Field):
   type = float
 
 
-class BooleanField(_Field):
+class BooleanField(Field):
   """Field definition for boolean values."""
 
   VARIANTS = frozenset([Variant.BOOL])
@@ -1156,7 +1171,7 @@ class BooleanField(_Field):
   type = bool
 
 
-class BytesField(_Field):
+class BytesField(Field):
   """Field definition for byte string values."""
 
   VARIANTS = frozenset([Variant.BYTES])
@@ -1166,7 +1181,7 @@ class BytesField(_Field):
   type = str
 
 
-class StringField(_Field):
+class StringField(Field):
   """Field definition for unicode string values."""
 
   VARIANTS = frozenset([Variant.STRING])
@@ -1192,7 +1207,7 @@ class StringField(_Field):
       super(StringField, self).validate_element(value)
 
 
-class MessageField(_Field):
+class MessageField(Field):
   """Field definition for sub-message values.
 
   Message fields contain instance of other messages.  Instances stored
@@ -1307,7 +1322,7 @@ class MessageField(_Field):
     return self.__type
 
 
-class EnumField(_Field):
+class EnumField(Field):
   """Field definition for enum values.
 
   Enum fields may have default values that are delayed until the associated enum
@@ -1529,7 +1544,7 @@ def find_definition(name, relative_to=None, importer=__import__):
             module_name = '%s.%s' % (next.__name__, node)
 
           try:
-            next = importer(module_name)
+            next = importer(module_name, fromlist=[module_name.split('.')[-1]])
           except ImportError:
             return None
         else:
@@ -1567,11 +1582,14 @@ def find_definition(name, relative_to=None, importer=__import__):
           else:
             # Should not raise ImportError.  If it does... weird and
             # unexepected.  Propagate.
-            relative_to = importer('.'.join(module_path))
+            relative_to = importer('.'.join(module_path),
+                                   fromlist=[module_path[-1]])
         elif (isinstance(relative_to, type) and
               issubclass(relative_to, Message)):
           parent = relative_to.message_definition()
           if parent is None:
-            relative_to = importer(relative_to.__module__)
+            last_module_name = relative_to.__module__.split('.')[-1]
+            relative_to = importer(relative_to.__module__,
+                                   fromlist=[last_module_name])
           else:
             relative_to = parent

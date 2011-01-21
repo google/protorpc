@@ -138,10 +138,9 @@ _DEFAULT_TO_STRING_MAP = {
     messages.IntegerField: unicode,
     messages.FloatField: unicode,
     messages.BooleanField: lambda value: value and u'true' or u'false',
-    messages.BytesField: lambda value: _from_utf_8(
-        codecs.escape_encode(value)[0]),
+    messages.BytesField: lambda value: codecs.escape_encode(value)[0],
     messages.StringField: lambda value: value,
-    messages.EnumField: lambda value: _from_utf_8(str(value.number)),
+    messages.EnumField: lambda value: unicode(value.number),
 }
 
 
@@ -288,22 +287,6 @@ class FileSet(messages.Message):
   files = messages.MessageField(FileDescriptor, 1, repeated=True)
 
 
-def _from_utf_8(string_value):
-  """Helper function to hide conversion of strings from utf-8 to unicode.
-
-  Args:
-    string_value: str or unicode to convert to unicode encoded str.
-
-  Returns:
-    UTF-8 decoded unicode if string_value is str, else string_value.
-  """
-  if isinstance(string_value, str):
-    return string_value.decode('utf-8')
-  else:
-    assert isinstance(string_value, unicode)
-    return string_value
-
-
 def describe_enum_value(enum_value):
   """Build descriptor for Enum instance.
 
@@ -352,7 +335,7 @@ def describe_field(field_definition):
     Initialized FieldDescriptor instance describing the Field instance.
   """
   field_descriptor = FieldDescriptor()
-  field_descriptor.name = _from_utf_8(field_definition.name)
+  field_descriptor.name = field_definition.name
   field_descriptor.number = field_definition.number
   field_descriptor.variant = field_definition.variant
 
@@ -429,11 +412,9 @@ def describe_method(method):
   """
   method_info = method.remote
   descriptor = MethodDescriptor()
-  descriptor.name = _from_utf_8(method_info.method.func_name)
-  descriptor.request_type = _from_utf_8(
-      method_info.request_type.definition_name())
-  descriptor.response_type = _from_utf_8(
-      method_info.response_type.definition_name())
+  descriptor.name = method_info.method.func_name
+  descriptor.request_type = method_info.request_type.definition_name()
+  descriptor.response_type = method_info.response_type.definition_name()
 
   return descriptor
 
@@ -448,7 +429,7 @@ def describe_service(service_class):
     Initialized ServiceDescriptor instance describing the service.
   """
   descriptor = ServiceDescriptor()
-  descriptor.name = _from_utf_8(service_class.__name__)
+  descriptor.name = service_class.__name__
   methods = []
   remote_methods = service_class.all_remote_methods()
   for name in sorted(remote_methods.iterkeys()):
@@ -480,9 +461,12 @@ def describe_file(module):
 
   descriptor = FileDescriptor()
   try:
-    descriptor.package = _from_utf_8(module.package)
+    descriptor.package = module.package
   except AttributeError:
-    descriptor.package = _from_utf_8(module.__name__)
+    descriptor.package = module.__name__
+
+  if not descriptor.package:
+    descriptor.package = None
 
   message_descriptors = []
   enum_descriptors = []
@@ -554,7 +538,7 @@ def describe(value):
     return describe_file(value)
   elif callable(value) and hasattr(value, 'remote'):
     return describe_method(value)
-  elif isinstance(value, messages._Field):
+  elif isinstance(value, messages.Field):
     return describe_field(value)
   elif isinstance(value, messages.Enum):
     return describe_enum_value(value)

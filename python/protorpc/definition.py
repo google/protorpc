@@ -50,7 +50,7 @@ def _build_variant_map():
   result = {}
   for name in dir(messages):
     value = getattr(messages, name)
-    if isinstance(value, type) and issubclass(value, messages._Field):
+    if isinstance(value, type) and issubclass(value, messages.Field):
       for variant in getattr(value, 'VARIANTS', []):
         result[variant] = value
   return result

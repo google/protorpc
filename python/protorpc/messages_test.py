@@ -1448,7 +1448,7 @@ class FindDefinitionTest(test_util.TestCase):
       setattr(module_instance, name, message_class)
     return message_class
 
-  def Importer(self, module):
+  def Importer(self, module, fromlist=None):
     """Importer function.
 
     Acts like __import__.  Only loads modules from self.modules.  Does not
@@ -1458,6 +1458,8 @@ class FindDefinitionTest(test_util.TestCase):
     Args:
       module: Fully qualified name of module to load from self.modules.
     """
+    if fromlist is None:
+      module = module.split('.')[0]
     try:
       return self.modules[module]
     except KeyError:
