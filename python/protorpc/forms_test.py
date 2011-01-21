@@ -70,7 +70,6 @@ class ResourceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     content = RenderTemplate(name)
     self.CheckResponse('200 OK',
                        {'content-type': expected_type,
-                        'cache-control': 'public; max-age=300',
                        },
                        content)
 
