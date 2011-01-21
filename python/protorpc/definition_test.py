@@ -498,7 +498,7 @@ class ModuleTest(test_util.TestCase):
         'protorpc.descriptor': descriptor,
     }
 
-    stub.import_file_set(file_set, modules=modules)
+    definition.import_file_set(file_set, modules=modules)
 
     self.assertEquals(root, modules['root'])
     self.assertEquals(nested, modules['root.nested'])
