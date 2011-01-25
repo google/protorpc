@@ -61,6 +61,9 @@ class MyService(remote.Service):
 class SimpleRequest(messages.Message):
   """Simple request message type used for tests."""
 
+  param1 = messages.StringField(1)
+  param2 = messages.StringField(2)
+
 
 class SimpleResponse(messages.Message):
   """Simple response message type used for tests."""
@@ -467,10 +470,12 @@ class StubTest(test_util.TestCase):
     self.assertEquals(BasicService.all_remote_methods(),
                       BasicService.Stub.all_remote_methods())
 
-  def testSync(self):
+  def testSync_WithRequest(self):
     stub = BasicService.Stub(self.transport)
 
     request = SimpleRequest()
+    request.param1 = 'val1'
+    request.param2 = 'val2'
     response = SimpleResponse()
 
     rpc = transport.Rpc(request)
@@ -484,10 +489,33 @@ class StubTest(test_util.TestCase):
 
     self.mox.VerifyAll()
 
-  def testAsync(self):
+  def testSync_WithKwargs(self):
+    stub = BasicService.Stub(self.transport)
+
+
+    request = SimpleRequest()
+    request.param1 = 'val1'
+    request.param2 = 'val2'
+    response = SimpleResponse()
+
+    rpc = transport.Rpc(request)
+    rpc.set_response(response)
+    self.transport.send_rpc(BasicService.remote_method.remote,
+                            request).AndReturn(rpc)
+
+    self.mox.ReplayAll()
+
+    self.assertEquals(SimpleResponse(), stub.remote_method(param1='val1',
+                                                           param2='val2'))
+
+    self.mox.VerifyAll()
+
+  def testAsync_WithRequest(self):
     stub = BasicService.Stub(self.transport)
 
     request = SimpleRequest()
+    request.param1 = 'val1'
+    request.param2 = 'val2'
     response = SimpleResponse()
 
     rpc = transport.Rpc(request)
@@ -498,6 +526,64 @@ class StubTest(test_util.TestCase):
     self.mox.ReplayAll()
 
     self.assertEquals(rpc, stub.async.remote_method(request))
+
+    self.mox.VerifyAll()
+
+  def testAsync_WithKwargs(self):
+    stub = BasicService.Stub(self.transport)
+
+    request = SimpleRequest()
+    request.param1 = 'val1'
+    request.param2 = 'val2'
+    response = SimpleResponse()
+
+    rpc = transport.Rpc(request)
+
+    self.transport.send_rpc(BasicService.remote_method.remote,
+                            request).AndReturn(rpc)
+
+    self.mox.ReplayAll()
+
+    self.assertEquals(rpc, stub.async.remote_method(param1='val1',
+                                                    param2='val2'))
+
+    self.mox.VerifyAll()
+
+  def testAsync_WithRequestAndKwargs(self):
+    stub = BasicService.Stub(self.transport)
+
+    request = SimpleRequest()
+    request.param1 = 'val1'
+    request.param2 = 'val2'
+    response = SimpleResponse()
+
+    self.mox.ReplayAll()
+
+    self.assertRaisesWithRegexpMatch(
+      TypeError,
+      r'May not provide both args and kwargs',
+      stub.async.remote_method,
+      request,
+      param1='val1',
+      param2='val2')
+
+    self.mox.VerifyAll()
+
+  def testAsync_WithTooManyPositionals(self):
+    stub = BasicService.Stub(self.transport)
+
+    request = SimpleRequest()
+    request.param1 = 'val1'
+    request.param2 = 'val2'
+    response = SimpleResponse()
+
+    self.mox.ReplayAll()
+
+    self.assertRaisesWithRegexpMatch(
+      TypeError,
+      r'remote_method\(\) takes at most 2 positional arguments \(3 given\)',
+      stub.async.remote_method,
+      request, 'another value')
 
     self.mox.VerifyAll()
 

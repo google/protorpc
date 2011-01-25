@@ -112,10 +112,7 @@ class UpdateArtistHandler(MainHandler):
     artist.artist_id = self.request.params['artist_id'].decode('utf-8')
     artist.name = self.request.params['artist_name']
 
-    request = tunes_db.UpdateArtistRequest()
-    request.artist = artist
-
-    response = music_service.update_artist(request)
+    response = music_service.update_artist(artist=artist)
     logging.info('Update artist %s success: %s',
                  artist.artist_id,
                  response.artist_updated)
@@ -139,11 +136,9 @@ class ArtistActionHandler(MainHandler):
     Args:
       artist_ids: Iterable if artist ids to delete.
     """
-    request = tunes_db.DeleteArtistRequest()
     for artist_id in artist_ids:
       # TODO(rafek): Delete should support multi.
-      request.artist_id = artist_id.encode('utf-8')
-      response = music_service.delete_artist(request)
+      response = music_service.delete_artist(artist_id=artist_id.encode('utf-8'))
       logging.info('Deleted artist %s: %s', artist_id, response.artist_deleted)
 
   def post(self):
@@ -177,10 +172,7 @@ class ArtistHandler(MainHandler):
 
     artist_id = self.request.params['artist_id'].encode('utf-8')
 
-    request = tunes_db.FetchArtistRequest()
-    request.artist_id = artist_id
-
-    response = music_service.fetch_artist(request)
+    response = music_service.fetch_artist(artist_id=artist_id)
     artist = response.artist
 
     request = tunes_db.SearchAlbumsRequest()
@@ -218,10 +210,7 @@ class ArtistHandler(MainHandler):
     Parameters:
       artist_name: Name of new artist.
     """
-    request = tunes_db.AddArtistRequest()
-    request.name = self.request.params['artist_name']
-
-    response = music_service.add_artist(request)
+    response = music_service.add_artist(name=self.request.params['artist_name'])
     logging.info('Created artist with id %s.', response.artist_id)
 
     self.go('/artists')
@@ -271,16 +260,10 @@ class AlbumHandler(MainHandler):
     """Show Album information and albums."""
     album_id = self.request.params['album_id'].encode('utf-8')
 
-    request = tunes_db.FetchAlbumRequest()
-    request.album_id = album_id
-
-    response = music_service.fetch_album(request)
+    response = music_service.fetch_album(album_id=album_id)
     album = response.album
 
-    request = tunes_db.FetchArtistRequest()
-    request.artist_id = album.artist_id
-
-    response = music_service.fetch_artist(request)
+    response = music_service.fetch_artist(artist_id=album.artist_id)
     artist = response.artist
 
     self.response.out.write(
@@ -297,14 +280,14 @@ class AlbumHandler(MainHandler):
       album_name: Name of new album.
       album_released: Release year of new album.
     """
-    request = tunes_db.AddAlbumRequest()
-    request.name = self.request.params['album_name']
-    released = self.request.get('album_released', '')
+    released = self.request.get('album_released', None)
     if released:
-      request.released = int(released)
-    request.artist_id = self.request.params['album_artist_id'].encode('utf-8')
+      released = int(released)
 
-    response = music_service.add_album(request)
+    response = music_service.add_album(
+      name=self.request.params['album_name'],
+      released=released,
+      artist_id=self.request.params['album_artist_id'].encode('utf-8'))
     logging.info('Created album with id %s.', response.album_id)
 
     self.go('/artist', artist_id=request.artist_id)
@@ -315,10 +298,8 @@ class UpdateAlbumHandler(MainHandler):
 
   def post(self):
     """Update album."""
-    request = tunes_db.FetchAlbumRequest()
-    request.album_id = str(self.request.params['album_id'])
-
-    response = music_service.fetch_album(request)
+    response = music_service.fetch_album(
+      album_id=str(self.request.params['album_id']))
 
     album = response.album
     album.album_id = str(self.request.params['album_id'])
@@ -329,10 +310,7 @@ class UpdateAlbumHandler(MainHandler):
     else:
       album.reset('released')
 
-    request = tunes_db.UpdateAlbumRequest()
-    request.album = album
-
-    response = music_service.update_album(request)
+    response = music_service.update_album(album=album)
     logging.info('Update album %s success: %s',
                  album.album_id,
                  response.album_updated)
@@ -354,11 +332,9 @@ class AlbumActionHandler(MainHandler):
     Args:
       album_ids: Iterable of album ids to delete.
     """
-    request = tunes_db.DeleteAlbumRequest()
     for album_id in album_ids:
       # TODO(rafek): Delete should support multi.
-      request.album_id = album_id.encode('utf-8')
-      response = music_service.delete_album(request)
+      response = music_service.delete_album(album_id=album_id.encode('utf-8'))
       logging.info('Deleted album %s: %s', album_id, response.album_deleted)
 
   def post(self):

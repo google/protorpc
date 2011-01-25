@@ -323,6 +323,37 @@ class StubBase(object):
   The remote method stubs are created by the _ServiceClass meta-class
   when a Service class is first created.  The resulting stub will
   extend both this class and the service class it handles communications for.
+
+  Assume that there is a service:
+
+    class NewContactRequest(messages.Message):
+
+      name = messages.StringField(1, required=True)
+      phone = messages.StringField(2)
+      email = messages.StringField(3)
+
+    class AccountService(remote.Service):
+
+      @remote.remote(NewContact, message_types.VoidMessage):
+      def new_contact(self, request):
+        ... implementation ...
+
+  A stub of this service can be called in two ways.  The first is to pass in a
+  correctly initialized NewContactRequest message:
+
+    request = NewContactRequest()
+    request.name = 'Bob Somebody'
+    request.phone = '+1 415 555 1234'
+    
+    account_service_stub.new_contact(request)
+
+  The second way is to pass in keyword parameters that correspond with the root
+  request message type:
+
+      account_service_stub.new_contact(name='Bob Somebody',
+                                       phone='+1 415 555 1234')
+
+  The second form will create a request message of the appropriate type.
   """
 
   def __init__(self, transport):
@@ -346,25 +377,42 @@ class StubBase(object):
 
 class _ServiceClass(type):
   """Meta-class for service class."""
-
+   
   def __new_async_method(cls, remote):
     """Create asynchronous method for Async handler.
 
     Args:
       remote: RemoteInfo to create method for.
     """
-    def async_method(self, request):
+    def async_method(self, *args, **kwargs):
       """Asynchronous remote method.
 
       Args:
         self: Instance of StubBase.Async subclass.
-        request: Request message to send over transport.
+        args: Tuple (request,):
+          request: Request object.
+        kwargs: Field values for request.  Must be empty if request object
+          is provided.
 
       Returns:
         Rpc instance used to represent asynchronous RPC.
       """
+      if args and kwargs:
+        raise TypeError('May not provide both args and kwargs')
+
+      if not args:
+        # Construct request object from arguments.
+        request = remote.request_type()
+        for name, value in kwargs.iteritems():
+          setattr(request, name, value)
+      else:
+        # First argument is request object.
+        request = args[0]
+
       return self.transport.send_rpc(remote, request)
+
     async_method.__name__ = remote.method.__name__
+    async_method = util.positional(2)(async_method)
     async_method.remote = remote
     return async_method
 
@@ -374,17 +422,20 @@ class _ServiceClass(type):
     Args:
       async_method: asynchronous method to delegate calls to.
     """
-    def sync_method(self, request):
+    def sync_method(self, *args, **kwargs):
       """Synchronous remote method.
 
       Args:
-        self: Instance of StubBase subclass.
-        request: Request message to send over transport.
+        self: Instance of StubBase.Async subclass.
+        args: Tuple (request,):
+          request: Request object.
+        kwargs: Field values for request.  Must be empty if request object
+          is provided.
 
       Returns:
         Response message from synchronized RPC.
       """
-      return async_method(self.async, request).get_response()
+      return async_method(self.async, *args, **kwargs).get_response()
     sync_method.__name__ = async_method.__name__
     sync_method.remote = async_method.remote
     return sync_method
