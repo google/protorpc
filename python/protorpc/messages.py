@@ -1544,7 +1544,8 @@ def find_definition(name, relative_to=None, importer=__import__):
             module_name = '%s.%s' % (next.__name__, node)
 
           try:
-            next = importer(module_name, fromlist=[module_name.split('.')[-1]])
+            fromitem = module_name.split('.')[-1]
+            next = importer(module_name, fromlist=[str(fromitem)])
           except ImportError:
             return None
         else:

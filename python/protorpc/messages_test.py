@@ -1647,6 +1647,16 @@ class FindDefinitionTest(test_util.TestCase):
         'a.A', None, importer=self.Importer))
 
 
+class FindDefinitionUnicodeTests(test_util.TestCase):
+
+  def testUnicodeString(self):
+    """Test using unicode names."""
+    self.assertEquals('ServiceMapping',
+                      messages.find_definition(
+                        u'protorpc.registry.ServiceMapping',
+                        None).__name__)
+
+
 def main():
   unittest.main()
 
