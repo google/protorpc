@@ -1385,6 +1385,28 @@ class MessageTest(test_util.TestCase):
     self.assertEquals(OuterMessage,
                       OuterMessage.InnerMessage.message_definition())
 
+  def testConstructorKwargs(self):
+    """Test kwargs via constructor."""
+    class SomeMessage(messages.Message):
+      name = messages.StringField(1)
+      number = messages.IntegerField(2)
+
+    expected = SomeMessage()
+    expected.name = 'my name'
+    expected.number = 200
+    self.assertEquals(expected, SomeMessage(name='my name', number=200))
+
+  def testConstructorNotAField(self):
+    """Test kwargs via constructor with wrong names."""
+    class SomeMessage(messages.Message):
+      pass
+
+    self.assertRaisesWithRegexpMatch(
+      AttributeError,
+      'May not assign arbitrary value does_not_exist to message SomeMessage',
+      SomeMessage,
+      does_not_exist=10)
+      
 
 class FindDefinitionTest(test_util.TestCase):
   """Test finding definitions relative to various definitions and modules."""

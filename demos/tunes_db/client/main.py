@@ -60,7 +60,9 @@ class MainHandler(webapp.RequestHandler):
     kwargs.update({'s': self.request.params.get('s', ''),
                    'c': self.request.params.get('c', ''),
                   })
-    self.redirect('%s?%s' % (page, urllib.urlencode(kwargs)))
+    params = dict((name, value) for name, value in kwargs.iteritems()
+                   if value is not None)
+    self.redirect('%s?%s' % (page, urllib.urlencode(params)))
 
   def get(self):
     """Redirect to Artists page."""
@@ -79,16 +81,14 @@ class ArtistsHandler(MainHandler):
     """
     search_string = self.request.get('s', '')
     continuation = self.request.get('c', '')
-
-    request = tunes_db.SearchArtistsRequest()
-    request.fetch_size = PAGE_SIZE
     if continuation:
-      request.continuation = continuation
+      name_prefix = None
     else:
-      if search_string:
-        request.name_prefix = search_string
+      name_prefix = search_string
 
-    response = music_service.search_artists(request)
+    response = music_service.search_artists(fetch_size=PAGE_SIZE,
+                                            continuation=continuation or None,
+                                            name_prefix=name_prefix)
 
     self.response.out.write(
         template.render('artists.html',
@@ -108,13 +108,13 @@ class UpdateArtistHandler(MainHandler):
 
   def post(self):
     """Update new artist."""
-    artist = tunes_db.Artist()
-    artist.artist_id = self.request.params['artist_id'].decode('utf-8')
-    artist.name = self.request.params['artist_name']
-
+    artist_id = self.request.params['artist_id']
+    artist = tunes_db.Artist(artist_id=artist_id,
+                             name=self.request.params['artist_name'])
     response = music_service.update_artist(artist=artist)
+
     logging.info('Update artist %s success: %s',
-                 artist.artist_id,
+                 artist_id,
                  response.artist_updated)
 
     if response.artist_updated:
@@ -123,7 +123,7 @@ class UpdateArtistHandler(MainHandler):
       error_message = 'Update artist failed.'
 
     self.go('/artist',
-            artist_id=artist.artist_id,
+            artist_id=artist_id,
             error_message=error_message)
 
 
@@ -171,18 +171,16 @@ class ArtistHandler(MainHandler):
     continuation = self.request.get('c', '')
 
     artist_id = self.request.params['artist_id'].encode('utf-8')
+    artist = music_service.fetch_artist(artist_id=artist_id).artist
 
-    response = music_service.fetch_artist(artist_id=artist_id)
-    artist = response.artist
-
-    request = tunes_db.SearchAlbumsRequest()
-    request.fetch_size = PAGE_SIZE
     if continuation:
-      request.continuation = continuation
+      search_artist_id = None
     else:
-      request.artist_id = artist_id
+      search_artist_id = artist_id
 
-    response = music_service.search_albums(request)
+    response = music_service.search_albums(fetch_size=PAGE_SIZE,
+                                           continuation=continuation or None,
+                                           artist_id=search_artist_id)
     albums = response.albums
 
     customized_search = urllib.urlencode({'artist_id': artist_id})
@@ -229,15 +227,14 @@ class AlbumsHandler(MainHandler):
     search_string = self.request.get('s', '')
     continuation = self.request.get('c', '')
 
-    request = tunes_db.SearchAlbumsRequest()
-    request.fetch_size = PAGE_SIZE
     if continuation:
-      request.continuation = continuation
+      name_prefix = None
     else:
-      if search_string:
-        request.name_prefix = search_string
+      name_prefix = search_string
 
-    response = music_service.search_albums(request)
+    response = music_service.search_albums(fetch_size=PAGE_SIZE,
+                                           continuation=continuation or None,
+                                           name_prefix=search_string)
     albums = response.albums
 
     self.response.out.write(
@@ -260,11 +257,9 @@ class AlbumHandler(MainHandler):
     """Show Album information and albums."""
     album_id = self.request.params['album_id'].encode('utf-8')
 
-    response = music_service.fetch_album(album_id=album_id)
-    album = response.album
+    album = music_service.fetch_album(album_id=album_id).album
 
-    response = music_service.fetch_artist(artist_id=album.artist_id)
-    artist = response.artist
+    artist = music_service.fetch_artist(artist_id=album.artist_id).artist
 
     self.response.out.write(
         template.render('album.html',
@@ -283,14 +278,18 @@ class AlbumHandler(MainHandler):
     released = self.request.get('album_released', None)
     if released:
       released = int(released)
+    else:
+      # Might be empty string.
+      released = None
 
+    artist_id = self.request.params['album_artist_id'].encode('utf-8')
     response = music_service.add_album(
       name=self.request.params['album_name'],
       released=released,
-      artist_id=self.request.params['album_artist_id'].encode('utf-8'))
+      artist_id=artist_id)
     logging.info('Created album with id %s.', response.album_id)
 
-    self.go('/artist', artist_id=request.artist_id)
+    self.go('/artist', artist_id=artist_id)
 
 
 class UpdateAlbumHandler(MainHandler):
@@ -298,10 +297,9 @@ class UpdateAlbumHandler(MainHandler):
 
   def post(self):
     """Update album."""
-    response = music_service.fetch_album(
-      album_id=str(self.request.params['album_id']))
+    album = music_service.fetch_album(
+      album_id=str(self.request.params['album_id'])).album
 
-    album = response.album
     album.album_id = str(self.request.params['album_id'])
     album.name = self.request.params['album_name']
     released = self.request.get('album_released')
@@ -311,11 +309,12 @@ class UpdateAlbumHandler(MainHandler):
       album.reset('released')
 
     response = music_service.update_album(album=album)
+    album_updated = response.album_updated
     logging.info('Update album %s success: %s',
                  album.album_id,
                  response.album_updated)
 
-    if response.album_updated:
+    if album_updated:
       error_message = None
     else:
       error_message = 'Album was not updated.'

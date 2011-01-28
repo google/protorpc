@@ -664,18 +664,15 @@ class Message(object):
       lots = MessageProperty(Lot, 4, repeated=True)
       limit = IntegerField(5)
 
-    order = Order()
-    order.symbol = 'GOOG'
-    order.total_quantity = 10
-    order.trade_type = TradeType.BUY
+    order = Order(symbol='GOOG',
+                  total_quantity=10,
+                  trade_type = TradeType.BUY)
 
-    lot1 = Lot()
-    lot1.price = 304
-    lot1.quantity = 7
+    lot1 = Lot(price=304,
+               quantity=7)
 
-    lot2 = Lot()
-    lot2.price = 305
-    lot2.quantity = 3
+    lot2 = Lot(price = 305,
+               quantity = 3)
 
     order.lots = [lot1, lot2]
 
@@ -685,10 +682,34 @@ class Message(object):
 
   __metaclass__ = _MessageClass
 
-  def __init__(self):
-    """Initialize internal messages state."""
+  def __init__(self, **kwargs):
+    """Initialize internal messages state.
+
+    Args:
+      A message can be initialized via the constructor by passing in keyword
+      arguments corresponding to fields.  For example:
+
+        class Date(Message):
+          day = IntegerField(1)
+          month = IntegerField(2)
+          year = IntegerField(3)
+
+      Invoking:
+
+        date = Date(day=6, month=6, year=1911)
+
+      is the same as doing:
+
+        date = Date()
+        date.day = 6
+        date.month = 6
+        date.year = 1911
+    """
     # Tag being an essential implementation detail must be private.
     self.__tags = {}
+
+    for name, value in kwargs.iteritems():
+      setattr(self, name, value)
 
   def check_initialized(self):
     """Check class for initialization status.

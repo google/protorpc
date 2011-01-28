@@ -315,11 +315,9 @@ class MusicLibraryService(remote.Service):
     Returns:
       New Artist message with contents of artist_model copied in to it.
     """
-    artist = Artist()
-    artist.artist_id = unicode(artist_model.key())
-    artist.name = artist_model.name
-    artist.album_count = artist_model.album_count
-    return artist
+    return Artist(artist_id=unicode(artist_model.key()),
+                  name=artist_model.name,
+                  album_count=artist_model.album_count)
 
   def __album_from_model(self, album_model):
     """Helper that copies an Album model to an Album message.
@@ -331,14 +329,12 @@ class MusicLibraryService(remote.Service):
     Returns:
       New Album message with contents of album_model copied in to it.
     """
-    album = Album()
-    album.album_id = unicode(album_model.key())
-    album.artist_id = unicode(model.AlbumInfo.artist.get_value_for_datastore(
-        album_model))
-    album.name = album_model.name
-    if album_model.released:
-      album.released = album_model.released
-    return album
+    artist_id = model.AlbumInfo.artist.get_value_for_datastore(album_model)
+    
+    return Album(album_id=unicode(album_model.key()),
+                 artist_id=artist_id,
+                 name=album_model.name,
+                 released=album_model.released or None)
 
   @classmethod
   def __search_info(cls,
@@ -413,14 +409,11 @@ class MusicLibraryService(remote.Service):
       return artist
     artist = db.run_in_transaction(do_add)
 
-    response = AddArtistResponse()
-    response.artist_id = unicode(artist.key())
-    return response
+    return AddArtistResponse(artist_id = unicode(artist.key()))
 
   @remote.remote(UpdateArtistRequest, UpdateArtistResponse)
   def update_artist(self, request):
     """Update artist from library."""
-    response = UpdateArtistResponse()
     def do_deletion():
       artist = model.ArtistInfo.get(request.artist.artist_id)
       if artist:
@@ -429,13 +422,12 @@ class MusicLibraryService(remote.Service):
         return True
       else:
         return False
-    response.artist_updated = db.run_in_transaction(do_deletion)
-    return response
+    return UpdateArtistResponse(
+      artist_updated=db.run_in_transaction(do_deletion))
 
   @remote.remote(DeleteArtistRequest, DeleteArtistResponse)
   def delete_artist(self, request):
     """Delete artist from library."""
-    response = DeleteArtistResponse()
     def do_deletion():
       artist = model.ArtistInfo.get(request.artist_id)
       if artist:
@@ -443,17 +435,19 @@ class MusicLibraryService(remote.Service):
         return True
       else:
         return False
-    response.artist_deleted = db.run_in_transaction(do_deletion)
-    return response
+    return DeleteArtistResponse(
+      artist_deleted = db.run_in_transaction(do_deletion))
 
   @remote.remote(FetchArtistRequest, FetchArtistResponse)
   def fetch_artist(self, request):
     """Fetch artist from library."""
-    response = FetchArtistResponse()
     artist_model = model.ArtistInfo.get(request.artist_id)
     if isinstance(artist_model, model.ArtistInfo):
-      response.artist = self.__artist_from_model(artist_model)
-    return response
+      artist = self.__artist_from_model(artist_model)
+    else:
+      artist = None
+    return FetchArtistResponse(artist=artist)
+      
 
   @remote.remote(SearchArtistsRequest, SearchArtistsResponse)
   def search_artists(self, request):
@@ -461,12 +455,8 @@ class MusicLibraryService(remote.Service):
     results, continuation = self.__search_info(request,
                                                model.ArtistInfo,
                                                self.__artist_from_model)
-    response = SearchArtistsResponse()
-    if results:
-      response.artists = results
-    if continuation:
-      response.continuation = continuation
-    return response
+    return SearchArtistsResponse(artists=results or None,
+                                 continuation=continuation or None)
 
   @remote.remote(AddAlbumRequest, AddAlbumResponse)
   def add_album(self, request):
@@ -489,14 +479,11 @@ class MusicLibraryService(remote.Service):
       return album
     album = db.run_in_transaction(create_album)
 
-    response = AddAlbumResponse()
-    response.album_id = unicode(album.key())
-    return response
+    return AddAlbumResponse(album_id=unicode(album.key()))
 
   @remote.remote(UpdateAlbumRequest, UpdateAlbumResponse)
   def update_album(self, request):
     """Update album from library."""
-    response = UpdateAlbumResponse()
     def do_deletion():
       album = model.AlbumInfo.get(request.album.album_id)
       if album:
@@ -506,13 +493,11 @@ class MusicLibraryService(remote.Service):
         return True
       else:
         return False
-    response.album_updated = db.run_in_transaction(do_deletion)
-    return response
+    return UpdateAlbumResponse(album_updated=db.run_in_transaction(do_deletion))
 
   @remote.remote(DeleteAlbumRequest, DeleteAlbumResponse)
   def delete_album(self, request):
     """Delete album from library."""
-    response = DeleteAlbumResponse()
     def do_deletion():
       album = model.AlbumInfo.get(request.album_id)
 
@@ -526,17 +511,17 @@ class MusicLibraryService(remote.Service):
       else:
         return False
 
-    response.album_deleted = db.run_in_transaction(do_deletion)
-    return response
+    return DeleteAlbumResponse(album_deleted=db.run_in_transaction(do_deletion))
 
   @remote.remote(FetchAlbumRequest, FetchAlbumResponse)
   def fetch_album(self, request):
     """Fetch album from library."""
-    response = FetchAlbumResponse()
     album_model = model.AlbumInfo.get(request.album_id)
     if isinstance(album_model, model.AlbumInfo):
-      response.album = self.__album_from_model(album_model)
-    return response
+      album = self.__album_from_model(album_model)
+    else:
+      album = None
+    return FetchAlbumResponse(album=album)
 
   @remote.remote(SearchAlbumsRequest, SearchAlbumsResponse)
   def search_albums(self, request):
@@ -550,8 +535,5 @@ class MusicLibraryService(remote.Service):
                                                model.AlbumInfo,
                                                self.__album_from_model,
                                                customize_query)
-    if results:
-      response.albums = results
-    if continuation:
-      response.continuation = continuation
-    return response
+    return SearchAlbumsResponse(albums=results or None,
+                                continuation=continuation or None)

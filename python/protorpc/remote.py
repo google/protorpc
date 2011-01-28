@@ -389,10 +389,12 @@ class _ServiceClass(type):
 
       Args:
         self: Instance of StubBase.Async subclass.
-        args: Tuple (request,):
-          request: Request object.
-        kwargs: Field values for request.  Must be empty if request object
-          is provided.
+
+        Stub methods either take a single positional argument when a full
+        request message is passed in, or keyword arguments, but not both.
+
+        See docstring for StubBase for more information on how to use remote
+        stub methods.
 
       Returns:
         Rpc instance used to represent asynchronous RPC.
