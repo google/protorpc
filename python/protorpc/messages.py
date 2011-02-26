@@ -666,13 +666,13 @@ class Message(object):
 
     order = Order(symbol='GOOG',
                   total_quantity=10,
-                  trade_type = TradeType.BUY)
+                  trade_type=TradeType.BUY)
 
     lot1 = Lot(price=304,
                quantity=7)
 
     lot2 = Lot(price = 305,
-               quantity = 3)
+               quantity=3)
 
     order.lots = [lot1, lot2]
 

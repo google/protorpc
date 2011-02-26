@@ -1406,7 +1406,7 @@ class MessageTest(test_util.TestCase):
       'May not assign arbitrary value does_not_exist to message SomeMessage',
       SomeMessage,
       does_not_exist=10)
-      
+
 
 class FindDefinitionTest(test_util.TestCase):
   """Test finding definitions relative to various definitions and modules."""
