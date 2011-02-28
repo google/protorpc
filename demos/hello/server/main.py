@@ -22,8 +22,6 @@ from protorpc import messages
 from protorpc import service_handlers
 from protorpc import remote
 
-#package = 'hello'
-
 
 class HelloRequest(messages.Message):
 
