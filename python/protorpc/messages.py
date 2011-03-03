@@ -300,10 +300,11 @@ class _EnumClass(_DefinitionClass):
               'May only use integers in Enum definitions.  Found: %s = %s' %
               (attribute, value))
 
-        # Values may not be zero, as according to the protocol buffer standard.
-        if value <= 0:
+        # Protocol buffer standard recommends non-negative values.
+        # Reject negative values.
+        if value < 0:
           raise EnumDefinitionError(
-              'Must use enum values greater than zero.  Found: %s = %d' %
+              'Must use non-negative enum values.  Found: %s = %d' %
               (attribute, value))
 
         if value > MAX_ENUM_VALUE:

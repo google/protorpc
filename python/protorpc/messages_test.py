@@ -177,15 +177,16 @@ class EnumTest(test_util.TestCase):
     """Test that negative numbers rejection by enum def."""
     self.assertRaises(messages.EnumDefinitionError,
                       messages.Enum.def_enum,
-                      {'Bad': -10},
+                      {'Bad': -1},
                       'BadEnum')
 
-  def testZeroInt(self):
-    """Test that zero is rejected as a number."""
-    self.assertRaises(messages.EnumDefinitionError,
-                      messages.Enum.def_enum,
-                      {'Bad': 0},
-                      'BadEnum')
+  def testLowerBound(self):
+    """Test that zero is accepted by enum def."""
+    class NotImportant(messages.Enum):
+      """Testing for value zero"""
+      VALUE = 0
+
+    self.assertEquals(0, NotImportant.VALUE)
 
   def testTooLargeInt(self):
     """Test that numbers too large are rejected."""
