@@ -22,6 +22,8 @@ the same message that contains numerous different fields useful for testing and
 illustrating the forms interface.
 """
 
+__author__ = 'rafek@google.com (Rafe Kaplan)'
+
 import time
 
 from protorpc import messages
@@ -31,7 +33,6 @@ from protorpc import remote
 package = 'protorpc.echo'
 
 
-# DO NOT SUBMIT: Better name for echo
 class EchoData(messages.Message):
   """Echo message.
 

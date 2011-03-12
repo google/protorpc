@@ -637,7 +637,7 @@ def service_mapping(services,
 
   The list of mappings can either be an explicit path to service mapping or
   just services.  If mappings are just services, they will automatically
-  be mapped to it's default name.  For exampel:
+  be mapped to their default name.  For exampel:
 
     package = 'my_package'
 
