@@ -22,6 +22,9 @@ runtime: python
 
 handlers:
 
-- url: .*
+- url: /.+
+  script: services.py
+
+- url: /
   script: main.py
 

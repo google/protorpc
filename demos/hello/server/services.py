@@ -15,28 +15,31 @@
 # limitations under the License.
 #
 
-application: tunes-db
-version: 1
-api_version: 1
-runtime: python
+from protorpc import messages
+from protorpc import service_handlers
+from protorpc import remote
 
-handlers:
 
-- url: /forms/(.*)\.(png|css|js)
-  static_files: forms_static/\1.\2
-  upload: forms_static/(.*)\.(png|css|js)
+class HelloRequest(messages.Message):
 
-- url: /music.*
-  script: services.py
+  my_name = messages.StringField(1, required=True)
 
-- url: /protorpc.*
-  script: services.py
 
-- url: /_ah/stats/service.*
-  script: protorpc_appstats/main.py
+class HelloResponse(messages.Message):
 
-- url: /_ah/stats.*
-  script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
+  hello = messages.StringField(1, required=True)
 
-- url: /
-  script: main.py
+
+class HelloService(remote.Service):
+    
+  @remote.remote(HelloRequest, HelloResponse)
+  def hello(self, request):
+    return HelloResponse(hello='Hello there, %s!' % request.my_name)
+
+
+def main():
+  service_handlers.run_services([('/hello', HelloService)])
+
+
+if __name__ == '__main__':
+  main()

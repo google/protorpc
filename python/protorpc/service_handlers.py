@@ -100,6 +100,7 @@ import urllib
 import weakref
 
 from google.appengine.ext import webapp
+from google.appengine.ext.webapp import util as webapp_util
 from protorpc import forms
 from protorpc import messages
 from protorpc import protobuf
@@ -124,6 +125,7 @@ __all__ = [
     'URLEncodedRPCMapper',
     'JSONRPCMapper',
     'service_mapping',
+    'run_services',
 ]
 
 
@@ -633,8 +635,35 @@ def service_mapping(services,
   Each service listed in the service mapping has a standard service handler
   factory created for it.
 
+  The list of mappings can either be an explicit path to service mapping or
+  just services.  If mappings are just services, they will automatically
+  be mapped to it's default name.  For exampel:
+
+    package = 'my_package'
+
+    class MyService(remote.Service):
+      ...
+
+    server_mapping([('/my_path', MyService),  # Maps to /my_path
+                    MyService,                # Maps to /my_package/MyService
+                   ])
+
+  Specifying a service mapping:
+
+    Normally services are mapped to URL paths by specifying a tuple
+    (path, service):
+      path: The path the service resides on.
+      service: The service class or service factory for creating new instances
+        of the service.  For more information about service factories, please
+        see remote.Service.new_factory.
+
+    If no tuple is provided, and therefore no path specified, a default path
+    is calculated by using the fully qualified service name using a URL path
+    separator for each of its components instead of a '.'.
+
   Args:
-    services: List of tuples (path, service):
+    services: Can be service type, service factory or string definition name of
+        service being mapped or list of tuples (path, service):
       path: Path on server to map service to.
       service: Service type, service factory or string definition name of
         service being mapped.
@@ -646,6 +675,9 @@ def service_mapping(services,
   Returns:
     List of tuples defining a mapping of request handlers compatible with a
     webapp application.
+
+  Raises:
+    ServiceConfigurationError when duplicate paths are provided.
   """
   if isinstance(services, dict):
     services = services.iteritems()
@@ -659,8 +691,26 @@ def service_mapping(services,
                     forms.FormsHandler.new_factory(registry_path)))
     mapping.append((registry_path + r'/form/(.+)', forms.ResourceHandler))
 
-  for path, service in services:
+  paths = set()
+  for service_item in services:
+    infer_path = not isinstance(service_item, (list, tuple))
+    if infer_path:
+      service = service_item
+    else:
+      service = service_item[1]
+
     service_class = getattr(service, 'service_class', service)
+
+    if infer_path:
+      path = '/' + service_class.definition_name().replace('.', '/')
+    else:
+      path = service_item[0]
+
+    if path in paths:
+      raise ServiceConfigurationError(
+        'Path %r is already defined in service mapping' % path)
+    else:
+      paths.add(path)
 
     # Create service mapping for webapp.
     new_mapping = ServiceHandlerFactory.default(service).mapping(path)
@@ -670,3 +720,15 @@ def service_mapping(services,
     registry_map[path] = service_class
 
   return mapping
+
+
+def run_services(services,
+                 registry_path=DEFAULT_REGISTRY_PATH):
+  """Handle CGI request using service mapping.
+
+  Args:
+    Same as service_mapping.
+  """
+  mappings = service_mapping(services, registry_path=registry_path)
+  application = webapp.WSGIApplication(mappings)
+  webapp_util.run_wsgi_app(application)
