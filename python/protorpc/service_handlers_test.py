@@ -21,7 +21,9 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cgi
 import cStringIO
+import os
 import re
+import sys
 import unittest
 import urllib
 
@@ -31,6 +33,7 @@ from protorpc import messages
 from protorpc import protobuf
 from protorpc import protojson
 from protorpc import protourlencode
+from protorpc import message_types
 from protorpc import registry
 from protorpc import remote
 from protorpc import service_handlers
@@ -38,6 +41,8 @@ from protorpc import test_util
 from protorpc import webapp_test_util
 
 import mox
+
+package = 'test_package'
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
@@ -944,30 +949,34 @@ class MyService(remote.Service):
 
 class ServiceMappingTest(test_util.TestCase):
 
-  def CheckFormMappings(self, mapping):
+  def CheckFormMappings(self, mapping, registry_path='/protorpc'):
     """Check to make sure that form mapping is configured as expected.
 
     Args:
       mapping: Mapping that should contain forms handlers.
     """
     pattern, factory = mapping[0]
-    self.assertEquals('/myreg/form(?:/)?', pattern)
+    self.assertEquals('%s/form(?:/)?' % registry_path, pattern)
     handler = factory()
     self.assertTrue(isinstance(handler, forms.FormsHandler))
-    self.assertEquals('/myreg', handler.registry_path)
+    self.assertEquals(registry_path, handler.registry_path)
 
     pattern, factory = mapping[1]
-    self.assertEquals('/myreg/form/(.+)', pattern)
+    self.assertEquals('%s/form/(.+)' % registry_path, pattern)
     self.assertEquals(forms.ResourceHandler, factory)
+      
 
-  def DoMappingTest(self, services, registry_path='/myreg'):
+  def DoMappingTest(self,
+                    services,
+                    registry_path='/myreg',
+                    expected_paths=None):
     mapped_services = mapping = service_handlers.service_mapping(services,
                                                                  registry_path)
     if registry_path:
       form_mapping = mapping[:2]
       mapped_registry_path, mapped_registry_factory = mapping[-1]
       mapped_services = mapping[2:-1]
-      self.CheckFormMappings(form_mapping)
+      self.CheckFormMappings(form_mapping, registry_path=registry_path)
 
       self.assertEquals(registry_path + service_handlers._METHOD_PATTERN,
                         mapped_registry_path)
@@ -989,7 +998,7 @@ class ServiceMappingTest(test_util.TestCase):
       mapped_path = path + service_handlers._METHOD_PATTERN
       mapped_factory = dict(mapped_services)[mapped_path]
       self.assertEquals(service, mapped_factory.service_factory)
-
+  
   def testServiceMapping_Empty(self):
     """Test an empty service mapping."""
     self.DoMappingTest({})
@@ -1012,6 +1021,135 @@ class ServiceMappingTest(test_util.TestCase):
   def testServiceMapping_NoRegistry(self):
     """Test mapping a service by class."""
     mapping = self.DoMappingTest({'/my-service': MyService}, None)
+
+  def testDefaultMappingWithClass(self):
+    """Test setting path just from the class.
+
+    Path of the mapping will be the fully qualified ProtoRPC service name with
+    '.' replaced with '/'.  For example:
+
+      com.nowhere.service.TheService -> /com/nowhere/service/TheService
+    """
+    mapping = service_handlers.service_mapping([MyService])
+    mapped_services = mapping[2:-1]
+    self.assertEquals(1, len(mapped_services))
+    path, factory = mapped_services[0]
+
+    self.assertEquals(
+      '/test_package/MyService' + service_handlers._METHOD_PATTERN,
+      path)
+    self.assertEquals(MyService, factory.service_factory)
+
+  def testDefaultMappingWithFactory(self):
+    mapping = service_handlers.service_mapping(
+      [MyService.new_factory('service1')])
+    mapped_services = mapping[2:-1]
+    self.assertEquals(1, len(mapped_services))
+    path, factory = mapped_services[0]
+
+    self.assertEquals(
+      '/test_package/MyService' + service_handlers._METHOD_PATTERN,
+      path)
+    self.assertEquals(MyService, factory.service_factory.service_class)
+
+  def testMappingDuplicateExplicitServiceName(self):
+    self.assertRaisesWithRegexpMatch(
+      service_handlers.ServiceConfigurationError,
+      "Path '/my_path' is already defined in service mapping",
+      service_handlers.service_mapping,
+      [('/my_path', MyService),
+       ('/my_path', MyService),
+       ])
+
+  def testMappingDuplicateServiceName(self):
+    self.assertRaisesWithRegexpMatch(
+      service_handlers.ServiceConfigurationError,
+      "Path '/test_package/MyService' is already defined in service mapping",
+      service_handlers.service_mapping,
+      [MyService, MyService])
+
+    
+class GetCalled(remote.Service):
+
+  def __init__(self, test):
+    self.test = test
+
+  @remote.remote(Request1, Response1)
+  def my_method(self, request):
+    self.test.request = request
+    return Response1(string_field='a response')
+    
+
+class TestRunServices(test_util.TestCase):
+
+  def DoRequest(self,
+                path,
+                request,
+                response_type,
+                reg_path='/protorpc'):
+    stdin = sys.stdin
+    stdout = sys.stdout
+    environ = os.environ
+    try:
+      sys.stdin = cStringIO.StringIO(protojson.encode_message(request))
+      sys.stdout = cStringIO.StringIO()
+
+      os.environ = webapp_test_util.GetDefaultEnvironment()
+      os.environ['PATH_INFO'] = path
+      os.environ['REQUEST_METHOD'] = 'POST'
+      os.environ['CONTENT_TYPE'] = 'application/json'
+      os.environ['wsgi.input'] = sys.stdin
+      os.environ['wsgi.output'] = sys.stdout
+      os.environ['CONTENT_LENGTH'] = len(sys.stdin.getvalue())
+
+      service_handlers.run_services(
+        [('/my_service', GetCalled.new_factory(self))], reg_path)
+      
+      header, body = sys.stdout.getvalue().split('\n\n', 1)
+
+      return (header.split('\n')[0],
+              protojson.decode_message(response_type, body))
+    finally:
+      sys.stdin = stdin
+      sys.stdout = stdout
+      os.environ = environ
+
+  def testRequest(self):
+    request = Request1(string_field='request value')
+
+    status, response = self.DoRequest('/my_service.my_method',
+                                      request,
+                                      Response1)
+    self.assertEquals('Status: 200 OK', status)
+    self.assertEquals(request, self.request)
+    self.assertEquals(Response1(string_field='a response'), response)
+
+  def testRegistry(self):
+    request = Request1(string_field='request value')
+    status, response = self.DoRequest('/protorpc.services',
+                              message_types.VoidMessage(),
+                              registry.ServicesResponse)
+
+    self.assertEquals('Status: 200 OK', status)
+    self.assertEquals(registry.ServicesResponse(
+      services=[
+        registry.ServiceMapping(
+          name='/protorpc',
+          definition='protorpc.registry.RegistryService'),
+        registry.ServiceMapping(
+          name='/my_service',
+          definition='test_package.GetCalled'),
+        ]),
+      response)
+
+  def testRunServicesWithOutRegistry(self):
+    request = Request1(string_field='request value')
+
+    status, response = self.DoRequest('/protorpc.services',
+                                      message_types.VoidMessage(),
+                                      registry.ServicesResponse,
+                                      reg_path=None)
+    self.assertEquals('Status: 404 Not Found', status)
 
 
 def main():

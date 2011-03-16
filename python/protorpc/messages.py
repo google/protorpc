@@ -45,6 +45,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
 import inspect
+import os
 import sys
 import traceback
 import types
@@ -249,6 +250,14 @@ class _DefinitionClass(type):
           package = definition_module.package
         except AttributeError:
           package = definition_module.__name__
+          if package == '__main__':
+            try:
+              file_name = definition_module.__file__
+            except AttributeError:
+              pass
+            else:
+              base_name = os.path.basename(file_name)
+              package = '.'.join(base_name.split('.')[:-1])
       else:
         return unicode(cls.__name__)
     else:
@@ -299,10 +308,11 @@ class _EnumClass(_DefinitionClass):
               'May only use integers in Enum definitions.  Found: %s = %s' %
               (attribute, value))
 
-        # Values may not be zero, as according to the protocol buffer standard.
-        if value <= 0:
+        # Protocol buffer standard recommends non-negative values.
+        # Reject negative values.
+        if value < 0:
           raise EnumDefinitionError(
-              'Must use enum values greater than zero.  Found: %s = %d' %
+              'Must use non-negative enum values.  Found: %s = %d' %
               (attribute, value))
 
         if value > MAX_ENUM_VALUE:

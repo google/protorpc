@@ -15,25 +15,29 @@
 # limitations under the License.
 #
 
+"""Web services demo.
+
+Implements a simple music database.  The music database is served
+off the /music URL.  It supports all built in protocols (url-encoded
+and protocol buffers) using the default RPC mapping scheme.
+
+For details about the Tunes service itself, please see tunes_db.py.
+
+For details about the datastore representation of the Tunes db, please
+see model.py.
+"""
+
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import util
+from protorpc import service_handlers
 
-
-class MainHandler(webapp.RequestHandler):
-
-  def get(self):
-    self.redirect('/protorpc/form')
-
-
-application = webapp.WSGIApplication(
-    [('/', MainHandler)],
-    debug=True)
+import tunes_db
 
 
 def main():
-  util.run_wsgi_app(application)
+  service_handlers.run_services(
+    [('/music', tunes_db.MusicLibraryService),
+    ])
 
 
 if __name__ == '__main__':

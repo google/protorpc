@@ -23,5 +23,5 @@ runtime: python
 handlers:
 
 - url: .*
-  script: main.py
+  script: services.py
 
