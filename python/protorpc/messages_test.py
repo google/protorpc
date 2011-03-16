@@ -186,7 +186,7 @@ class EnumTest(test_util.TestCase):
       """Testing for value zero"""
       VALUE = 0
 
-    self.assertEquals(0, NotImportant.VALUE)
+    self.assertEquals(0, int(NotImportant.VALUE))
 
   def testTooLargeInt(self):
     """Test that numbers too large are rejected."""
@@ -232,7 +232,7 @@ class EnumTest(test_util.TestCase):
 
   def testEnumName(self):
     """Test enum name."""
-    self.assertEquals('__main__.Color', Color.definition_name())
+    self.assertEquals('messages_test.Color', Color.definition_name())
 
   def testDefinitionName_OverrideModule(self):
     """Test enum module is overriden by module package name."""
@@ -271,10 +271,10 @@ class EnumTest(test_util.TestCase):
 
           pass
 
-    self.assertEquals('__main__.MyMessage.NestedEnum',
+    self.assertEquals('messages_test.MyMessage.NestedEnum',
                       MyMessage.NestedEnum.definition_name())
 
-    self.assertEquals('__main__.MyMessage.NestedMessage.NestedEnum',
+    self.assertEquals('messages_test.MyMessage.NestedMessage.NestedEnum',
                       MyMessage.NestedMessage.NestedEnum.definition_name())
 
   def testMessageDefinition(self):

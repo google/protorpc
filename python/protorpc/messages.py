@@ -45,6 +45,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
 import inspect
+import os
 import sys
 import traceback
 import types
@@ -250,6 +251,14 @@ class _DefinitionClass(type):
           package = definition_module.package
         except AttributeError:
           package = definition_module.__name__
+          if package == '__main__':
+            try:
+              file_name = definition_module.__file__
+            except AttributeError:
+              pass
+            else:
+              base_name = os.path.basename(file_name)
+              package = '.'.join(base_name.split('.')[:-1])
       else:
         return unicode(cls.__name__)
     else:
