@@ -21,11 +21,25 @@ __author__ = ['rafek@google.com (Rafe Kaplan)',
               'guido@google.com (Guido van Rossum)',
 ]
 
-__all__ = [
-    'positional',
+import cgi
+import inspect
+import re
+
+__all__ = ['AcceptItem',
+           'AcceptError',
+           'Error',
+           'choose_content_type',
+           'parse_accept_header',
+           'positional',
 ]
 
-import inspect
+
+class Error(Exception):
+  """Base class for protorpc exceptions."""
+
+
+class AcceptError(Error):
+  """Raised when there is an error parsing the accept header."""
 
 
 def positional(max_positional_args):
@@ -105,3 +119,176 @@ def positional(max_positional_args):
   else:
     args, _, _, defaults = inspect.getargspec(max_positional_args)
     return positional(len(args) - len(defaults))(max_positional_args)
+
+
+# TODO(rafek): Support 'level' from the Accept header standard.
+class AcceptItem(object):
+  """Encapsulate a single entry of an Accept header.
+
+  Parses and extracts relevent values from an Accept header and implements
+  a sort order based on the priority of each requested type as defined
+  here:
+
+    http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
+
+  Accept headers are normally a list of comma separated items.  Each item
+  has the format of a normal HTTP header.  For example:
+
+    Accept: text/plain, text/html, text/*, */*
+
+  This header means to prefer plain text over HTML, HTML over any other
+  kind of text and text over any other kind of supported format.
+
+  This class does not attempt to parse the list of items from the Accept header.
+  The constructor expects the unparsed sub header and the index within the
+  Accept header that the fragment was found.
+
+  Properties:
+    index: The index that this accept item was found in the Accept header.
+    main_type: The main type of the content type.
+    sub_type: The sub type of the content type.
+    q: The q value extracted from the header as a float.  If there is no q
+      value, defaults to 1.0.
+    values: All header attributes parsed form the sub-header.
+    sort_key: A tuple (no_main_type, no_sub_type, q, no_values, index):
+        no_main_type: */* has the least priority.
+        no_sub_type: Items with no sub-type have less priority.
+        q: Items with lower q value have less priority.
+        no_values: Items with no values have less priority.
+        index: Index of item in accept header is the last priority.
+  """
+
+  __CONTENT_TYPE_REGEX = re.compile(r'^([^/]+)/([^/]+)$')
+
+  def __init__(self, accept_header, index):
+    """Parse component of an Accept header.
+
+    Args:
+      accept_header: Unparsed sub-expression of accept header.
+      index: The index that this accept item was found in the Accept header.
+    """
+    accept_header = accept_header.lower()
+    content_type, values = cgi.parse_header(accept_header)
+    match = self.__CONTENT_TYPE_REGEX.match(content_type)
+    if not match:
+      raise AcceptError('Not valid Accept header: %s' % accept_header)
+    self.__index = index
+    self.__main_type = match.group(1)
+    self.__sub_type = match.group(2)
+    self.__q = float(values.get('q', 1))
+    self.__values = values
+
+    if self.__main_type == '*':
+      self.__main_type = None
+
+    if self.__sub_type == '*':
+      self.__sub_type = None
+
+    self.__sort_key = (not self.__main_type,
+                       not self.__sub_type,
+                       -self.__q,
+                       not self.__values,
+                       self.__index)
+
+  @property
+  def index(self):
+    return self.__index
+
+  @property
+  def main_type(self):
+    return self.__main_type
+
+  @property
+  def sub_type(self):
+    return self.__sub_type
+
+  @property
+  def q(self):
+    return self.__q
+
+  @property
+  def values(self):
+    """Copy the dictionary of values parsed from the header fragment."""
+    return dict(self.__values)
+
+  @property
+  def sort_key(self):
+    return self.__sort_key
+
+  def match(self, content_type):
+    """Determine if the given accept header matches content type.
+
+    Args:
+      content_type: Unparsed content type string.
+
+    Returns:
+      True if accept header matches content type, else False.
+    """
+    content_type, _ = cgi.parse_header(content_type)
+    match = self.__CONTENT_TYPE_REGEX.match(content_type)
+    if not match:
+      return False
+
+    main_type, sub_type = match.group(1), match.group(2)
+    if not(main_type and sub_type):
+      return False
+
+    return ((self.__main_type is None or self.__main_type == main_type) and
+            (self.__sub_type is None or self.__sub_type == sub_type))
+    
+
+  def __cmp__(self, other):
+    """Comparison operator based on sort keys."""
+    if not isinstance(other, AcceptItem):
+      return NotImplemented
+    return cmp(self.sort_key, other.sort_key)
+
+  def __str__(self):
+    """Rebuilds Accept header."""
+    content_type = '%s/%s' % (self.__main_type or '*', self.__sub_type or '*')
+    values = self.values
+
+    if values:
+      value_strings = ['%s=%s' % (i, v) for i, v in values.iteritems()]
+      return '%s; %s' % (content_type, '; '.join(value_strings))
+    else:
+      return content_type
+
+  def __repr__(self):
+    return 'AcceptItem(%r, %d)' % (str(self), self.__index)
+
+
+def parse_accept_header(accept_header):
+  """Parse accept header.
+
+  Args:
+    accept_header: Unparsed accept header.  Does not include name of header.
+
+  Returns:
+    List of AcceptItem instances sorted according to their priority.
+  """
+  accept_items = []
+  for index, header in enumerate(accept_header.split(',')):
+    accept_items.append(AcceptItem(header, index))
+  return sorted(accept_items)
+
+
+def choose_content_type(accept_header, supported_types):
+  """Choose most appropriate supported type based on what client accepts.
+
+  Args:
+    accept_header: Unparsed accept header.  Does not include name of header.
+    supported_types: List of content-types supported by the server.  The index
+      of the supported types determines which supported type is prefered by
+      the server should the accept header match more than one at the same
+      priority.
+
+  Returns:
+    The preferred supported type if the accept header matches any, else None.
+  """
+  for accept_item in parse_accept_header(accept_header):
+    for supported_type in supported_types:
+      if accept_item.match(supported_type):
+        return supported_type
+  return None
+  

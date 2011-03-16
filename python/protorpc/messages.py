@@ -86,8 +86,7 @@ __all__ = ['MAX_ENUM_VALUE',
 
 # TODO(rafek): Add extended module test to ensure all exceptions
 # in services extends Error.
-class Error(Exception):
-  """Base class for message exceptions."""
+Error = util.Error
 
 
 class EnumDefinitionError(Error):

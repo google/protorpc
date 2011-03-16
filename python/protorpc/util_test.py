@@ -19,6 +19,7 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import random
 import unittest
 
 from protorpc import test_util
@@ -89,6 +90,154 @@ class UtilTest(test_util.TestCase):
                                      r'fn\(\) takes at most 2 positional '
                                      r'arguments \(3 given\)',
                                      fn, 2, 3, 4)
+
+
+class AcceptItemTest(test_util.TestCase):
+
+  def CheckAttributes(self, item, main_type, sub_type, q=1, values={}, index=1):
+    self.assertEquals(index, item.index)
+    self.assertEquals(main_type, item.main_type)
+    self.assertEquals(sub_type, item.sub_type)
+    self.assertEquals(q, item.q)
+    self.assertEquals(values, item.values)
+
+  def testParse(self):
+    self.CheckAttributes(util.AcceptItem('*/*', 1), None, None)
+    self.CheckAttributes(util.AcceptItem('text/*', 1), 'text', None)
+    self.CheckAttributes(util.AcceptItem('text/plain', 1), 'text', 'plain')
+    self.CheckAttributes(
+      util.AcceptItem('text/plain; q=0.3', 1), 'text', 'plain', 0.3,
+      values={'q': '0.3'})
+    self.CheckAttributes(
+      util.AcceptItem('text/plain; level=2', 1), 'text', 'plain',
+      values={'level': '2'})
+    self.CheckAttributes(
+      util.AcceptItem('text/plain', 10), 'text', 'plain', index=10)
+
+  def testCaseInsensitive(self):
+    self.CheckAttributes(util.AcceptItem('Text/Plain', 1), 'text', 'plain')
+
+  def testBadValue(self):
+    self.assertRaises(util.AcceptError,
+                      util.AcceptItem, 'bad value', 1)
+    self.assertRaises(util.AcceptError,
+                      util.AcceptItem, 'bad value/', 1)
+    self.assertRaises(util.AcceptError,
+                      util.AcceptItem, '/bad value', 1)
+
+  def testSortKey(self):
+    item = util.AcceptItem('main/sub; q=0.2; level=3', 11)
+    self.assertEquals((False, False, -0.2, False, 11), item.sort_key)
+
+    item = util.AcceptItem('main/*', 12)
+    self.assertEquals((False, True, -1, True, 12), item.sort_key)
+
+    item = util.AcceptItem('*/*', 1)
+    self.assertEquals((True, True, -1, True, 1), item.sort_key)
+
+  def testSort(self):
+    i1 = util.AcceptItem('text/*', 1)
+    i2 = util.AcceptItem('text/html', 2)
+    i3 = util.AcceptItem('text/html; q=0.9', 3)
+    i4 = util.AcceptItem('text/html; q=0.3', 4)
+    i5 = util.AcceptItem('text/xml', 5)
+    i6 = util.AcceptItem('text/html; level=1', 6)
+    i7 = util.AcceptItem('*/*', 7)
+    items = [i1, i2 ,i3 ,i4 ,i5 ,i6, i7]
+    random.shuffle(items)
+    self.assertEquals([i6, i2, i5, i3, i4, i1, i7], sorted(items))
+
+  def testMatchAll(self):
+    item = util.AcceptItem('*/*', 1)
+    self.assertTrue(item.match('text/html'))
+    self.assertTrue(item.match('text/plain; level=1'))
+    self.assertTrue(item.match('image/png'))
+    self.assertTrue(item.match('image/png; q=0.3'))
+
+  def testMatchMainType(self):
+    item = util.AcceptItem('text/*', 1)
+    self.assertTrue(item.match('text/html'))
+    self.assertTrue(item.match('text/plain; level=1'))
+    self.assertFalse(item.match('image/png'))
+    self.assertFalse(item.match('image/png; q=0.3'))
+
+  def testMatchFullType(self):
+    item = util.AcceptItem('text/plain', 1)
+    self.assertFalse(item.match('text/html'))
+    self.assertTrue(item.match('text/plain; level=1'))
+    self.assertFalse(item.match('image/png'))
+    self.assertFalse(item.match('image/png; q=0.3'))
+
+  def testMatchCaseInsensitive(self):
+    item = util.AcceptItem('text/plain', 1)
+    self.assertTrue(item.match('tExt/pLain'))
+
+  def testStr(self):
+    self.assertEquals('*/*', str(util.AcceptItem('*/*', 1)))
+    self.assertEquals('text/*', str(util.AcceptItem('text/*', 1)))
+    self.assertEquals('text/plain', str(util.AcceptItem('text/plain', 1)))
+    self.assertEquals('text/plain; q=0.2',
+                      str(util.AcceptItem('text/plain; q=0.2', 1)))
+    self.assertEquals('text/plain; q=0.2; level=1',
+                      str(util.AcceptItem('text/plain; level=1; q=0.2', 1)))
+
+  def testRepr(self):
+    self.assertEquals("AcceptItem('*/*', 1)", repr(util.AcceptItem('*/*', 1)))
+    self.assertEquals("AcceptItem('text/plain', 11)",
+                      repr(util.AcceptItem('text/plain', 11)))
+
+  def testValues(self):
+    item = util.AcceptItem('text/plain; a=1; b=2; c=3;', 1)
+    values = item.values
+    self.assertEquals(dict(a="1", b="2", c="3"), values)
+    values['a'] = "7"
+    self.assertNotEquals(values, item.values)
+
+
+class ParseAcceptHeaderTest(test_util.TestCase):
+
+  def testIndex(self):
+    accept_header = """text/*, text/html, text/html; q=0.9,
+                       text/xml,
+                       text/html; level=1, */*"""
+    accepts = util.parse_accept_header(accept_header)
+    self.assertEquals(6, len(accepts))
+    self.assertEquals([4, 1, 3, 2, 0, 5], [a.index for a in accepts])
+
+
+class ChooseContentTypeTest(test_util.TestCase):
+
+  def testIgnoreUnrequested(self):
+    self.assertEquals('application/json',
+                      util.choose_content_type(
+                        'text/plain, application/json, */*',
+                        ['application/X-Google-protobuf',
+                         'application/json'
+                        ]))
+
+  def testUseCorrectPreferenceIndex(self):
+    self.assertEquals('application/json',
+                      util.choose_content_type(
+                        '*/*, text/plain, application/json',
+                        ['application/X-Google-protobuf',
+                         'application/json'
+                        ]))
+
+  def testPreferFirstInList(self):
+    self.assertEquals('application/X-Google-protobuf',
+                      util.choose_content_type(
+                        '*/*',
+                        ['application/X-Google-protobuf',
+                         'application/json'
+                        ]))
+
+  def testCaseInsensitive(self):
+    self.assertEquals('application/X-Google-protobuf',
+                      util.choose_content_type(
+                        'application/x-google-protobuf',
+                        ['application/X-Google-protobuf',
+                         'application/json'
+                        ]))
 
 
 def main():
