@@ -43,7 +43,7 @@ class Message(messages.Message):
 
 class Service(remote.Service):
   
-  @remote.remote(Message, Message)
+  @remote.method(Message, Message)
   def method(self, request):
     pass
 
@@ -118,7 +118,7 @@ class HttpTransportTest(test_util.TestCase):
     class MyResponse(messages.Message):
       response_value = messages.StringField(1)
 
-    @remote.remote(MyRequest, MyResponse)
+    @remote.method(MyRequest, MyResponse)
     def mymethod(request):
       self.fail('mymethod should not be directly invoked.')
 

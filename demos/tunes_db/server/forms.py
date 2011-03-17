@@ -35,7 +35,7 @@ Usage:
 
     class HelloService(remote.Service):
 
-      @remote.remote(message_types.VoidMessageType, Hello)
+      @remote.method(message_types.VoidMessageType, Hello)
       def world(self, request):
         response = Hello()
         response.greeting = 'Hello World!'

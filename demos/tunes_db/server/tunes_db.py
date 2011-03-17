@@ -399,7 +399,7 @@ class MusicLibraryService(remote.Service):
     return results, continuation
 
 
-  @remote.remote(AddArtistRequest, AddArtistResponse)
+  @remote.method(AddArtistRequest, AddArtistResponse)
   def add_artist(self, request):
     """Add artist to library."""
     artist_name = request.name
@@ -411,7 +411,7 @@ class MusicLibraryService(remote.Service):
 
     return AddArtistResponse(artist_id = unicode(artist.key()))
 
-  @remote.remote(UpdateArtistRequest, UpdateArtistResponse)
+  @remote.method(UpdateArtistRequest, UpdateArtistResponse)
   def update_artist(self, request):
     """Update artist from library."""
     def do_deletion():
@@ -425,7 +425,7 @@ class MusicLibraryService(remote.Service):
     return UpdateArtistResponse(
       artist_updated=db.run_in_transaction(do_deletion))
 
-  @remote.remote(DeleteArtistRequest, DeleteArtistResponse)
+  @remote.method(DeleteArtistRequest, DeleteArtistResponse)
   def delete_artist(self, request):
     """Delete artist from library."""
     def do_deletion():
@@ -438,7 +438,7 @@ class MusicLibraryService(remote.Service):
     return DeleteArtistResponse(
       artist_deleted = db.run_in_transaction(do_deletion))
 
-  @remote.remote(FetchArtistRequest, FetchArtistResponse)
+  @remote.method(FetchArtistRequest, FetchArtistResponse)
   def fetch_artist(self, request):
     """Fetch artist from library."""
     artist_model = model.ArtistInfo.get(request.artist_id)
@@ -449,7 +449,7 @@ class MusicLibraryService(remote.Service):
     return FetchArtistResponse(artist=artist)
       
 
-  @remote.remote(SearchArtistsRequest, SearchArtistsResponse)
+  @remote.method(SearchArtistsRequest, SearchArtistsResponse)
   def search_artists(self, request):
     """Search library for artists."""
     results, continuation = self.__search_info(request,
@@ -458,7 +458,7 @@ class MusicLibraryService(remote.Service):
     return SearchArtistsResponse(artists=results or None,
                                  continuation=continuation or None)
 
-  @remote.remote(AddAlbumRequest, AddAlbumResponse)
+  @remote.method(AddAlbumRequest, AddAlbumResponse)
   def add_album(self, request):
     """Add album to library."""
     def create_album():
@@ -481,7 +481,7 @@ class MusicLibraryService(remote.Service):
 
     return AddAlbumResponse(album_id=unicode(album.key()))
 
-  @remote.remote(UpdateAlbumRequest, UpdateAlbumResponse)
+  @remote.method(UpdateAlbumRequest, UpdateAlbumResponse)
   def update_album(self, request):
     """Update album from library."""
     def do_deletion():
@@ -495,7 +495,7 @@ class MusicLibraryService(remote.Service):
         return False
     return UpdateAlbumResponse(album_updated=db.run_in_transaction(do_deletion))
 
-  @remote.remote(DeleteAlbumRequest, DeleteAlbumResponse)
+  @remote.method(DeleteAlbumRequest, DeleteAlbumResponse)
   def delete_album(self, request):
     """Delete album from library."""
     def do_deletion():
@@ -513,7 +513,7 @@ class MusicLibraryService(remote.Service):
 
     return DeleteAlbumResponse(album_deleted=db.run_in_transaction(do_deletion))
 
-  @remote.remote(FetchAlbumRequest, FetchAlbumResponse)
+  @remote.method(FetchAlbumRequest, FetchAlbumResponse)
   def fetch_album(self, request):
     """Fetch album from library."""
     album_model = model.AlbumInfo.get(request.album_id)
@@ -523,7 +523,7 @@ class MusicLibraryService(remote.Service):
       album = None
     return FetchAlbumResponse(album=album)
 
-  @remote.remote(SearchAlbumsRequest, SearchAlbumsResponse)
+  @remote.method(SearchAlbumsRequest, SearchAlbumsResponse)
   def search_albums(self, request):
     """Search library for albums."""
     def customize_query(request, query):

@@ -134,7 +134,7 @@ def load_full_proto(timestamp):
 class AppStatsService(remote.Service):
   """Service for getting access to AppStats data."""
 
-  @remote.remote(message_types.VoidMessage, Summary)
+  @remote.method(message_types.VoidMessage, Summary)
   def get_summary(self, request):
     """Get appstats summary."""
     response = Summary()
@@ -143,7 +143,7 @@ class AppStatsService(remote.Service):
 
     return response
 
-  @remote.remote(GetDetailsRequest, Details)
+  @remote.method(GetDetailsRequest, Details)
   def get_details(self, request):
     """Get appstats details for a particular timestamp."""
     response = Details()

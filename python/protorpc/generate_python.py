@@ -138,7 +138,7 @@ def _write_methods(method_descriptors, out):
   """
   for method in method_descriptors:
     out << ''
-    out << "@remote.remote('%s', '%s')" % (method.request_type,
+    out << "@remote.method('%s', '%s')" % (method.request_type,
                                            method.response_type)
     out << 'def %s(self, request):' % (method.name,)
     with out.indent():
@@ -179,7 +179,7 @@ def format_python_file(file_descriptor, output, indent_space=2):
 
     class MyService(remote.Service):
 
-      @remote.remote('my_package.MyRequestType', 'my_package.MyResponseType')
+      @remote.method('my_package.MyRequestType', 'my_package.MyResponseType')
       def my_method(self, request):
         raise NotImplementedError('Method my_method is not implemented')
 

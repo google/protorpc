@@ -221,7 +221,7 @@ class RegistryService(remote.Service):
     """Get service registry associated with this service instance."""
     return self.__registry
 
-  @remote.remote(message_types.VoidMessage, ServicesResponse)
+  @remote.method(message_types.VoidMessage, ServicesResponse)
   def services(self, request):
     """Get all registered services."""
     response = ServicesResponse()
@@ -234,7 +234,7 @@ class RegistryService(remote.Service):
 
     return response
 
-  @remote.remote(GetFileSetRequest, GetFileSetResponse)
+  @remote.method(GetFileSetRequest, GetFileSetResponse)
   def get_file_set(self, request):
     """Get file-set for registered servies."""
     response = GetFileSetResponse()

@@ -163,7 +163,7 @@ class DescribeFieldTest(test_util.TestCase):
     expected.number = 10
     expected.label = descriptor.FieldDescriptor.Label.OPTIONAL
     expected.variant = messages.EnumField.DEFAULT_VARIANT
-    expected.type_name = '__main__.MyEnum'
+    expected.type_name = 'descriptor_test.MyEnum'
     expected.default_value = '1'
 
     described = descriptor.describe_field(field)
@@ -265,14 +265,14 @@ class DescribeMethodTest(test_util.TestCase):
     class Response(messages.Message):
       pass
 
-    @remote.remote(Request, Response)
+    @remote.method(Request, Response)
     def remote_method(request):
       pass
 
     expected = descriptor.MethodDescriptor()
     expected.name = 'remote_method'
-    expected.request_type = '__main__.Request'
-    expected.response_type = '__main__.Response'
+    expected.request_type = 'descriptor_test.Request'
+    expected.response_type = 'descriptor_test.Response'
 
     described = descriptor.describe_method(remote_method)
     described.check_initialized()
@@ -297,11 +297,11 @@ class DescribeServiceTest(test_util.TestCase):
 
     class MyService(remote.Service):
 
-      @remote.remote(Request1, Response1)
+      @remote.method(Request1, Response1)
       def method1(self, request):
         pass
 
-      @remote.remote(Request2, Response2)
+      @remote.method(Request2, Response2)
       def method2(self, request):
         pass
 
@@ -466,7 +466,7 @@ class DescribeTest(test_util.TestCase):
 
     class Service(remote.Service):
 
-      @remote.remote(Param, Param)
+      @remote.method(Param, Param)
       def fn(self):
         return Param()
 

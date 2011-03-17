@@ -51,7 +51,7 @@ class Response(messages.Message):
 
 class MyService(remote.Service):
 
-  @remote.remote(Request, Response)
+  @remote.method(Request, Response)
   def remote_method(self, request):
     response = Response()
     response.value = request.value
@@ -75,7 +75,7 @@ class BasicService(remote.Service):
   def __init__(self):
     self.request_ids = []
 
-  @remote.remote(SimpleRequest, SimpleResponse)
+  @remote.method(SimpleRequest, SimpleResponse)
   def remote_method(self, request):
     self.request_ids.append(id(request))
     return SimpleResponse()
@@ -97,7 +97,7 @@ class RemoteTest(test_util.TestCase):
     """Test use of remote decorator to resolve message types by name."""
     class OtherService(remote.Service):
 
-      @remote.remote('SimpleRequest', 'SimpleResponse')
+      @remote.method('SimpleRequest', 'SimpleResponse')
       def remote_method(self, request):
         pass
 
@@ -110,7 +110,7 @@ class RemoteTest(test_util.TestCase):
     """Test failure to find message types."""
     class OtherService(remote.Service):
 
-      @remote.remote('NoSuchRequest', 'NoSuchResponse')
+      @remote.method('NoSuchRequest', 'NoSuchResponse')
       def remote_method(self, request):
         pass
 
@@ -156,7 +156,7 @@ class RemoteTest(test_util.TestCase):
 
     class AnotherService(object):
 
-      @remote.remote(SimpleRequest, SimpleResponse)
+      @remote.method(SimpleRequest, SimpleResponse)
       def remote_method(self, unused_request):
         return self.return_this
 
@@ -183,7 +183,7 @@ class RemoteTest(test_util.TestCase):
       def declare():
         class BadService(object):
 
-          @remote.remote(request_type, SimpleResponse)
+          @remote.method(request_type, SimpleResponse)
           def remote_method(self, request):
             pass
 
@@ -197,7 +197,7 @@ class RemoteTest(test_util.TestCase):
       def declare():
         class BadService(object):
 
-          @remote.remote(SimpleRequest, response_type)
+          @remote.method(SimpleRequest, response_type)
           def remote_method(self, request):
             pass
 
@@ -212,7 +212,7 @@ class GetRemoteMethodTest(test_util.TestCase):
 
     class Service(object):
 
-      @remote.remote(Request, Response)
+      @remote.method(Request, Response)
       def remote_method(self, request):
         pass
 
@@ -318,7 +318,7 @@ class ServiceTest(test_util.TestCase):
     """Test all_remote_methods on a sub-class of a service."""
     class SubClass(MyService):
 
-      @remote.remote(Request, Response)
+      @remote.method(Request, Response)
       def sub_class_method(self, request):
         pass
 
@@ -343,7 +343,7 @@ class ServiceTest(test_util.TestCase):
     def do_override():
       class SubClass(MyService):
 
-        @remote.remote(Request, Response)
+        @remote.method(Request, Response)
         def remote_method(self, request):
           pass
 

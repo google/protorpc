@@ -1328,7 +1328,7 @@ class MessageTest(test_util.TestCase):
     class MyMessage(messages.Message):
       pass
 
-    self.assertEquals('__main__.MyMessage', MyMessage.definition_name())
+    self.assertEquals('messages_test.MyMessage', MyMessage.definition_name())
     self.assertEquals(unicode, type(MyMessage.definition_name()))
 
   def testDefinitionName_OverrideModule(self):
@@ -1369,9 +1369,9 @@ class MessageTest(test_util.TestCase):
 
           pass
 
-    self.assertEquals('__main__.MyMessage.NestedMessage',
+    self.assertEquals('messages_test.MyMessage.NestedMessage',
                       MyMessage.NestedMessage.definition_name())
-    self.assertEquals('__main__.MyMessage.NestedMessage.NestedMessage',
+    self.assertEquals('messages_test.MyMessage.NestedMessage.NestedMessage',
                       MyMessage.NestedMessage.NestedMessage.definition_name())
 
 

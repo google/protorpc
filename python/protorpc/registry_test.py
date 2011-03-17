@@ -39,7 +39,7 @@ class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
 class MyService1(remote.Service):
   """Test service that refers to messages in another module."""
 
-  @remote.remote(test_util.NestedMessage, test_util.NestedMessage)
+  @remote.method(test_util.NestedMessage, test_util.NestedMessage)
   def a_method(self, request):
     pass
                  

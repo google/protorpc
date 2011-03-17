@@ -100,7 +100,7 @@ class RepeatedMessage(messages.Message):
 class Service(object):
   """A simple service that takes a Request1 and returns Request2."""
 
-  @remote.remote(Request1, Response1)
+  @remote.method(Request1, Response1)
   def method1(self, request):
     response = Response1()
     if hasattr(request, 'integer_field'):
@@ -111,7 +111,7 @@ class Service(object):
       response.enum_field = request.enum_field
     return response
 
-  @remote.remote(RepeatedMessage, RepeatedMessage)
+  @remote.method(RepeatedMessage, RepeatedMessage)
   def repeated_method(self, request):
     response = RepeatedMessage()
     if hasattr(request, 'ints'):
@@ -433,7 +433,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
       initialize_request_state = self.mox.CreateMockAnything()
 
-      @remote.remote(Request1, Response1)
+      @remote.method(Request1, Response1)
       def method1(self, request):
         return Response1()
 
@@ -468,7 +468,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
       initialize_request_state = self.mox.CreateMockAnything()
 
-      @remote.remote(Request1, Response1)
+      @remote.method(Request1, Response1)
       def method1(self, request):
         return Response1()
 
@@ -1074,7 +1074,7 @@ class GetCalled(remote.Service):
   def __init__(self, test):
     self.test = test
 
-  @remote.remote(Request1, Response1)
+  @remote.method(Request1, Response1)
   def my_method(self, request):
     self.test.request = request
     return Response1(string_field='a response')

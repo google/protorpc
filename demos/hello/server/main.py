@@ -35,7 +35,7 @@ class HelloResponse(messages.Message):
 
 class HelloService(remote.Service):
     
-  @remote.remote(HelloRequest, HelloResponse)
+  @remote.method(HelloRequest, HelloResponse)
   def hello(self, request):
     return HelloResponse(hello='Hello there, %s!' % request.my_name)
 

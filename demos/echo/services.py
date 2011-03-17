@@ -79,7 +79,7 @@ class EchoData(messages.Message):
 class EchoService(remote.Service):
   """Echo service echos response to client."""
     
-  @remote.remote(EchoData, EchoData)
+  @remote.method(EchoData, EchoData)
   def echo(self, request):
     """Echo method."""
     if request.want_time:

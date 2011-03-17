@@ -176,7 +176,7 @@ def define_service(service_descriptor, module):
       """Actual service method."""
       raise NotImplementedError('Method is not implemented')
     remote_method.__name__ = method_name
-    remote_method_decorator = remote.remote(request_definition,
+    remote_method_decorator = remote.method(request_definition,
                                             response_definition)
 
     class_dict[method_name] = remote_method_decorator(remote_method)

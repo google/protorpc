@@ -35,7 +35,7 @@ a service must be like the following class:
     # and response message types.  The remote method itself must take a single
     # parameter which is an instance of RequestMessage and return an instance
     # of ResponseMessage.
-    @remote(RequestMessage, ResponseMessage)
+    @method(RequestMessage, ResponseMessage)
     def remote_method(self, request):
       # Return an instance of ResponseMessage.
 
@@ -68,13 +68,13 @@ the sub-classes methods.  For example:
 
   class MyService(Service):
 
-    @remote(DoSomethingRequest, DoSomethingResponse)
+    @method(DoSomethingRequest, DoSomethingResponse)
     def do_something(self, request):
       ... implement do-something ...
 
   class MyBetterService(Service):
 
-    @remote(DoSomethingRequest, DoSomethingResponse)
+    @method(DoSomethingRequest, DoSomethingResponse)
     def do_something(self, request):
       response = super(MyService, self).do_something.remote.method(request)
       ... do something with response ...
@@ -114,6 +114,7 @@ Public Exceptions:
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import logging
 import sys
 
 from protorpc import message_types
@@ -131,7 +132,7 @@ __all__ = [
     'StubBase',
     'RequestState',
     'get_remote_method_info',
-    'remote',
+    'method',
 ]
 
 
@@ -166,7 +167,7 @@ class _RemoteMethodInfo(object):
     Args:
       method: The method which implements the remote method.  This is a
         function that will act as an instance method of a class definition
-        that is decorated by '@remote'.  It must always take 'self' as its
+        that is decorated by '@method'.  It must always take 'self' as its
         first parameter.
       request_type: Expected request type for the remote method.
       response_type: Expected response type for the remote method.
@@ -199,7 +200,7 @@ class _RemoteMethodInfo(object):
     return self.__response_type
 
 
-def remote(request_type, response_type):
+def method(request_type, response_type):
   """Method decorator for creating remote methods.
 
   Args:
@@ -213,7 +214,6 @@ def remote(request_type, response_type):
     TypeError: if the request_type or response_type parameters are not
       proper subclasses of messages.Message.
   """
-
   if (not isinstance(request_type, basestring) and
       (not isinstance(request_type, type) or
        not issubclass(request_type, messages.Message) or
@@ -297,6 +297,13 @@ def remote(request_type, response_type):
   return remote_method_wrapper
 
 
+def remote(request_type, response_type):
+  """Temporary backward compatibility alias for method."""
+  logging.warning('The remote decorator has been renamed method.  It will be '
+                  'removed in very soon from future versions of ProtoRPC.')
+  return method(request_type, response_type)
+
+
 def get_remote_method_info(method):
   """Get remote method info object from remote method.
 
@@ -334,7 +341,7 @@ class StubBase(object):
 
     class AccountService(remote.Service):
 
-      @remote.remote(NewContact, message_types.VoidMessage):
+      @remote.method(NewContact, message_types.VoidMessage):
       def new_contact(self, request):
         ... implementation ...
 
@@ -504,7 +511,7 @@ class _ServiceClass(type):
               (attribute, name))
 
           base_remote_method_info = get_remote_method_info(base_method)
-          remote_decorator = remote(
+          remote_decorator = method(
             base_remote_method_info.request_type,
             base_remote_method_info.response_type)
           new_remote_method = remote_decorator(value)
