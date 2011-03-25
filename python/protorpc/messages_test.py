@@ -547,19 +547,6 @@ class FieldTest(test_util.TestCase):
     defaults[messages.StringField] = 'abc'
     self.ActionOnAllFieldClasses(action)
 
-  def testDefaultFields_Repeated(self):
-    """Test default field is correct type."""
-    defaults = {messages.IntegerField: [10, 20],
-                messages.FloatField: [1.5, 4.5],
-                messages.BooleanField: [False, True],
-                messages.BytesField: ['abc', 'xyz'],
-                messages.StringField: [u'abc', 'xyz'],
-               }
-
-    def action(field_class):
-      field_class(1, repeated=True, default=defaults[field_class])
-    self.ActionOnAllFieldClasses(action)
-
   def testDefaultFields_InvalidSingle(self):
     """Test default field is correct type."""
     def action(field_class):
@@ -570,46 +557,11 @@ class FieldTest(test_util.TestCase):
     self.ActionOnAllFieldClasses(action)
 
   def testDefaultFields_InvalidRepeated(self):
-    """Test default field is correct type."""
-    defaults = {messages.IntegerField: 10,
-                messages.FloatField: 1.5,
-                messages.BooleanField: False,
-                messages.BytesField: 'abc',
-                messages.StringField: u'abc',
-               }
-
-    def action(field_class):
-      self.assertRaises(messages.InvalidDefaultError,
-                        field_class,
-                        1,
-                        repeated=True,
-                        default=[object()])
-
-      # Iterators are not acceptable, must be list or tiple.
-      def generator():
-        yield defaults[field_class]
-      self.assertRaises(messages.InvalidDefaultError,
-                        field_class,
-                        1,
-                        repeated=True,
-                        default=generator())
-    self.ActionOnAllFieldClasses(action)
-
-  def testDefaultFields_InvalidRepeatedNotIterable(self):
-    """Test default field not iterable when repeated."""
-    defaults = {messages.IntegerField: 10,
-                messages.FloatField: 1.5,
-                messages.BooleanField: False,
-                messages.BytesField: 'abc',
-                messages.StringField: u'abc',
-               }
-    def action(field_class):
-      self.assertRaises(messages.InvalidDefaultError,
-                        field_class,
-                        1,
-                        repeated=True,
-                        default=defaults[field_class])
-    self.ActionOnAllFieldClasses(action)
+    """Test default field does not accept defaults."""
+    self.assertRaisesWithRegexpMatch(
+      messages.FieldDefinitionError,
+      'Repeated fields may not have defaults',
+      messages.StringField, 1, repeated=True, default=[1, 2, 3])
 
   def testDefaultFields_None(self):
     """Test none is always acceptable."""
@@ -617,19 +569,6 @@ class FieldTest(test_util.TestCase):
       field_class(1, default=None)
       field_class(1, required=True, default=None)
       field_class(1, repeated=True, default=None)
-    self.ActionOnAllFieldClasses(action)
-
-  def testDefaultFields_MayNotExtend(self):
-    """Test that repeated field default values cannot be changed."""
-    defaults = {messages.IntegerField: 10,
-                messages.FloatField: 1.5,
-                messages.BooleanField: False,
-                messages.BytesField: 'abc',
-                messages.StringField: u'abc',
-               }
-    def action(field_class):
-      field = field_class(1, repeated=True, default=[defaults[field_class]])
-      self.assertTrue(isinstance(field.default, tuple))
     self.ActionOnAllFieldClasses(action)
 
   def testDefaultFields_Enum(self):
@@ -1104,6 +1043,15 @@ class MessageTest(test_util.TestCase):
                       'does_not_exist',
                       10)
 
+  def testListAssignmentDoesNotCopy(self):
+    class SimpleMessage(messages.Message):
+      repeated = messages.IntegerField(1, repeated=True)
+
+    message = SimpleMessage()
+    original = message.repeated
+    message.repeated = []
+    self.assertFalse(original is message.repeated)
+
   def testValidate_Optional(self):
     """Tests validation of optional fields."""
     class SimpleMessage(messages.Message):
@@ -1138,7 +1086,7 @@ class MessageTest(test_util.TestCase):
       simple_message.check_initialized()
 
     # Check cleared.
-    simple_message.repeated = None
+    simple_message.repeated = []
     simple_message.check_initialized()
 
     # Check invalid values.
@@ -1535,21 +1483,16 @@ class MessageTest(test_util.TestCase):
       repeated = messages.IntegerField(1, repeated=True)
 
     instance = SomeMessage()
-    self.assertEquals(None, instance.repeated)
-
-  def testGetRepeatedValue_WithDefault(self):
-    class SomeMessage(messages.Message):
-      repeated = messages.IntegerField(1, repeated=True, default=(1, 2, 3))
-
-    instance = SomeMessage()
-    self.assertEquals([1, 2, 3], instance.repeated)
-
-  def testGetRepeatedValue_WithEmpyDefault(self):
-    class SomeMessage(messages.Message):
-      repeated = messages.IntegerField(1, repeated=True, default=())
-
-    instance = SomeMessage()
     self.assertEquals([], instance.repeated)
+    self.assertTrue(isinstance(instance.repeated, messages.FieldList))
+
+  def testCompareAutoInitializedRepeatedFields(self):
+    class SomeMessage(messages.Message):
+      repeated = messages.IntegerField(1, repeated=True)
+
+    message1 = SomeMessage(repeated=[])
+    message2 = SomeMessage()
+    self.assertEquals(message1, message2)
 
 
 class FindDefinitionTest(test_util.TestCase):

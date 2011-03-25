@@ -105,7 +105,7 @@ class URLEncodedRequestBuilderTest(test_util.TestCase):
 
     def assert_empty():
       self.assertEquals(None, getattr(message, 'sub_message'))
-      self.assertEquals(None, getattr(message, 'sub_messages'))
+      self.assertEquals([], getattr(message, 'sub_messages'))
 
     self.assertFalse(builder.add_parameter('pre.nothing', ['x']))
     assert_empty()

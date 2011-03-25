@@ -133,6 +133,7 @@ __all__ = [
     'RequestState',
     'get_remote_method_info',
     'method',
+    'remote',
 ]
 
 

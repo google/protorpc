@@ -160,10 +160,10 @@ class ProtojsonTest(test_util.TestCase,
   def testNullValues(self):
     """Test that null values overwrite existing values."""
     self.assertEquals(MyMessage(),
-                      protojson.decode_message(MyMessage, ('{"an_integer": null,'
-                                                           ' "a_nested": null,'
-                                                           ' "a_repeated": null'
-                                                           '}')))
+                      protojson.decode_message(MyMessage,
+                                               ('{"an_integer": null,'
+                                                ' "a_nested": null'
+                                                '}')))
 
   def testEmptyList(self):
     """Test that empty lists are ignored."""

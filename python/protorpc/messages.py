@@ -720,8 +720,16 @@ class Message(object):
     # Tag being an essential implementation detail must be private.
     self.__tags = {}
 
+    assigned = set()
     for name, value in kwargs.iteritems():
       setattr(self, name, value)
+      assigned.add(name)
+
+    # initialize repeated fields.
+    for field in self.all_fields():
+      if field.repeated and field.name not in assigned:
+        setattr(self, field.name, [])
+      
 
   def check_initialized(self):
     """Check class for initialization status.
@@ -1053,6 +1061,9 @@ class Field(object):
     if variant is None:
       variant = self.DEFAULT_VARIANT
 
+    if repeated and default is not None:
+      raise FieldDefinitionError('Repeated fields may not have defaults')
+
     if variant not in self.VARIANTS:
       raise InvalidVariantError(
           'Invalid variant: %s\nValid variants for %s are %r' %
@@ -1069,8 +1080,6 @@ class Field(object):
       except ValidationError, err:
         raise InvalidDefaultError('Invalid default value for field: %s: %s' %
                                   (default, err))
-      if isinstance(default, list):
-        default = tuple(default)
 
     self.__default = default
     self.__initialized = True
@@ -1103,7 +1112,11 @@ class Field(object):
     """
     # Reaches in to message instance directly to assign to private tags.
     if value is None:
-      message_instance._Message__tags.pop(self.number, None)
+      if self.repeated:
+        raise ValidationError(
+          'May not assign None to repeated field %s' % self.name)
+      else:
+        message_instance._Message__tags.pop(self.number, None)
     else:
       if self.repeated:
         value = FieldList(self, value)
@@ -1117,12 +1130,7 @@ class Field(object):
 
     result = message_instance._Message__tags.get(self.number)
     if result is None:
-      if self.repeated and self.default is not None:
-        value = FieldList(self, self.default)
-        message_instance._Message__tags[self.number] = value
-        return value
-      else:
-        return self.default
+      return self.default
     else:
       return result
 
