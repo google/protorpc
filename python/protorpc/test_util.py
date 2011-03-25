@@ -464,14 +464,6 @@ class ProtoConformanceTestBase(object):
     message = OptionalMessage()
     message.string_value = 'Latin'
     self.EncodeDecode(self.encoded_string_types, message)
-
-  def testDoNotEncodeNonAscii(self):
-    """Test that non-ascii values on StringFields are not encoded."""
-    message = OptionalMessage()
-    message.string_value = RUSSIAN.encode('utf-8')
-
-    self.assertRaises(messages.ValidationError,
-                      self.PROTOLIB.encode_message, message)
    
   def testEncodeUninitialized(self):
     """Test that cannot encode uninitialized message."""

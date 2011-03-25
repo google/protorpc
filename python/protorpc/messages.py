@@ -60,6 +60,7 @@ __all__ = ['MAX_ENUM_VALUE',
 
            'Enum',
            'Field',
+           'FieldList',
            'Variant',
            'Message',
            'IntegerField',
@@ -641,17 +642,19 @@ class Message(object):
 
   Initialization and validation:
 
-    A Message object is considered to be initialized if it is valid.
+    A Message object is considered to be initialized if it has all required
+    fields and any nested messages are also initialized.
 
-    Validation does not automatically occur when Message objects are
-    instantiated and populated.  Validation can be invoked at any time
-    and will check that all values of a message and its sub-messages are
-    set to their correct types.  Calling 'check_initialized' will raise
-    a ValidationException if it is not valid while 'is_initialized' returns
-    a boolean value indicating if it is valid.
+    Calling 'check_initialized' will raise a ValidationException if it is not
+    initialized; 'is_initialized' returns a boolean value indicating if it is
+    valid.
 
-    A Message is not considered valid unless all of its required fields
-    and the required fields of all of its sub-messages are valid.
+    Validation automatically occurs when Message objects are created
+    and populated.  Validation that a given value will be compatible with
+    a field that it is assigned to can be done through the Field instances
+    validate() method.  The validate method used on a message will check that
+    all values of a message and its sub-messages are valid.  Assingning an
+    invalid value to a field will raise a ValidationException.
 
   Example:
 
@@ -723,22 +726,28 @@ class Message(object):
   def check_initialized(self):
     """Check class for initialization status.
 
-    Check that all fields and sub-messages are valid.
+    Check that all required fields are initialized
 
     Raises:
-      ValidationError: If message is not valid.
+      ValidationError: If message is not initialized.
     """
     for name, field in self.__by_name.iteritems():
       value = getattr(self, name)
-      if value is None and field.required:
-        raise ValidationError("Message %s is missing required field %s" %
-                              (type(self).__name__, name))
+      if value is None:
+        if field.required:
+          raise ValidationError("Message %s is missing required field %s" %
+                                (type(self).__name__, name))
       else:
         try:
-          field.validate(value)
+          if isinstance(field, MessageField):
+            if field.repeated:
+              for item in value:
+                item.check_initialized()
+            else:
+              value.check_initialized()
         except ValidationError, err:
-          err.field_name = name
-          err.message_name = type(self).__name__
+          if not hasattr(err, 'message_name'):
+            err.message_name = type(self).__name__
           raise
 
   def is_initialized(self):
@@ -928,6 +937,58 @@ class Message(object):
     return not self.__eq__(other)
 
 
+class FieldList(list):
+  """List implementation that validates field values.
+
+  This list implementation overrides all methods that add values in to a list
+  in order to validate those new elements.  Attempting to add or set list
+  values that are not of the correct type will raise ValidationError.
+  """
+
+  def __init__(self, field_instance, sequence):
+    """Constructor.
+
+    Args:
+      field_instance: Instance of field that validates the list.
+      sequence: List or tuple to construct list from.
+    """
+    if not field_instance.repeated:
+      raise FieldDefinitionError('FieldList may only accept repeated fields')
+    self.__field = field_instance
+    self.__field.validate(sequence)
+    list.__init__(self, sequence)
+
+  @property
+  def field(self):
+    """Field that validates list."""
+    return self.__field
+
+  def __setslice__(self, i, j, sequence):
+    """Validate slice assignment to list."""
+    self.__field.validate(sequence)
+    list.__setslice__(self, i, j, sequence)
+
+  def __setitem__(self, index, value):
+    """Validate item assignment to list."""
+    self.__field.validate_element(value)
+    list.__setitem__(self, index, value)
+
+  def append(self, value):
+    """Validate item appending to list."""
+    self.__field.validate_element(value)
+    return list.append(self, value)
+
+  def extend(self, sequence):
+    """Validate extension of list."""
+    self.__field.validate(sequence)
+    return list.extend(self, sequence)
+
+  def insert(self, index, value):
+    """Validate item insertion to list."""
+    self.__field.validate_element(value)
+    return list.insert(self, index, value)
+
+
 # TODO(rafek): Prevent additional field subclasses.
 class Field(object):
 
@@ -1044,18 +1105,24 @@ class Field(object):
     if value is None:
       message_instance._Message__tags.pop(self.number, None)
     else:
+      if self.repeated:
+        value = FieldList(self, value)
+      else:
+        self.validate(value)
       message_instance._Message__tags[self.number] = value
 
   def __get__(self, message_instance, message_class):
     if message_instance is None:
       return self
 
-    # Return None instead of deafualt to avoid another attribute lookup.
     result = message_instance._Message__tags.get(self.number)
     if result is None:
-      # Ok to return default directly even for repeated fields because
-      # they will always be tuples.
-      return self.default
+      if self.repeated and self.default is not None:
+        value = FieldList(self, self.default)
+        message_instance._Message__tags[self.number] = value
+        return value
+      else:
+        return self.default
     else:
       return result
 
@@ -1231,8 +1298,10 @@ class StringField(Field):
       try:
         unicode(value)
       except UnicodeDecodeError, err:
-        raise ValidationError('Encountered non-ASCII string %s: %s' % (
-          value, err))
+        validation_error = ValidationError(
+          'Encountered non-ASCII string %s: %s' % (value, err))
+        validation_error.field_name = self.name
+        raise validation_error
     else:
       super(StringField, self).validate_element(value)
 
@@ -1323,21 +1392,6 @@ class MessageField(Field):
                                        required=required,
                                        repeated=repeated,
                                        variant=variant)
-
-  def validate_element(self, value):
-    """Validate single value assigned to message field.
-
-    Args:
-      value: Value to validate.
-
-    Raises:
-      ValidationError if value is not expected message type.
-    """
-    super(MessageField, self).validate_element(value)
-    if value is not None:
-      # Value is definitely a message as it was properly validated according
-      # to this fields type.
-      value.check_initialized()
 
   @property
   def type(self):

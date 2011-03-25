@@ -52,8 +52,8 @@ class FormatProtoFileTest(test_util.TestCase):
     message.fields = fields
 
     messages_list = getattr(self.file_descriptor, 'fields', [])
-    self.file_descriptor.message_types = messages_list
     messages_list.append(message)
+    self.file_descriptor.message_types = messages_list
 
   def testBlankPackage(self):
     self.file_descriptor.package = None
@@ -87,7 +87,7 @@ class FormatProtoFileTest(test_util.TestCase):
     field.number = 1
     field.label = descriptor.FieldDescriptor.Label.OPTIONAL
     field.variant = descriptor.FieldDescriptor.Variant.INT64
-    field.default_value = 10
+    field.default_value = '10'
 
     self.MakeMessage(fields=[field])
 
@@ -95,6 +95,23 @@ class FormatProtoFileTest(test_util.TestCase):
     self.assertEquals('\n\n'
                       'message MyMessage {\n'
                       '  optional int64 integer_field = 1 [default=10];\n'
+                      '}\n',
+                      self.result)
+
+  def testRepeatedFieldWithDefault(self):
+    field = descriptor.FieldDescriptor()
+    field.name = 'integer_field'
+    field.number = 1
+    field.label = descriptor.FieldDescriptor.Label.REPEATED
+    field.variant = descriptor.FieldDescriptor.Variant.INT64
+    field.default_value = '[10, 20]'
+
+    self.MakeMessage(fields=[field])
+
+    generate_proto.format_proto_file(self.file_descriptor, self.output)
+    self.assertEquals('\n\n'
+                      'message MyMessage {\n'
+                      '  repeated int64 integer_field = 1;\n'
                       '}\n',
                       self.result)
 
@@ -112,6 +129,60 @@ class FormatProtoFileTest(test_util.TestCase):
     self.assertEquals('\n\n'
                       'message MyMessage {\n'
                       "  optional string string_field = 1 [default='hello'];\n"
+                      '}\n',
+                      self.result)
+
+  def testSingleFieldWithDefaultEmptyString(self):
+    field = descriptor.FieldDescriptor()
+    field.name = 'string_field'
+    field.number = 1
+    field.label = descriptor.FieldDescriptor.Label.OPTIONAL
+    field.variant = descriptor.FieldDescriptor.Variant.STRING
+    field.default_value = ''
+
+    self.MakeMessage(fields=[field])
+
+    generate_proto.format_proto_file(self.file_descriptor, self.output)
+    self.assertEquals('\n\n'
+                      'message MyMessage {\n'
+                      "  optional string string_field = 1 [default=''];\n"
+                      '}\n',
+                      self.result)
+
+  def testSingleFieldWithDefaultMessage(self):
+    field = descriptor.FieldDescriptor()
+    field.name = 'message_field'
+    field.number = 1
+    field.label = descriptor.FieldDescriptor.Label.OPTIONAL
+    field.variant = descriptor.FieldDescriptor.Variant.MESSAGE
+    field.type_name = 'MyNestedMessage'
+    field.default_value = 'not valid'
+
+    self.MakeMessage(fields=[field])
+
+    generate_proto.format_proto_file(self.file_descriptor, self.output)
+    self.assertEquals('\n\n'
+                      'message MyMessage {\n'
+                      "  optional MyNestedMessage message_field = 1;\n"
+                      '}\n',
+                      self.result)
+
+  def testSingleFieldWithDefaultEnum(self):
+    field = descriptor.FieldDescriptor()
+    field.name = 'enum_field'
+    field.number = 1
+    field.label = descriptor.FieldDescriptor.Label.OPTIONAL
+    field.variant = descriptor.FieldDescriptor.Variant.ENUM
+    field.type_name = 'my_package.MyEnum'
+    field.default_value = '17'
+
+    self.MakeMessage(fields=[field])
+
+    generate_proto.format_proto_file(self.file_descriptor, self.output)
+    self.assertEquals('\n\n'
+                      'message MyMessage {\n'
+                      "  optional my_package.MyEnum enum_field = 1 "
+                      "[default=17];\n"
                       '}\n',
                       self.result)
 

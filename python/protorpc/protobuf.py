@@ -277,7 +277,7 @@ def decode_message(message_type, encoded_message):
       try:
         field = message.field_by_number(tag)
       except KeyError:
-        # Unexpected tags are ok, just ignored unless below 1.
+        # Unexpected tags are ok, just ignored unless below 0.
         field = None
         wire_type_decoder = found_wire_type_decoder
       else:
@@ -306,9 +306,9 @@ def decode_message(message_type, encoded_message):
       if field.repeated:
         values = getattr(message, field.name)
         if values is None:
-          values = []
-          setattr(message, field.name, values)
-        values.append(value)
+          setattr(message, field.name, [value])
+        else:
+          values.append(value)
       else:
         setattr(message, field.name, value)
   except ProtocolBuffer.ProtocolBufferDecodeError, err:

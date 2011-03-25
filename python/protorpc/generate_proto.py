@@ -17,6 +17,8 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import logging
+
 from protorpc import descriptor
 from protorpc import generate
 from protorpc import messages
@@ -65,17 +67,36 @@ def format_proto_file(file_descriptor, output, indent_space=2):
     """
     for field in field_descriptors or []:
       default_format = ''
-      if field.default_value:
-        if isinstance(field.default_value, basestring):
-          default = "'%s'" % (str(field.default_value),)
+      if field.default_value is not None:
+        if field.label == descriptor.FieldDescriptor.Label.REPEATED:
+          logging.warning('Default value for repeated field %s is not being '
+                          'written to proto file' % field.name)
         else:
-          default = str(field.default_value)
-        default_format = ' [default=%s]' % default
+          # Convert default value to string.
+          if field.variant == messages.Variant.MESSAGE:
+            logging.warning(
+              'Message field %s should not have default values' % field.name)
+            default = None
+          elif field.variant == messages.Variant.STRING:
+            default = repr(field.default_value.encode('utf-8'))
+          elif field.variant == messages.Variant.BYTES:
+            default = repr(field.default_value)
+          else:
+            default = str(field.default_value)
+
+          if default is not None:
+            default_format = ' [default=%s]' % default
+
+      if field.variant in (messages.Variant.MESSAGE, messages.Variant.ENUM):
+        field_type = field.type_name
+      else:
+        field_type = str(field.variant).lower()
+            
       out << '%s %s %s = %s%s;' % (str(field.label).lower(),
-                                 str(field.variant).lower(),
-                                 field.name,
-                                 field.number,
-                                 default_format)
+                                   field_type,
+                                   field.name,
+                                   field.number,
+                                   default_format)
 
   def write_messages(message_descriptors):
     """Write nested and non-nested Message types.

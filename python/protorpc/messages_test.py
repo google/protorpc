@@ -315,6 +315,140 @@ class EnumTest(test_util.TestCase):
     self.assertFalse(Enum1.VAL2 > Enum2.VAL1)
 
 
+class FieldListTest(test_util.TestCase):
+
+  def setUp(self):
+    self.integer_field = messages.IntegerField(1, repeated=True)
+
+  def testConstructor(self):
+    self.assertEquals([1, 2, 3],
+                      messages.FieldList(self.integer_field, [1, 2, 3]))
+    self.assertEquals([1, 2, 3],
+                      messages.FieldList(self.integer_field, (1, 2, 3)))
+    self.assertEquals([], messages.FieldList(self.integer_field, []))
+
+  def testNone(self):
+    self.assertRaises(TypeError, messages.FieldList, self.integer_field, None)
+
+  def testDoNotAutoConvertString(self):
+    string_field = messages.StringField(1, repeated=True)
+    self.assertRaises(messages.ValidationError,
+                      messages.FieldList, string_field, 'abc')
+
+  def testConstructorCopies(self):
+    a_list = [1, 3, 6]
+    field_list = messages.FieldList(self.integer_field, a_list)
+    self.assertFalse(a_list is field_list)
+    self.assertFalse(field_list is
+                     messages.FieldList(self.integer_field, field_list))
+
+  def testNonRepeatedField(self):
+    self.assertRaisesWithRegexpMatch(
+      messages.FieldDefinitionError,
+      'FieldList may only accept repeated fields',
+      messages.FieldList,
+      messages.IntegerField(1),
+      [])
+
+  def testConstructor_InvalidValues(self):
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      re.escape("Expected type (<type 'int'>, <type 'long'>), "
+                "found 1 (type <type 'str'>)"),
+      messages.FieldList, self.integer_field, ["1", "2", "3"])
+
+  def testConstructor_Scalars(self):
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      "Field is repeated. Found: 3",
+      messages.FieldList, self.integer_field, 3)
+
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      "Field is repeated. Found: <listiterator object",
+      messages.FieldList, self.integer_field, iter([1, 2, 3]))
+
+  def testSetSlice(self):
+    field_list = messages.FieldList(self.integer_field, [1, 2, 3, 4, 5])
+    field_list[1:3] = [10, 20]
+    self.assertEquals([1, 10, 20, 4, 5], field_list)
+
+  def testSetSlice_InvalidValues(self):
+    field_list = messages.FieldList(self.integer_field, [1, 2, 3, 4, 5])
+
+    def setslice():
+      field_list[1:3] = ['10', '20']
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      re.escape("Expected type (<type 'int'>, <type 'long'>), "
+                "found 10 (type <type 'str'>)"),
+      setslice)
+
+  def testSetItem(self):
+    field_list = messages.FieldList(self.integer_field, [2])
+    field_list[0] = 10
+    self.assertEquals([10], field_list)
+
+  def testSetItem_InvalidValues(self):
+    field_list = messages.FieldList(self.integer_field, [2])
+
+    def setitem():
+      field_list[0] = '10'
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      re.escape("Expected type (<type 'int'>, <type 'long'>), "
+                "found 10 (type <type 'str'>)"),
+      setitem)
+
+  def testAppend(self):
+    field_list = messages.FieldList(self.integer_field, [2])
+    field_list.append(10)
+    self.assertEquals([2, 10], field_list)
+
+  def testAppend_InvalidValues(self):
+    field_list = messages.FieldList(self.integer_field, [2])
+
+    def append():
+      field_list.append('10')
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      re.escape("Expected type (<type 'int'>, <type 'long'>), "
+                "found 10 (type <type 'str'>)"),
+      append)
+
+  def testExtend(self):
+    field_list = messages.FieldList(self.integer_field, [2])
+    field_list.extend([10])
+    self.assertEquals([2, 10], field_list)
+
+  def testExtend_InvalidValues(self):
+    field_list = messages.FieldList(self.integer_field, [2])
+
+    def extend():
+      field_list.extend(['10'])
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      re.escape("Expected type (<type 'int'>, <type 'long'>), "
+                "found 10 (type <type 'str'>)"),
+      extend)
+
+  def testInsert(self):
+    field_list = messages.FieldList(self.integer_field, [2, 3])
+    field_list.insert(1, 10)
+    self.assertEquals([2, 10, 3], field_list)
+
+  def testInsert_InvalidValues(self):
+    field_list = messages.FieldList(self.integer_field, [2, 3])
+
+    def insert():
+      field_list.insert(1, '10')
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      re.escape("Expected type (<type 'int'>, <type 'long'>), "
+                "found 10 (type <type 'str'>)"),
+      insert)
+
+
 class FieldTest(test_util.TestCase):
 
   def ActionOnAllFieldClasses(self, action):
@@ -808,11 +942,9 @@ class FieldTest(test_util.TestCase):
 
     field = messages.MessageField(MyMessage, 10)
 
-    self.assertRaises(messages.ValidationError,
-                      field.validate,
-                      MyMessage())
-
+    # Will validate messages where is_initialized() is False.
     message = MyMessage()
+    field.validate(message)
     message.field1 = 20
     field.validate(message)
 
@@ -928,13 +1060,10 @@ class FieldTest(test_util.TestCase):
       string_field = messages.StringField(2)
 
     thing = Thing()
-    thing.string_field = test_util.BINARY
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Field string_field: Encountered non-ASCII string %s: 'ascii' "
-                "codec can't decode byte 0x80 in position 256: ordinal not in "
-                "range(128)" % thing.string_field),
-      thing.check_initialized)
+      'Field string_field: Encountered non-ASCII string',
+      setattr, thing, 'string_field', test_util.BINARY)
 
 
 class MessageTest(test_util.TestCase):
@@ -1014,9 +1143,8 @@ class MessageTest(test_util.TestCase):
 
     # Check invalid values.
     for invalid_value in 10, ['10', '20'], [None], (None,):
-      simple_message.repeated = invalid_value
       self.assertRaises(messages.ValidationError,
-                        simple_message.check_initialized)
+                        setattr, simple_message, 'repeated', invalid_value)
 
   def testIsInitialized(self):
     """Tests is_initialized."""
@@ -1286,10 +1414,8 @@ class MessageTest(test_util.TestCase):
     message_field.validate(message)
     message.val = SubMessage()
     message_field.validate(message)
-    message.val = [SubMessage()]
     self.assertRaises(messages.ValidationError,
-                      message_field.validate,
-                      message)
+                      setattr, message, 'val', [SubMessage()])
 
     # Test required.
     class Message(messages.Message):
@@ -1298,15 +1424,11 @@ class MessageTest(test_util.TestCase):
     message = Message()
 
     message_field = messages.MessageField(Message, 1)
-    self.assertRaises(messages.ValidationError,
-                      message_field.validate,
-                      message)
+    message_field.validate(message)
     message.val = SubMessage()
     message_field.validate(message)
-    message.val = [SubMessage()]
     self.assertRaises(messages.ValidationError,
-                      message_field.validate,
-                      message)
+                      setattr, message, 'val', [SubMessage()])
 
     # Test repeated.
     class Message(messages.Message):
@@ -1316,10 +1438,10 @@ class MessageTest(test_util.TestCase):
 
     message_field = messages.MessageField(Message, 1)
     message_field.validate(message)
-    message.val = SubMessage()
-    self.assertRaises(messages.ValidationError,
-                      message_field.validate,
-                      message)
+    self.assertRaisesWithRegexpMatch(
+      messages.ValidationError,
+      "Field is repeated. Found: <SubMessage>",
+      setattr, message, 'val', SubMessage())
     message.val = [SubMessage()]
     message_field.validate(message)
 
@@ -1407,6 +1529,27 @@ class MessageTest(test_util.TestCase):
       'May not assign arbitrary value does_not_exist to message SomeMessage',
       SomeMessage,
       does_not_exist=10)
+
+  def testGetUnsetRepeatedValue(self):
+    class SomeMessage(messages.Message):
+      repeated = messages.IntegerField(1, repeated=True)
+
+    instance = SomeMessage()
+    self.assertEquals(None, instance.repeated)
+
+  def testGetRepeatedValue_WithDefault(self):
+    class SomeMessage(messages.Message):
+      repeated = messages.IntegerField(1, repeated=True, default=(1, 2, 3))
+
+    instance = SomeMessage()
+    self.assertEquals([1, 2, 3], instance.repeated)
+
+  def testGetRepeatedValue_WithEmpyDefault(self):
+    class SomeMessage(messages.Message):
+      repeated = messages.IntegerField(1, repeated=True, default=())
+
+    instance = SomeMessage()
+    self.assertEquals([], instance.repeated)
 
 
 class FindDefinitionTest(test_util.TestCase):
