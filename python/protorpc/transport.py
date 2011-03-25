@@ -23,15 +23,17 @@ transports such as HTTP.
 Includes HTTP transport built over urllib2.
 """
 
+import logging
 import sys
 import urllib2
 
 from protorpc import messages
 from protorpc import protobuf
+from protorpc import remote
 from protorpc import util
 
 __all__ = [
-  'RpcError',
+  'RpcStateError',
 
   'HttpTransport',
   'Rpc',
@@ -39,8 +41,8 @@ __all__ = [
 ]
 
 
-class RpcError(messages.Error):
-  """Error occurred during RPC."""
+class RpcStateError(messages.Error):
+  """Raised when trying to put RPC in to an invalid state."""
 
 
 class Rpc(object):
@@ -59,25 +61,53 @@ class Rpc(object):
     """
     self.__request = request
     self.__response = None
+    self.__state = remote.RpcState.RUNNING
+    self.__error_message = None
+    self.__error_name = None
 
   @property
   def request(self):
     """Request associated with RPC."""
     return self.__request
 
-  def set_response(self, response):
-    """Set successful response.
-
-    Transport will set response upon successful non-error completion of RPC.
-
-    Args:
-      response: Response message from RPC.
-    """
-    self.__response = response
-
-  def get_response(self):
-    """Returns response received from transport."""
+  @property
+  def response(self):
+    """Response associated with RPC."""
     return self.__response
+
+  @property
+  def state(self):
+    return self.__state
+
+  @property
+  def error_message(self):
+    return self.__error_message
+
+  @property
+  def error_name(self):
+    return self.__error_name
+
+  def __set_state(self, state, error_message=None, error_name=None):
+    if self.__state != remote.RpcState.RUNNING:
+      raise RpcStateError(
+        'RPC must be in RUNNING state to change to %s' % state)
+    if state == remote.RpcState.RUNNING:
+      raise RpcStateError('RPC is already in RUNNING state')
+    self.__state = state
+    self.__error_message = error_message
+    self.__error_name = error_name
+
+  def set_response(self, response):
+    # TODO: Even more specific type checking.
+    if not isinstance(response, messages.Message):
+      raise TypeError('Expected Message type, received %r' % (response))
+
+    self.__response = response
+    self.__set_state(remote.RpcState.OK)
+
+  def set_status(self, status):
+    status.check_initialized()
+    self.__set_state(status.state, status.error_message, status.error_name)
 
 
 class Transport(object):
@@ -153,6 +183,22 @@ class HttpTransport(Transport):
     super(HttpTransport, self).__init__(protocol=protocol)
     self.__service_url = service_url
 
+  def __http_error_to_exception(self, http_error):
+    error_code = http_error.getcode()
+    content_type = http_error.hdrs.get('content-type')
+    if error_code == 500 and content_type == self.protocol.CONTENT_TYPE:
+      try:
+        rpc_status = self.protocol.decode_message(remote.RpcStatus,
+                                                  http_error.msg)
+      except Exception, decode_err:
+        logging.warning(
+          'An error occurred trying to parse status: %s\n%s',
+          str(decode_err), http_error.msg)
+      else:
+        # TODO: Move the check_rpc_status to the Rpc.response property.
+        # Will raise exception if rpc_status is in an error state.
+        remote.check_rpc_status(rpc_status)
+
   def _transport_rpc(self, remote_info, encoded_request, rpc):
     """HTTP transport rpc method.
 
@@ -165,8 +211,20 @@ class HttpTransport(Transport):
     try:
       http_response = urllib2.urlopen(http_request)
     except urllib2.HTTPError, err:
+      self.__http_error_to_exception(err)
+
+      # TODO: Map other types of errors to appropriate exceptions.
+
       _, _, trace_back = sys.exc_info()
-      raise RpcError, 'HTTP error: %s' % str(err), trace_back
+      raise remote.ServerError, (str(err), err), trace_back
+
+    except urllib2.URLError, err:
+      _, _, trace_back = sys.exc_info()
+      if isinstance(err, basestring):
+        error_message = err
+      else:
+        error_message = err.args[0]
+      raise remote.NetworkError, (error_message, err), trace_back
 
     encoded_response = http_response.read()
     response = self.protocol.decode_message(remote_info.response_type,

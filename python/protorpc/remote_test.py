@@ -44,10 +44,12 @@ class Request(messages.Message):
 
   value = messages.StringField(1)
 
+
 class Response(messages.Message):
   """Test response message."""
 
   value = messages.StringField(1)
+
 
 class MyService(remote.Service):
 
@@ -80,6 +82,32 @@ class BasicService(remote.Service):
     self.request_ids.append(id(request))
     return SimpleResponse()
 
+
+class RpcErrorTest(test_util.TestCase):
+
+  def testFromStatus(self):
+    for state in remote.RpcState:
+      exception = remote.RpcError.from_state
+    self.assertEquals(remote.ServerError,
+                      remote.RpcError.from_state('SERVER_ERROR'))
+  
+
+class ApplicationErrorTest(test_util.TestCase):
+
+  def testErrorCode(self):
+    self.assertEquals('blam',
+                      remote.ApplicationError('an error', 'blam').error_name)
+
+  def testStr(self):
+    self.assertEquals('an error', str(remote.ApplicationError('an error', 1)))
+
+  def testRepr(self):
+    self.assertEquals("ApplicationError('an error', 1)",
+                      repr(remote.ApplicationError('an error', 1)))
+      
+    self.assertEquals("ApplicationError('an error')",
+                      repr(remote.ApplicationError('an error')))
+   
 
 class RemoteTest(test_util.TestCase):
   """Test remote method decorator."""
@@ -139,15 +167,15 @@ class RemoteTest(test_util.TestCase):
     """Wrong request type passed to remote method."""
     service = BasicService()
 
-    self.assertRaises(remote.InvalidRequestError,
+    self.assertRaises(remote.RequestError,
                       service.remote_method,
                       'wrong')
 
-    self.assertRaises(remote.InvalidRequestError,
+    self.assertRaises(remote.RequestError,
                       service.remote_method,
                       None)
 
-    self.assertRaises(remote.InvalidRequestError,
+    self.assertRaises(remote.RequestError,
                       service.remote_method,
                       SimpleResponse())
 
@@ -163,15 +191,15 @@ class RemoteTest(test_util.TestCase):
     service = AnotherService()
 
     service.return_this = 'wrong'
-    self.assertRaises(remote.InvalidResponseError,
+    self.assertRaises(remote.ServerError,
                       service.remote_method,
                       SimpleRequest())
     service.return_this = None
-    self.assertRaises(remote.InvalidResponseError,
+    self.assertRaises(remote.ServerError,
                       service.remote_method,
                       SimpleRequest())
     service.return_this = SimpleRequest()
-    self.assertRaises(remote.InvalidResponseError,
+    self.assertRaises(remote.ServerError,
                       service.remote_method,
                       SimpleRequest())
 
@@ -586,6 +614,52 @@ class StubTest(test_util.TestCase):
       request, 'another value')
 
     self.mox.VerifyAll()
+
+
+class IsErrorStatusTest(test_util.TestCase):
+
+  def testIsError(self):
+    for state in (s for s in remote.RpcState if s > remote.RpcState.RUNNING):
+      status = remote.RpcStatus(state=state)
+      self.assertTrue(remote.is_error_status(status))
+
+  def testIsNotError(self):
+    for state in (s for s in remote.RpcState if s <= remote.RpcState.RUNNING):
+      status = remote.RpcStatus(state=state)
+      self.assertFalse(remote.is_error_status(status))
+
+  def testStateNone(self):
+    self.assertRaises(messages.ValidationError,
+                      remote.is_error_status, remote.RpcStatus())
+
+
+class CheckRpcStatusTest(test_util.TestCase):
+
+  def testStateNone(self):
+    self.assertRaises(messages.ValidationError,
+                      remote.check_rpc_status, remote.RpcStatus())
+
+  def testNoError(self):
+    for state in (remote.RpcState.OK, remote.RpcState.RUNNING):
+      remote.check_rpc_status(remote.RpcStatus(state=state))
+
+  def testErrorState(self):
+    status = remote.RpcStatus(state=remote.RpcState.REQUEST_ERROR,
+                              error_message='a request error')
+    self.assertRaisesWithRegexpMatch(remote.RequestError,
+                                     'a request error',
+                                     remote.check_rpc_status, status)
+
+  def testApplicationErrorState(self):
+    status = remote.RpcStatus(state=remote.RpcState.APPLICATION_ERROR,
+                              error_message='an application error',
+                              error_name='blam')
+    try:
+      remote.check_rpc_status(status)
+      self.fail('Should have raised application error.')
+    except remote.ApplicationError, err:
+      self.assertEquals('an application error', str(err))
+      self.assertEquals('blam', err.error_name)
 
 
 def main():

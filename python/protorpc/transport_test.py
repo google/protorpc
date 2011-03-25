@@ -50,17 +50,88 @@ class Service(remote.Service):
 
 class RpcTest(test_util.TestCase):
 
-  def testRpc(self):
+  def setUp(self):
+    self.request = Message(value=u'request')
+    self.response = Message(value=u'response')
+    self.status = remote.RpcStatus(state=remote.RpcState.APPLICATION_ERROR,
+                                   error_message='an error',
+                                   error_name='blam')
 
-    request = Message()
-    request.value = u'request'
-    rpc = transport.Rpc(request)
-    self.assertEquals(request, rpc.request)
+    self.rpc = transport.Rpc(self.request)
 
-    response = Message()
-    response.value = u'response'
-    rpc.set_response(response)
-    self.assertEquals(response, rpc.get_response())
+  def testConstructor(self):
+
+    self.assertEquals(self.request, self.rpc.request)
+    self.assertEquals(remote.RpcState.RUNNING, self.rpc.state)
+    self.assertEquals(None, self.rpc.response)
+    self.assertEquals(None, self.rpc.error_message)
+    self.assertEquals(None, self.rpc.error_name)
+
+  def testSetResponse(self):
+    self.rpc.set_response(self.response)
+
+    self.assertEquals(self.request, self.rpc.request)
+    self.assertEquals(remote.RpcState.OK, self.rpc.state)
+    self.assertEquals(self.response, self.rpc.response)
+    self.assertEquals(None, self.rpc.error_message)
+    self.assertEquals(None, self.rpc.error_name)
+
+  def testSetResponseAlreadySet(self):
+    self.rpc.set_response(self.response)
+
+    self.assertRaisesWithRegexpMatch(
+      transport.RpcStateError,
+      'RPC must be in RUNNING state to change to OK',
+      self.rpc.set_response,
+      self.response)
+
+  def testSetResponseAlreadyError(self):
+    self.rpc.set_status(self.status)
+
+    self.assertRaisesWithRegexpMatch(
+      transport.RpcStateError,
+      'RPC must be in RUNNING state to change to OK',
+      self.rpc.set_response,
+      self.response)
+
+  def testSetStatus(self):
+    self.rpc.set_status(self.status)
+
+    self.assertEquals(self.request, self.rpc.request)
+    self.assertEquals(remote.RpcState.APPLICATION_ERROR, self.rpc.state)
+    self.assertEquals(None, self.rpc.response)
+    self.assertEquals('an error', self.rpc.error_message)
+    self.assertEquals('blam', self.rpc.error_name)
+
+  def testSetStatusAlreadySet(self):
+    self.rpc.set_response(self.response)
+
+    self.assertRaisesWithRegexpMatch(
+      transport.RpcStateError,
+      'RPC must be in RUNNING state to change to OK',
+      self.rpc.set_response,
+      self.response)
+
+  def testSetNonMessage(self):
+    self.assertRaisesWithRegexpMatch(
+      TypeError,
+      'Expected Message type, received 10',
+      self.rpc.set_response,
+      10)
+
+  def testSetStatusAlreadyError(self):
+    self.rpc.set_status(self.status)
+
+    self.assertRaisesWithRegexpMatch(
+      transport.RpcStateError,
+      'RPC must be in RUNNING state to change to OK',
+      self.rpc.set_response,
+      self.response)
+
+  def testSetUninitializedStatus(self):
+    self.assertRaises(messages.ValidationError,
+                      self.rpc.set_status,
+                      remote.RpcStatus())
 
 
 class TransportTest(test_util.TestCase):
@@ -84,7 +155,7 @@ class TransportTest(test_util.TestCase):
       self.assertEquals(encoded_request, data)
       self.assertTrue(isinstance(rpc, transport.Rpc))
       self.assertEquals(request, rpc.request)
-      self.assertEquals(None, rpc.get_response())
+      self.assertEquals(None, rpc.response)
       rpc.set_response(response)
     trans._transport_rpc = transport_rpc
 
@@ -108,30 +179,22 @@ class HttpTransportTest(test_util.TestCase):
     self.mox.UnsetStubs()
     self.mox.VerifyAll()
 
+  @remote.method(Message, Message)
+  def my_method(self, request):
+    self.fail('self.my_method should not be directly invoked.')
+
   def do_test_send_rpc(self, protocol):
     trans = transport.HttpTransport('http://myserver/myservice',
                                     protocol=protocol)
 
-    class MyRequest(messages.Message):
-      request_value = messages.StringField(1)
-
-    class MyResponse(messages.Message):
-      response_value = messages.StringField(1)
-
-    @remote.method(MyRequest, MyResponse)
-    def mymethod(request):
-      self.fail('mymethod should not be directly invoked.')
-
-    request = MyRequest()
-    request.request_value = u'The request value'
+    request = Message(value=u'The request value')
     encoded_request = protocol.encode_message(request)
 
-    response = MyResponse()
-    response.response_value = u'The response value'
+    response = Message(value=u'The response value')
     encoded_response = protocol.encode_message(response)
 
     def verify_request(urllib2_request):
-      self.assertEquals('http://myserver/myservice.mymethod',
+      self.assertEquals('http://myserver/myservice.my_method',
                         urllib2_request.get_full_url())
       self.assertEquals(urllib2_request.get_data(), encoded_request)
       self.assertEquals(protocol.CONTENT_TYPE,
@@ -143,27 +206,87 @@ class HttpTransportTest(test_util.TestCase):
     urllib2.urlopen(mox.Func(verify_request)).AndReturn(
         StringIO.StringIO(encoded_response))
 
-    # Second call raises an HTTP error.
+    # Second call raises a normal HTTP error.
     urllib2.urlopen(mox.Func(verify_request)).AndRaise(
         urllib2.HTTPError('http://whatever',
-                          404,
-                          'Not Found',
+                          500,
+                          'a server error',
                           {},
+                          StringIO.StringIO('')))
+
+    # Third call raises a 500 error with message.
+    status = remote.RpcStatus(state=remote.RpcState.REQUEST_ERROR,
+                              error_message='an error')
+    urllib2.urlopen(mox.Func(verify_request)).AndRaise(
+        urllib2.HTTPError('http://whatever',
+                          500,
+                          protocol.encode_message(status),
+                          {'content-type': protocol.CONTENT_TYPE},
+                          StringIO.StringIO('')))
+
+    # Fourth call is not parsable.
+    status = remote.RpcStatus(state=remote.RpcState.REQUEST_ERROR,
+                              error_message='an error')
+    urllib2.urlopen(mox.Func(verify_request)).AndRaise(
+        urllib2.HTTPError('http://whatever',
+                          500,
+                          'a text message is here anyway',
+                          {'content-type': protocol.CONTENT_TYPE},
                           StringIO.StringIO('')))
 
     self.mox.ReplayAll()
 
-    actual_rpc = trans.send_rpc(mymethod.remote, request)
-    self.assertEquals(response, actual_rpc.get_response())
+    actual_rpc = trans.send_rpc(self.my_method.remote, request)
+    self.assertEquals(response, actual_rpc.response)
 
-    self.assertRaises(transport.RpcError,
-                      trans.send_rpc, mymethod.remote, request)
+    try:
+      trans.send_rpc(self.my_method.remote, request)
+    except remote.ServerError, err:
+      self.assertEquals('HTTP Error 500: a server error', str(err))
+      self.assertTrue(isinstance(err.cause, urllib2.HTTPError))
+    else:
+      self.fail('ServerError expected')
+
+    try:
+      trans.send_rpc(self.my_method.remote, request)
+    except remote.RequestError, err:
+      self.assertEquals('an error', str(err))
+      self.assertEquals(None, err.cause)
+    else:
+      self.fail('RequestError expected')
+
+    try:
+      trans.send_rpc(self.my_method.remote, request)
+    except remote.ServerError, err:
+      self.assertEquals('HTTP Error 500: a text message is here anyway',
+                        str(err))
+      self.assertTrue(isinstance(err.cause, urllib2.HTTPError))
+    else:
+      self.fail('ServerError expected')
 
   def testSendProtobuf(self):
     self.do_test_send_rpc(protobuf)
 
-  def testSendProtobuf(self):
+  def testSendProtojson(self):
     self.do_test_send_rpc(protojson)
+
+  def testURLError(self):
+    trans = transport.HttpTransport('http://myserver/myservice',
+                                    protocol=protojson)
+
+    urllib2.urlopen(mox.IsA(urllib2.Request)).AndRaise(
+      urllib2.URLError('a bad connection'))
+
+    self.mox.ReplayAll()
+
+    request = Message(value=u'The request value')
+    try:
+      trans.send_rpc(self.my_method.remote, request)
+    except remote.NetworkError, err:
+      self.assertEquals('a bad connection', str(err))
+      self.assertTrue(isinstance(err.cause, urllib2.URLError))
+    else:
+      self.fail('Network error expected')
 
 
 def main():

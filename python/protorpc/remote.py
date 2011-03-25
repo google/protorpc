@@ -99,17 +99,6 @@ make an asynchronous call, do:
 
   rpc = my_service.async.do_something(request)
   response = rpc.get_response()
-
-Public Classes:
-  RequestState: Encapsulates information specific to an individual request.
-  Service: Base class useful for implementing service objects.
-
-Public Functions:
-  remote: Decorator for indicating remote methods.
-
-Public Exceptions:
-  InvalidRequestError: Raised when wrong request objects received by service.
-  InvalidResponseError: Raised when wrong response object sent from service.
 """
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
@@ -124,30 +113,154 @@ from protorpc import util
 
 
 __all__ = [
-    'InvalidRequestError',
-    'InvalidResponseError',
+    'ApplicationError',
+    'NetworkError',
+    'RequestError',
+    'RpcError',
+    'ServerError',
+    'ServerError',
     'ServiceDefinitionError',
 
+    'RequestState',
+    'RpcState',
+    'RpcStatus',
     'Service',
     'StubBase',
-    'RequestState',
+    'check_rpc_status',
     'get_remote_method_info',
+    'is_error_status',
     'method',
     'remote',
 ]
 
 
-class InvalidRequestError(messages.Error):
-  """Raised when wrong request objects received during method invocation."""
-
-
-class InvalidResponseError(messages.Error):
-  """Raised when wrong response objects returned during method invocation."""
-
-
 class ServiceDefinitionError(messages.Error):
   """Raised when a service is improperly defined."""
 
+
+# TODO: Use error_name to map to specific exception message types.
+class RpcStatus(messages.Message):
+  """Status of on-going or complete RPC.
+
+  Fields:
+    state: State of RPC.
+    error_name: Error name set by application.  Only set when
+      status is APPLICATION_ERROR.  For use by application to transmit
+      specific reason for error.
+    error_message: Error message associated with status.
+  """
+
+  class State(messages.Enum):
+    """Enumeration of possible RPC states.
+
+    Values:
+      OK: Completed successfully.
+      RUNNING: Still running, not complete.
+      REQUEST_ERROR: Request was malformed or incomplete.
+      SERVER_ERROR: Server experienced an unexpected error.
+      NETWORK_ERROR: An error occured on the network.
+      APPLICATION_ERROR: The application is indicating an error.
+        When in this state, RPC should also set application_error.
+    """
+    OK = 0
+    RUNNING = 1
+
+    REQUEST_ERROR = 2
+    SERVER_ERROR = 3
+    NETWORK_ERROR = 4
+    APPLICATION_ERROR = 5
+
+  state = messages.EnumField(State, 1, required=True)
+  error_message = messages.StringField(2)
+  error_name = messages.StringField(3)
+
+
+RpcState = RpcStatus.State
+
+
+class RpcError(messages.Error):
+  """Base class for RPC errors.
+
+  Each sub-class of RpcError is associated with an error value from RpcState
+  and has an attribute STATE that refers to that value.
+  """
+
+  def __init__(self, message, cause=None):
+    super(RpcError, self).__init__(message)
+    self.cause = cause
+
+  @classmethod
+  def from_state(cls, state):
+    """Get error class from RpcState.
+
+    Args:
+      state: RpcState value.  Can be enum value itself, string or int.
+
+    Returns:
+      Exception class mapped to value if state is an error.  Returns None
+      if state is OK or RUNNING.
+    """
+    return _RPC_STATE_TO_ERROR.get(RpcState(state))
+
+
+class RequestError(RpcError):
+  """Raised when wrong request objects received during method invocation."""
+
+  STATE = RpcState.REQUEST_ERROR
+
+
+class NetworkError(RpcError):
+  """Raised when network error occurs during RPC."""
+
+  STATE = RpcState.NETWORK_ERROR
+
+
+class ServerError(RpcError):
+  """Unexpected error occured on server."""
+
+  STATE = RpcState.SERVER_ERROR
+
+
+class ApplicationError(RpcError):
+  """Raised for application specific errors.
+
+  Attributes:
+    error_name: Application specific error name for exception.
+  """
+
+  STATE = RpcState.APPLICATION_ERROR
+
+  def __init__(self, message, error_name=None):
+    """Constructor.
+
+    Args:
+      message: Application specific error message.
+      error_name: Application specific error name.  Must be None, string
+      or unicode string.
+    """
+    super(ApplicationError, self).__init__(message)
+    if error_name is None:
+      self.error_name = None
+    else:
+      self.error_name = error_name
+
+  def __str__(self):
+    return self.args[0]
+
+  def __repr__(self):
+    if self.error_name is None:
+      error_format = ''
+    else:
+      error_format = ', %r' % self.error_name
+    return '%s(%r%s)' % (type(self).__name__, self.args[0], error_format)
+
+
+_RPC_STATE_TO_ERROR = {
+  RpcState.REQUEST_ERROR: RequestError,
+  RpcState.NETWORK_ERROR: NetworkError,
+  RpcState.SERVER_ERROR: ServerError,
+  RpcState.APPLICATION_ERROR: ApplicationError,
+}
 
 class _RemoteMethodInfo(object):
   """Object for encapsulating remote method information.
@@ -267,24 +380,24 @@ def method(request_type, response_type):
         Results of calling wrapped remote method.
 
       Raises:
-        InvalidRequestError: Request object is not of the correct type.
-        InvalidResponseError: Response object is not of the correct type.
+        RequestError: Request object is not of the correct type.
+        ServerError: Response object is not of the correct type.
       """
       if not isinstance(request, remote_method_info.request_type):
-        raise InvalidRequestError('Method %s.%s expected request type %s, '
-                                  'received %s' %
-                                  (type(service_instance).__name__,
-                                   method.__name__,
-                                   remote_method_info.request_type,
-                                   type(request)))
+        raise RequestError('Method %s.%s expected request type %s, '
+                           'received %s' %
+                           (type(service_instance).__name__,
+                            method.__name__,
+                            remote_method_info.request_type,
+                            type(request)))
       response = method(service_instance, request)
       if not isinstance(response, remote_method_info.response_type):
-        raise InvalidResponseError('Method %s.%s expected response type %s, '
-                                   'sent %s' %
-                                   (type(service_instance).__name__,
-                                    method.__name__,
-                                    remote_method_info.response_type,
-                                    type(response)))
+        raise ServerError('Method %s.%s expected response type %s, '
+                          'sent %s' %
+                          (type(service_instance).__name__,
+                           method.__name__,
+                           remote_method_info.response_type,
+                           type(response)))
       return response
 
     remote_method_info = _RemoteMethodInfo(method,
@@ -445,7 +558,7 @@ class _ServiceClass(type):
       Returns:
         Response message from synchronized RPC.
       """
-      return async_method(self.async, *args, **kwargs).get_response()
+      return async_method(self.async, *args, **kwargs).response
     sync_method.__name__ = async_method.__name__
     sync_method.remote = async_method.remote
     return sync_method
@@ -745,3 +858,31 @@ class Service(object):
   def request_state(self):
     """Request state associated with this Service instance."""
     return self.__request_state
+
+
+def is_error_status(status):
+  """Function that determines whether the RPC status is an error.
+
+  Args:
+    status: Initialized RpcStatus message to check for errors.
+  """
+  status.check_initialized()
+  return RpcError.from_state(status.state) is not None
+
+
+def check_rpc_status(status):
+  """Function converts an error status to a raised exception.
+
+  Args:
+    status: Initialized RpcStatus message to check for errors.
+
+  Raises:
+    RpcError according to state set on status, if it is an error state.
+  """
+  status.check_initialized()
+  error_class = RpcError.from_state(status.state)
+  if error_class is not None:
+    if error_class is ApplicationError:
+      raise error_class(status.error_message, status.error_name)
+    else:
+      raise error_class(status.error_message)
