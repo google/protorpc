@@ -225,7 +225,7 @@ class AcceptItem(object):
       True if accept header matches content type, else False.
     """
     content_type, _ = cgi.parse_header(content_type)
-    match = self.__CONTENT_TYPE_REGEX.match(content_type)
+    match = self.__CONTENT_TYPE_REGEX.match(content_type.lower())
     if not match:
       return False
 
