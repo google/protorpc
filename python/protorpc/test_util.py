@@ -513,3 +513,23 @@ class ProtoConformanceTestBase(object):
 
   def testContentType(self):
     self.assertTrue(isinstance(self.PROTOLIB.CONTENT_TYPE, str))
+
+
+def do_with(context, function, *args, **kwargs):
+  """Simulate a with statement.
+
+  Avoids need to import with from future.
+
+  Does not support simulation of 'as'.
+
+  Args:
+    context: Context object normally used with 'with'.
+    function: Callable to evoke.  Replaces with-block.
+  """
+  context.__enter__()
+  try:
+    function(*args, **kwargs)
+  except:
+    context.__exit__(*sys.exc_info())
+  finally:
+    context.__exit__(None, None, None)

@@ -17,8 +17,6 @@
 
 """Tests for protorpc.generate_python_test."""
 
-from __future__ import with_statement
-
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import os
@@ -77,8 +75,11 @@ class FormatPythonFileTest(test_util.TestCase):
     """
     file_name = os.path.join(self.temp_dir,
                              '%s.py' % (file_descriptor.package or 'blank',))
-    with open(file_name, 'wt') as source_file:
+    source_file = open(file_name, 'wt')
+    try:
       generate_python.format_python_file(file_descriptor, source_file)
+    finally:
+      source_file.close()
 
     module_to_import = file_descriptor.package or 'blank'
     module = __import__(module_to_import)

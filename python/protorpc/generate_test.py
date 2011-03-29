@@ -17,11 +17,10 @@
 
 """Tests for protorpc.generate."""
 
-from __future__ import with_statement
-
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cStringIO
+import sys
 import unittest
 
 from protorpc import generate
@@ -108,14 +107,20 @@ class IndentWriterTest(test_util.TestCase):
   def testIndent(self):
     self.indent_writer << 'indent 0'
     self.assertEquals(0, self.indent_writer.indent_level)
-    with self.indent_writer.indent():
+
+    def indent1():
       self.indent_writer << 'indent 1'
       self.assertEquals(1, self.indent_writer.indent_level)
-      with self.indent_writer.indent():
+
+      def indent2():
         self.indent_writer << 'indent 2'
         self.assertEquals(2, self.indent_writer.indent_level)
+      test_util.do_with(self.indent_writer.indent(), indent2)
+
       self.assertEquals(1, self.indent_writer.indent_level)
       self.indent_writer << 'end 2'
+    test_util.do_with(self.indent_writer.indent(), indent1)
+
     self.assertEquals(0, self.indent_writer.indent_level)
     self.indent_writer << 'end 1'
 
