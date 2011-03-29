@@ -164,7 +164,9 @@ class ModuleInterfaceTest(object):
     for attribute in dir(self.MODULE):
       if not attribute.startswith('_'):
         if (attribute not in self.MODULE.__all__ and
-            not isinstance(getattr(self.MODULE, attribute), types.ModuleType)):
+            not isinstance(getattr(self.MODULE, attribute),
+                           types.ModuleType) and
+            attribute != 'with_statement'):
           missing_attributes.append(attribute)
     if missing_attributes:
       self.fail('%s are not modules and not defined in __all__.' %

@@ -1637,7 +1637,7 @@ def find_definition(name, relative_to=None, importer=__import__):
 
           try:
             fromitem = module_name.split('.')[-1]
-            next = importer(module_name, fromlist=[str(fromitem)])
+            next = importer(module_name, '', '', [str(fromitem)])
           except ImportError:
             return None
         else:
@@ -1675,14 +1675,14 @@ def find_definition(name, relative_to=None, importer=__import__):
           else:
             # Should not raise ImportError.  If it does... weird and
             # unexepected.  Propagate.
-            relative_to = importer('.'.join(module_path),
-                                   fromlist=[module_path[-1]])
+            relative_to = importer(
+              '.'.join(module_path), '', '', [module_path[-1]])
         elif (isinstance(relative_to, type) and
               issubclass(relative_to, Message)):
           parent = relative_to.message_definition()
           if parent is None:
             last_module_name = relative_to.__module__.split('.')[-1]
-            relative_to = importer(relative_to.__module__,
-                                   fromlist=[last_module_name])
+            relative_to = importer(
+              relative_to.__module__, '', '', [last_module_name])
           else:
             relative_to = parent

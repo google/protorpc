@@ -17,6 +17,8 @@
 
 """Common utility library."""
 
+from __future__ import with_statement
+
 __author__ = ['rafek@google.com (Rafe Kaplan)',
               'guido@google.com (Guido van Rossum)',
 ]

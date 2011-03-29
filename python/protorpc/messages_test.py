@@ -293,7 +293,7 @@ class EnumTest(test_util.TestCase):
 
   def testComparison(self):
     """Test comparing various enums to different types."""
-    class Enum1(object):
+    class Enum1(messages.Enum):
       VAL1 = 1
       VAL2 = 2
 
@@ -304,15 +304,15 @@ class EnumTest(test_util.TestCase):
     self.assertNotEquals(Enum1.VAL1, Enum1.VAL2)
     self.assertNotEquals(Enum1.VAL1, Enum2.VAL1)
     self.assertNotEquals(Enum1.VAL1, 'VAL1')
-    self.assertEquals(Enum1.VAL1, 1)
+    self.assertNotEquals(Enum1.VAL1, 1)
     self.assertNotEquals(Enum1.VAL1, 2)
     self.assertNotEquals(Enum1.VAL1, None)
+    self.assertNotEquals(Enum1.VAL1, Enum2.VAL1)
 
     self.assertTrue(Enum1.VAL1 < Enum1.VAL2)
     self.assertTrue(Enum1.VAL2 > Enum1.VAL1)
 
-    self.assertFalse(Enum2.VAL1 < Enum1.VAL2)
-    self.assertFalse(Enum1.VAL2 > Enum2.VAL1)
+    self.assertNotEquals(1, Enum2.VAL1)
 
 
 class FieldListTest(test_util.TestCase):
@@ -1557,7 +1557,7 @@ class FindDefinitionTest(test_util.TestCase):
       setattr(module_instance, name, message_class)
     return message_class
 
-  def Importer(self, module, fromlist=None):
+  def Importer(self, module, globals='', locals='', fromlist=None):
     """Importer function.
 
     Acts like __import__.  Only loads modules from self.modules.  Does not

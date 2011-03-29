@@ -184,7 +184,7 @@ class HttpTransport(Transport):
     self.__service_url = service_url
 
   def __http_error_to_exception(self, http_error):
-    error_code = http_error.getcode()
+    error_code = http_error.code
     content_type = http_error.hdrs.get('content-type')
     if error_code == 500 and content_type == self.protocol.CONTENT_TYPE:
       try:

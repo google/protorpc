@@ -17,6 +17,10 @@
 
 """Tests for protorpc.generate_python_test."""
 
+from __future__ import with_statement
+
+__author__ = 'rafek@google.com (Rafe Kaplan)'
+
 import os
 import shutil
 import sys

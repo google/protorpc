@@ -580,7 +580,7 @@ def import_descriptor_loader(definition_name, importer=__import__):
     leaf = definition_name.split('.')[-1]
     if definition_name:
       try:
-        module = importer(definition_name, fromlist=[leaf])
+        module = importer(definition_name, '', '', [leaf])
       except ImportError:
         pass
       else:
