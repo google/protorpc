@@ -457,7 +457,9 @@ class ServiceTest(test_util.TestCase):
     class TheService(remote.Service):
       pass
 
-    self.assertEquals('__main__.TheService', TheService.definition_name())
+    self.assertEquals('remote_test.TheService', TheService.definition_name())
+    self.assertEquals('remote_test', TheService.outer_definition_name())
+    self.assertEquals('remote_test', TheService.definition_package())
 
   def testDefinitionNameWithPackage(self):
     """Test getting service definition name when package defined."""
@@ -468,6 +470,8 @@ class ServiceTest(test_util.TestCase):
         pass
 
       self.assertEquals('my.package.TheService', TheService.definition_name())
+      self.assertEquals('my.package', TheService.outer_definition_name())
+      self.assertEquals('my.package', TheService.definition_package())
     finally:
       del package
 
@@ -480,6 +484,8 @@ class ServiceTest(test_util.TestCase):
         pass
 
       self.assertEquals('TheService', TheService.definition_name())
+      self.assertEquals(None, TheService.outer_definition_name())
+      self.assertEquals(None, TheService.definition_package())
     finally:
       sys.modules[__name__] = module
 
@@ -493,6 +499,10 @@ class StubTest(test_util.TestCase):
   def testDefinitionName(self):
     self.assertEquals(BasicService.definition_name(),
                       BasicService.Stub.definition_name())
+    self.assertEquals(BasicService.outer_definition_name(),
+                      BasicService.Stub.outer_definition_name())
+    self.assertEquals(BasicService.definition_package(),
+                      BasicService.Stub.definition_package())
 
   def testRemoteMethods(self):
     self.assertEquals(BasicService.all_remote_methods(),

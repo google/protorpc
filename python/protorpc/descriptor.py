@@ -460,10 +460,7 @@ def describe_file(module):
   from protorpc import remote
 
   descriptor = FileDescriptor()
-  try:
-    descriptor.package = module.package
-  except AttributeError:
-    descriptor.package = module.__name__
+  descriptor.package = util.get_package_for_module(module)
 
   if not descriptor.package:
     descriptor.package = None

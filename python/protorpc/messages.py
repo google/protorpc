@@ -243,28 +243,36 @@ class _DefinitionClass(type):
     Returns:
       Dot-separated fully qualified name of definition.
     """
+    outer_definition_name = cls.outer_definition_name()
+    if outer_definition_name is None:
+      return unicode(cls.__name__)
+    else:
+      return u'%s.%s' % (outer_definition_name, cls.__name__)
+
+  def outer_definition_name(cls):
+    """Helper method for creating outer definition name.
+
+    Returns:
+      If definition is nested, will return the outer definitions name, else the
+      package name.
+    """
     outer_definition = cls.message_definition()
     if not outer_definition:
-      definition_module = sys.modules.get(cls.__module__, None)
-      if definition_module:
-        try:
-          package = definition_module.package
-        except AttributeError:
-          package = definition_module.__name__
-          if package == '__main__':
-            try:
-              file_name = definition_module.__file__
-            except AttributeError:
-              pass
-            else:
-              base_name = os.path.basename(file_name)
-              package = '.'.join(base_name.split('.')[:-1])
-      else:
-        return unicode(cls.__name__)
+      return util.get_package_for_module(cls.__module__)
     else:
-      return u'%s.%s' % (outer_definition.definition_name(), cls.__name__)
+      return outer_definition.definition_name()
 
-    return u'%s.%s' % (package, cls.__name__)
+  def definition_package(cls):
+    """Helper method for creating creating the package of a definition.
+
+    Returns:
+      Name of package that definition belongs to.
+    """
+    outer_definition = cls.message_definition()
+    if not outer_definition:
+      return util.get_package_for_module(cls.__module__)
+    else:
+      return outer_definition.definition_package()
 
 
 class _EnumClass(_DefinitionClass):

@@ -104,6 +104,7 @@ make an asynchronous call, do:
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import logging
+import os
 import sys
 
 from protorpc import message_types
@@ -490,11 +491,6 @@ class StubBase(object):
     """Transport used to communicate with remote service."""
     return self.__transport
 
-  @classmethod
-  def definition_name(self):
-    """Delegates to underlying service instance."""
-    return super(StubBase, self).definition_name()
-
 
 class _ServiceClass(type):
   """Meta-class for service class."""
@@ -841,17 +837,36 @@ class Service(object):
     try:
       return cls.__definition_name
     except AttributeError:
-      module = sys.modules.get(cls.__module__)
-      if module:
-        try:
-          package = module.package
-        except AttributeError:
-          package = cls.__module__
-        cls.__definition_name = '%s.%s' % (package, cls.__name__)
-      else:
+      outer_definition_name = cls.outer_definition_name()
+      if outer_definition_name is None:
         cls.__definition_name = cls.__name__
+      else:
+        cls.__definition_name = '%s.%s' % (outer_definition_name, cls.__name__)
 
       return cls.__definition_name
+
+  @classmethod
+  def outer_definition_name(cls):
+    """Get outer definition name.
+
+    Returns:
+      Package for service.  Services are never nested inside other definitions.
+    """
+    return cls.definition_package()
+
+  @classmethod
+  def definition_package(cls):
+    """Get package for service.
+
+    Returns:
+      Package name for service.
+    """
+    try:
+      return cls.__definition_package
+    except AttributeError:
+      cls.__definition_package = util.get_package_for_module(cls.__module__)
+
+    return cls.__definition_package
 
 
   @property

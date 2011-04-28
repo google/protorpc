@@ -68,11 +68,11 @@ class RegistryServiceTest(test_util.TestCase):
   def CheckServiceMappings(self, mappings):
     service1_mapping = registry.ServiceMapping()
     service1_mapping.name = 'my-service1'
-    service1_mapping.definition = '__main__.MyService1'
+    service1_mapping.definition = 'registry_test.MyService1'
 
     service2_mapping = registry.ServiceMapping()
     service2_mapping.name = 'my-service2'
-    service2_mapping.definition = '__main__.MyService2'
+    service2_mapping.definition = 'registry_test.MyService2'
 
     mappings.sort(key=lambda mapping: mapping.name)
 

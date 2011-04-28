@@ -708,7 +708,7 @@ def service_mapping(services,
 
     if path in paths:
       raise ServiceConfigurationError(
-        'Path %r is already defined in service mapping' % path)
+        'Path %r is already defined in service mapping' % path.encode('utf-8'))
     else:
       paths.add(path)
 

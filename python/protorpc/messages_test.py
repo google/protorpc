@@ -233,6 +233,8 @@ class EnumTest(test_util.TestCase):
   def testEnumName(self):
     """Test enum name."""
     self.assertEquals('messages_test.Color', Color.definition_name())
+    self.assertEquals('messages_test', Color.outer_definition_name())
+    self.assertEquals('messages_test', Color.definition_package())
 
   def testDefinitionName_OverrideModule(self):
     """Test enum module is overriden by module package name."""
@@ -240,6 +242,8 @@ class EnumTest(test_util.TestCase):
     try:
       package = 'my.package'
       self.assertEquals('my.package.Color', Color.definition_name())
+      self.assertEquals('my.package', Color.outer_definition_name())
+      self.assertEquals('my.package', Color.definition_package())
     finally:
       del package
 
@@ -253,6 +257,8 @@ class EnumTest(test_util.TestCase):
     try:
       del sys.modules[__name__]
       self.assertEquals('Enum1', Enum1.definition_name())
+      self.assertEquals(None, Enum1.outer_definition_name())
+      self.assertEquals(None, Enum1.definition_package())
       self.assertEquals(unicode, type(Enum1.definition_name()))
     finally:
       sys.modules = original_modules
@@ -273,9 +279,18 @@ class EnumTest(test_util.TestCase):
 
     self.assertEquals('messages_test.MyMessage.NestedEnum',
                       MyMessage.NestedEnum.definition_name())
+    self.assertEquals('messages_test.MyMessage',
+                      MyMessage.NestedEnum.outer_definition_name())
+    self.assertEquals('messages_test',
+                      MyMessage.NestedEnum.definition_package())
 
     self.assertEquals('messages_test.MyMessage.NestedMessage.NestedEnum',
                       MyMessage.NestedMessage.NestedEnum.definition_name())
+    self.assertEquals(
+      'messages_test.MyMessage.NestedMessage',
+      MyMessage.NestedMessage.NestedEnum.outer_definition_name())
+    self.assertEquals('messages_test',
+                      MyMessage.NestedMessage.NestedEnum.definition_package())
 
   def testMessageDefinition(self):
     """Test that enumeration knows its enclosing message definition."""
@@ -1399,7 +1414,12 @@ class MessageTest(test_util.TestCase):
       pass
 
     self.assertEquals('messages_test.MyMessage', MyMessage.definition_name())
+    self.assertEquals('messages_test', MyMessage.outer_definition_name())
+    self.assertEquals('messages_test', MyMessage.definition_package())
+
     self.assertEquals(unicode, type(MyMessage.definition_name()))
+    self.assertEquals(unicode, type(MyMessage.outer_definition_name()))
+    self.assertEquals(unicode, type(MyMessage.definition_package()))
 
   def testDefinitionName_OverrideModule(self):
     """Test message module is overriden by module package name."""
@@ -1411,7 +1431,12 @@ class MessageTest(test_util.TestCase):
 
     try:
       self.assertEquals('my.package.MyMessage', MyMessage.definition_name())
+      self.assertEquals('my.package', MyMessage.outer_definition_name())
+      self.assertEquals('my.package', MyMessage.definition_package())
+
       self.assertEquals(unicode, type(MyMessage.definition_name()))
+      self.assertEquals(unicode, type(MyMessage.outer_definition_name()))
+      self.assertEquals(unicode, type(MyMessage.definition_package()))
     finally:
       del package
 
@@ -1425,6 +1450,9 @@ class MessageTest(test_util.TestCase):
     try:
       del sys.modules[__name__]
       self.assertEquals('MyMessage', MyMessage.definition_name())
+      self.assertEquals(None, MyMessage.outer_definition_name())
+      self.assertEquals(None, MyMessage.definition_package())
+
       self.assertEquals(unicode, type(MyMessage.definition_name()))
     finally:
       sys.modules = original_modules
@@ -1441,8 +1469,19 @@ class MessageTest(test_util.TestCase):
 
     self.assertEquals('messages_test.MyMessage.NestedMessage',
                       MyMessage.NestedMessage.definition_name())
+    self.assertEquals('messages_test.MyMessage',
+                      MyMessage.NestedMessage.outer_definition_name())
+    self.assertEquals('messages_test',
+                      MyMessage.NestedMessage.definition_package())
+
     self.assertEquals('messages_test.MyMessage.NestedMessage.NestedMessage',
                       MyMessage.NestedMessage.NestedMessage.definition_name())
+    self.assertEquals(
+      'messages_test.MyMessage.NestedMessage',
+      MyMessage.NestedMessage.NestedMessage.outer_definition_name())
+    self.assertEquals(
+      'messages_test',
+      MyMessage.NestedMessage.NestedMessage.definition_package())
 
 
   def testMessageDefinition(self):

@@ -65,7 +65,7 @@ class TestCase(unittest.TestCase):
     except exception, err:
       match = bool(re.match(regexp, str(err)))
       self.assertTrue(match, 'Expected match %s, found %s' % (regexp,
-                                                              str(err)))
+                                                              err))
 
 
 class ModuleInterfaceTest(object):

@@ -366,6 +366,18 @@ class DescribeFileTest(test_util.TestCase):
     described.check_initialized()
     self.assertEquals(expected, described)
 
+  def testMain(self):
+    """Test using the 'package' module attribute."""
+    module = new.module('__main__')
+    module.__file__ = '/blim/blam/bloom/my_package.py'
+
+    expected = descriptor.FileDescriptor()
+    expected.package = 'my_package'
+
+    described = descriptor.describe_file(module)
+    described.check_initialized()
+    self.assertEquals(expected, described)
+
   def testMessages(self):
     """Test that messages are described."""
     module = self.LoadModule('my.package',
