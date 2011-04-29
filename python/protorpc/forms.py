@@ -50,6 +50,8 @@ class ResourceHandler(webapp.RequestHandler):
 
   __RESOURCE_MAP = {
     'forms.js': 'text/javascript',
+    'jquery-1.4.2.min.js': 'text/javascript',
+    'jquery.json-2.2.min.js': 'text/javascript',
   }
 
   def get(self, relative):
