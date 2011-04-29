@@ -75,7 +75,8 @@ def open_input_file(filename):
       fatal_error(str(err))
 
 
-def generate_file_descriptor(dest_dir, file_descriptor):
+@util.positional(1)
+def generate_file_descriptor(dest_dir, file_descriptor, force_overwrite):
   """Generate a single file descriptor to destination directory.
 
   Will generate a single Python file from a file descriptor under dest_dir.
@@ -89,6 +90,7 @@ def generate_file_descriptor(dest_dir, file_descriptor):
   Args:
     dest_dir: Directory under which to generate files.
     file_descriptor: FileDescriptor instance to generate source code from.
+    force_overwrite: If True, existing files will be overwritten.
   """
   package = file_descriptor.package
   if not package:
@@ -113,11 +115,15 @@ def generate_file_descriptor(dest_dir, file_descriptor):
     if err.errno != errno.EEXIST:
       raise
 
+  if not force_overwrite and os.path.exists(output_file_name):
+    logging.warn('Not overwriting %s with package %s',
+                 output_file_name, package)
+    return
+
   output_file = open(output_file_name, 'w')
 
   logging.info('Writing package %s to %s',
                file_descriptor.package, output_file_name)
-  # TODO(rafek): Option to prevent overwriting.
   generate_python.format_python_file(file_descriptor, output_file)
 
 
@@ -203,7 +209,8 @@ def fileset_command(options, input_filename=None):
                                      descriptor_content)
 
   for file_descriptor in file_set.files:
-    generate_file_descriptor(dest_dir, file_descriptor)
+    generate_file_descriptor(dest_dir, file_descriptor=file_descriptor,
+                             force_overwrite=options.force)
 
 
 @command('registry',
@@ -237,7 +244,8 @@ def registry_command(options,
   file_set = reg.get_file_set(names=service_names).file_set
 
   for file_descriptor in file_set.files:
-    generate_file_descriptor(dest_dir, file_descriptor)
+    generate_file_descriptor(dest_dir, file_descriptor=file_descriptor,
+                             force_overwrite=options.force)
 
 
 def make_opt_parser():
@@ -260,6 +268,11 @@ def make_opt_parser():
                     default=os.getcwd(),
                     help='Write generated files to DIR',
                     metavar='DIR')
+  parser.add_option('-f', '--force',
+                    action='store_true',
+                    dest='force',
+                    default=False,
+                    help='Force overwrite of existing files')
   return parser
 
 parser = make_opt_parser()
@@ -285,4 +298,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-
