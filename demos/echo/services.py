@@ -24,6 +24,7 @@ illustrating the forms interface.
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import logging
 import time
 
 from protorpc import messages
@@ -82,6 +83,11 @@ class EchoService(remote.Service):
   @remote.method(EchoData, EchoData)
   def echo(self, request):
     """Echo method."""
+    logging.info('\n'.join(
+      ['Received request:',
+       '  Host       = %s' % self.request_state.remote_host,
+       '  IP Address = %s' % self.request_state.remote_address,
+      ]))
     if request.want_time:
       request.time = int(time.time())
     return request
