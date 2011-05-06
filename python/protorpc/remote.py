@@ -106,6 +106,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import logging
 import os
 import sys
+from wsgiref import headers as wsgi_headers
 
 from protorpc import message_types
 from protorpc import messages
@@ -122,6 +123,7 @@ __all__ = [
     'ServerError',
     'ServiceDefinitionError',
 
+    'HttpRequestState',
     'RequestState',
     'RpcState',
     'RpcStatus',
@@ -683,7 +685,7 @@ class _ServiceClass(type):
 class RequestState(object):
   """Request state information.
 
-  Attributes:
+  Properties:
     remote_host: Remote host name where request originated.
     remote_address: IP address where request originated.
     server_host: Host of server within which service resides.
@@ -699,35 +701,116 @@ class RequestState(object):
     """Constructor.
 
     Args:
-      remote_host: Assigned to attribute.
-      remote_address: Assigned to attribute.
-      server_host: Assigned to attribute.
-      server_port: Assigned to attribute.
+      remote_host: Assigned to property.
+      remote_address: Assigned to property.
+      server_host: Assigned to property.
+      server_port: Assigned to property.
     """
-    self.remote_host = remote_host
-    self.remote_address = remote_address
-    self.server_host = server_host
-    self.server_port = server_port
+    self.__remote_host = remote_host
+    self.__remote_address = remote_address
+    self.__server_host = server_host
+    self.__server_port = server_port
+
+  @property
+  def remote_host(self):
+    return self.__remote_host
+
+  @property
+  def remote_address(self):
+    return self.__remote_address
+
+  @property
+  def server_host(self):
+    return self.__server_host
+
+  @property
+  def server_port(self):
+    return self.__server_port
+
+  def _repr_items(self):
+    for name in ['remote_host',
+                 'remote_address',
+                 'server_host',
+                 'server_port']:
+      yield name, getattr(self, name)
 
   def __repr__(self):
     """String representation of state."""
-    state = []
-    if self.remote_host:
-      state.append(('remote_host', self.remote_host))
-    if self.remote_address:
-      state.append(('remote_address', self.remote_address))
-    if self.server_host:
-      state.append(('server_host', self.server_host))
-    if self.server_port:
-      state.append(('server_port', self.server_port))
+    state = [self.__class__.__name__]
+    for name, value in self._repr_items():
+      if value:
+        state.append('%s=%r' % (name, value))
 
-    if state:
-      state_string = ' ' + ' '.join(
-          '%s=%s' % (name, value) for (name, value) in state)
-    else:
-      state_string = ''
+    return '<%s>' % (' '.join(state),)
 
-    return '<remote.RequestState%s>' % state_string
+
+class HttpRequestState(RequestState):
+  """HTTP request state information.
+
+  NOTE: Does not attempt to represent certain types of information from the
+  request such as the query string as query strings are not permitted in
+  ProtoRPC URLs unless required by the underlying message format.
+
+  Properties:
+    headers: wsgiref.headers.Headers instance of HTTP request headers.
+    http_method: HTTP method as a string.
+    service_path: Path on HTTP service where service is mounted.  This path
+      will not include the remote method name.
+  """
+
+  @util.positional(1)
+  def __init__(self, 
+               http_method=None,
+               service_path=None,
+               headers=None,
+               **kwargs):
+    """Constructor.
+
+    Args:
+      Same as RequestState, including:
+        http_method: Assigned to property.
+        service_path: Assigned to property.
+        headers: HTTP request headers.  If instance of Headers, assigned to
+          property without copying.  If dict, will convert to name value pairs
+          for use with Headers constructor.  Otherwise, passed as parameters to
+          Headers constructor.
+    """
+    super(HttpRequestState, self).__init__(**kwargs)
+
+    self.__http_method = http_method
+    self.__service_path = service_path
+    
+    # Initialize headers.
+    if isinstance(headers, dict):
+      header_list = []
+      for key, value in sorted(headers.items()):
+        if not isinstance(value, list):
+          value = [value]
+        for item in value:
+          header_list.append((key, item))
+        headers = header_list
+    self.__headers = wsgi_headers.Headers(headers or [])
+
+  @property
+  def http_method(self):
+    return self.__http_method
+
+  @property
+  def service_path(self):
+    return self.__service_path
+
+  @property
+  def headers(self):
+    return self.__headers
+
+  def _repr_items(self):
+    for item in super(HttpRequestState, self)._repr_items():
+      yield item
+
+    for name in ['http_method', 'service_path']:
+      yield name, getattr(self, name)
+
+    yield 'headers', list(self.headers.items())
 
 
 class Service(object):

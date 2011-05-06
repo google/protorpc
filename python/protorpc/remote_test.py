@@ -22,6 +22,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import sys
 import types
 import unittest
+from wsgiref import headers
 
 from protorpc import descriptor
 from protorpc import message_types
@@ -282,18 +283,20 @@ class GetRemoteMethodTest(test_util.TestCase):
 class RequestStateTest(test_util.TestCase):
   """Test request state."""
 
+  STATE_CLASS = remote.RequestState
+
   def testConstructor(self):
     """Test constructor."""
-    state = remote.RequestState(remote_host='remote-host',
-                                remote_address='remote-address',
-                                server_host='server-host',
-                                server_port=10)
+    state = self.STATE_CLASS(remote_host='remote-host',
+                             remote_address='remote-address',
+                             server_host='server-host',
+                             server_port=10)
     self.assertEquals('remote-host', state.remote_host)
     self.assertEquals('remote-address', state.remote_address)
     self.assertEquals('server-host', state.server_host)
     self.assertEquals(10, state.server_port)
 
-    state = remote.RequestState()
+    state = self.STATE_CLASS()
     self.assertEquals(None, state.remote_host)
     self.assertEquals(None, state.remote_address)
     self.assertEquals(None, state.server_host)
@@ -302,32 +305,81 @@ class RequestStateTest(test_util.TestCase):
   def testConstructorError(self):
     """Test unexpected keyword argument."""
     self.assertRaises(TypeError,
-                      remote.RequestState,
+                      self.STATE_CLASS,
                       x=10)
 
   def testRepr(self):
     """Test string representation."""
-    self.assertEquals('<remote.RequestState>', repr(remote.RequestState()))
-    self.assertEquals('<remote.RequestState remote_host=abc>',
-                      repr(remote.RequestState(remote_host='abc')))
-    self.assertEquals('<remote.RequestState remote_host=abc '
-                      'remote_address=def>',
-                      repr(remote.RequestState(remote_host='abc',
+    self.assertEquals('<%s>' % self.STATE_CLASS.__name__,
+                      repr(self.STATE_CLASS()))
+    self.assertEquals("<%s remote_host='abc'>" % self.STATE_CLASS.__name__,
+                      repr(self.STATE_CLASS(remote_host='abc')))
+    self.assertEquals("<%s remote_host='abc' "
+                      "remote_address='def'>" % self.STATE_CLASS.__name__,
+                      repr(self.STATE_CLASS(remote_host='abc',
                                                remote_address='def')))
-    self.assertEquals('<remote.RequestState remote_host=abc '
-                      'remote_address=def '
-                      'server_host=ghi>',
-                      repr(remote.RequestState(remote_host='abc',
-                                               remote_address='def',
-                                               server_host='ghi')))
-    self.assertEquals('<remote.RequestState remote_host=abc '
-                      'remote_address=def '
-                      'server_host=ghi '
-                      'server_port=102>',
-                      repr(remote.RequestState(remote_host='abc',
-                                               remote_address='def',
-                                               server_host='ghi',
-                                               server_port=102)))
+    self.assertEquals("<%s remote_host='abc' "
+                      "remote_address='def' "
+                      "server_host='ghi'>" % self.STATE_CLASS.__name__,
+                      repr(self.STATE_CLASS(remote_host='abc',
+                                            remote_address='def',
+                                            server_host='ghi')))
+    self.assertEquals("<%s remote_host='abc' "
+                      "remote_address='def' "
+                      "server_host='ghi' "
+                      'server_port=102>' % self.STATE_CLASS.__name__,
+                      repr(self.STATE_CLASS(remote_host='abc',
+                                            remote_address='def',
+                                            server_host='ghi',
+                                            server_port=102)))
+
+
+class HttpRequestStateTest(RequestStateTest):
+
+  STATE_CLASS = remote.HttpRequestState
+
+  def testHttpMethod(self):
+    state = remote.HttpRequestState(http_method='GET')
+    self.assertEquals('GET', state.http_method)
+
+  def testHttpMethod(self):
+    state = remote.HttpRequestState(service_path='/bar')
+    self.assertEquals('/bar', state.service_path)
+
+  def testHeadersList(self):
+    state = remote.HttpRequestState(
+      headers=[('a', 'b'), ('c', 'd'), ('c', 'e')])
+
+    self.assertEquals(['a', 'c', 'c'], state.headers.keys())
+    self.assertEquals(['b'], state.headers.get_all('a'))
+    self.assertEquals(['d', 'e'], state.headers.get_all('c'))
+
+  def testHeadersDict(self):
+    state = remote.HttpRequestState(headers={'a': 'b', 'c': ['d', 'e']})
+
+    self.assertEquals(['a', 'c', 'c'], sorted(state.headers.keys()))
+    self.assertEquals(['b'], state.headers.get_all('a'))
+    self.assertEquals(['d', 'e'], state.headers.get_all('c'))
+
+  def testRepr(self):
+    super(HttpRequestStateTest, self).testRepr()
+
+    self.assertEquals("<%s remote_host='abc' "
+                      "remote_address='def' "
+                      "server_host='ghi' "
+                      'server_port=102 '
+                      "http_method='POST' "
+                      "service_path='/bar' "
+                      "headers=[('a', 'b'), ('c', 'd')]>" %
+                      self.STATE_CLASS.__name__,
+                      repr(self.STATE_CLASS(remote_host='abc',
+                                            remote_address='def',
+                                            server_host='ghi',
+                                            server_port=102,
+                                            http_method='POST',
+                                            service_path='/bar',
+                                            headers={'a': 'b', 'c': 'd'},
+                                            )))
 
 
 class ServiceTest(test_util.TestCase):

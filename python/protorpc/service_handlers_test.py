@@ -26,6 +26,7 @@ import re
 import sys
 import unittest
 import urllib
+from wsgiref import headers
 
 from google.appengine.ext import webapp
 from protorpc import forms
@@ -176,28 +177,32 @@ class ServiceHandlerFactoryTest(test_util.TestCase):
     factory = service_handlers.ServiceHandlerFactory(Service)
     path, mapped_factory = factory.mapping('/my_service')
 
-    self.assertEquals(r'/my_service' + service_handlers._METHOD_PATTERN, path)
+    self.assertEquals(r'(/my_service)' + service_handlers._METHOD_PATTERN, path)
     self.assertEquals(id(factory), id(mapped_factory))
     match = re.match(path, '/my_service.my_method')
-    self.assertEquals('my_method', match.group(1))
+    self.assertEquals('/my_service', match.group(1))
+    self.assertEquals('my_method', match.group(2))
 
     path, mapped_factory = factory.mapping('/my_service/nested')
-    self.assertEquals('/my_service/nested' +
+    self.assertEquals('(/my_service/nested)' +
                       service_handlers._METHOD_PATTERN, path)
     match = re.match(path, '/my_service/nested.my_method')
-    self.assertEquals('my_method', match.group(1))
+    self.assertEquals('/my_service/nested', match.group(1))
+    self.assertEquals('my_method', match.group(2))
 
   def testRegexMapping(self):
     """Test the mapping method using a regex."""
     factory = service_handlers.ServiceHandlerFactory(Service)
     path, mapped_factory = factory.mapping('.*/my_service')
 
-    self.assertEquals(r'.*/my_service' + service_handlers._METHOD_PATTERN, path)
+    self.assertEquals(r'(.*/my_service)' + service_handlers._METHOD_PATTERN, path)
     self.assertEquals(id(factory), id(mapped_factory))
     match = re.match(path, '/whatever_preceeds/my_service.my_method')
-    self.assertEquals('my_method', match.group(1))
+    self.assertEquals('/whatever_preceeds/my_service', match.group(1))
+    self.assertEquals('my_method', match.group(2))
     match = re.match(path, '/something_else/my_service.my_other_method')
-    self.assertEquals('my_other_method', match.group(1))
+    self.assertEquals('/something_else/my_service', match.group(1))
+    self.assertEquals('my_other_method', match.group(2))
 
   def testMapping_BadPath(self):
     """Test bad parameterse to the mapping method."""
@@ -306,7 +311,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.mox.ReplayAll()
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('200', 'OK', '1 a VAL1')
 
@@ -330,7 +335,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.mox.ReplayAll()
 
-    self.handler.handle('GET', 'method1')
+    self.handler.handle('GET', '/my_service', 'method1')
 
     self.VerifyResponse('200', 'OK', '1 a VAL1')
 
@@ -358,7 +363,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.request.headers['Content-Type'] = ('ApPlIcAtIoN/'
                                                     'X-wWw-FoRm-UrLeNcOdEd')
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('200', 'OK', '1 a VAL1')
 
@@ -387,7 +392,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
                                                     'x-www-form-urlencoded' +
                                                     '; a=b; c=d')
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('200', 'OK', '1 a VAL1')
 
@@ -421,7 +426,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.request.environ['HTTP_CONTENT_TYPE'] = (
       'application/x-www-form-urlencoded')
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('200', 'OK', '1 a VAL1')
 
@@ -448,15 +453,21 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
         self.handler, mox.IsA(Response1))
 
     def verify_state(state):
-      return ('remote.host.com' ==  state.remote_host and
-              '127.0.0.1' == state.remote_address and
-              'server.host.com' == state.server_host and
-              8080 == state.server_port)
+      return (
+        'remote.host.com' ==  state.remote_host and
+        '127.0.0.1' == state.remote_address and
+        'server.host.com' == state.server_host and
+        8080 == state.server_port and
+        'POST' == state.http_method and
+        '/my_service' == state.service_path and
+        'application/x-www-form-urlencoded' == state.headers['content-type'] and
+        'dev_appserver_login="test:test@example.com:True"' ==
+        state.headers['cookie'])
     ServiceWithState.initialize_request_state(mox.Func(verify_state))
 
     self.mox.ReplayAll()
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('200', 'OK', '')
 
@@ -493,7 +504,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.mox.ReplayAll()
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('200', 'OK', '')
 
@@ -503,7 +514,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     """Test what happens when no RPCMapper matches.."""
     self.mox.ReplayAll()
 
-    self.handler.handle('UNKNOWN', 'does_not_matter')
+    self.handler.handle('UNKNOWN', '/my_service', 'does_not_matter')
 
     self.VerifyResponse('400', 'Unrecognized RPC format.', '')
 
@@ -514,7 +525,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.mox.ReplayAll()
 
     self.handler.request.headers['Content-Type'] = 'image/png'
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('400', 'Unrecognized RPC format.', '')
 
@@ -525,7 +536,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.mox.ReplayAll()
 
     del self.handler.request.headers['Content-Type']
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('/my_service', 'POST', 'method1')
 
     self.VerifyResponse('400', 'Unrecognized RPC format.', '')
 
@@ -535,7 +546,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     """When service method not found."""
     self.mox.ReplayAll()
 
-    self.handler.handle('POST', 'no_such_method')
+    self.handler.handle('POST', '/my_service', 'no_such_method')
 
     self.VerifyResponse('400', 'Unrecognized RPC method: no_such_method', '')
 
@@ -545,7 +556,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     """When service method exists but is not remote."""
     self.mox.ReplayAll()
 
-    self.handler.handle('POST', 'not_remote')
+    self.handler.handle('POST', '/my_service', 'not_remote')
 
     self.VerifyResponse('400', 'Unrecognized RPC method: not_remote', '')
 
@@ -560,7 +571,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.mox.ReplayAll()
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('400', 'Invalid RPC request.', '')
 
@@ -575,7 +586,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.mox.ReplayAll()
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('400', 'Invalid RPC request.', '')
 
@@ -592,7 +603,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.mox.ReplayAll()
 
-    self.handler.handle('POST', 'method1')
+    self.handler.handle('POST', '/my_service', 'method1')
 
     self.VerifyResponse('500', 'Invalid RPC response.', '')
 
@@ -601,22 +612,26 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
   def testGet(self):
     """Test that GET goes to 'handle' properly."""
     self.handler.handle = self.mox.CreateMockAnything()
-    self.handler.handle('GET', 'alternate_method')
+    self.handler.handle('GET', '/my_service', 'method1')
+    self.handler.handle('GET', '/my_other_service', 'method2')
 
     self.mox.ReplayAll()
 
-    self.handler.get('alternate_method')
+    self.handler.get('/my_service', 'method1')
+    self.handler.get('/my_other_service', 'method2')
 
     self.mox.VerifyAll()
 
   def testPost(self):
     """Test that POST goes to 'handle' properly."""
     self.handler.handle = self.mox.CreateMockAnything()
-    self.handler.handle('POST', 'alternate_method')
+    self.handler.handle('POST', '/my_service', 'method1')
+    self.handler.handle('POST', '/my_other_service', 'method2')
 
     self.mox.ReplayAll()
 
-    self.handler.post('alternate_method')
+    self.handler.post('/my_service', 'method1')
+    self.handler.post('/my_other_service', 'method2')
 
     self.mox.VerifyAll()
 
@@ -860,7 +875,7 @@ class ProtocolMapperTestBase(object):
     self.Reinitialize(input=body,
                       content_type=self.content_type)
     self.factory.add_request_mapper(self.mapper())
-    self.service_handler.handle('POST', 'method1')
+    self.service_handler.handle('POST', '/my_service', 'method1')
     VerifyResponse(self,
                    self.service_handler.response,
                    '200',
@@ -978,7 +993,8 @@ class ServiceMappingTest(test_util.TestCase):
       mapped_services = mapping[2:-1]
       self.CheckFormMappings(form_mapping, registry_path=registry_path)
 
-      self.assertEquals(registry_path + service_handlers._METHOD_PATTERN,
+      self.assertEquals(r'(%s)%s' % (registry_path,
+                                     service_handlers._METHOD_PATTERN),
                         mapped_registry_path)
       self.assertEquals(registry.RegistryService,
                         mapped_registry_factory.service_factory.service_class)
@@ -990,12 +1006,13 @@ class ServiceMappingTest(test_util.TestCase):
           expected_registry[path] = factory
         else:
           expected_registry[path] = factory.service_class
-      self.assertEquals(expected_registry, mapped_registry_factory().service.registry)
+      self.assertEquals(expected_registry,
+                        mapped_registry_factory().service.registry)
 
     # Verify that services are mapped to URL.
     self.assertEquals(len(services), len(mapped_services))
     for path, service in dict(services).iteritems():
-      mapped_path = path + service_handlers._METHOD_PATTERN
+      mapped_path = r'(%s)%s' %  (path, service_handlers._METHOD_PATTERN)
       mapped_factory = dict(mapped_services)[mapped_path]
       self.assertEquals(service, mapped_factory.service_factory)
   
@@ -1036,7 +1053,7 @@ class ServiceMappingTest(test_util.TestCase):
     path, factory = mapped_services[0]
 
     self.assertEquals(
-      '/test_package/MyService' + service_handlers._METHOD_PATTERN,
+      r'(/test_package/MyService)' + service_handlers._METHOD_PATTERN,
       path)
     self.assertEquals(MyService, factory.service_factory)
 
@@ -1048,7 +1065,7 @@ class ServiceMappingTest(test_util.TestCase):
     path, factory = mapped_services[0]
 
     self.assertEquals(
-      '/test_package/MyService' + service_handlers._METHOD_PATTERN,
+      r'(/test_package/MyService)' + service_handlers._METHOD_PATTERN,
       path)
     self.assertEquals(MyService, factory.service_factory.service_class)
 

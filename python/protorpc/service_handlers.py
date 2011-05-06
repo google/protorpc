@@ -352,7 +352,7 @@ class ServiceHandlerFactory(object):
     """
     self.__check_path(path)
 
-    service_url_pattern = path + _METHOD_PATTERN
+    service_url_pattern = r'(%s)%s' % (path, _METHOD_PATTERN)
 
     return service_url_pattern, self
 
@@ -410,29 +410,32 @@ class ServiceHandler(webapp.RequestHandler):
     Args:
       factory: Instance of ServiceFactory used for constructing new service
         instances used for handling requests.
+      service: Service instance used for handling RPC.
     """
     self.__factory = factory
-    self.service = service
+    self.__service = service
 
-  def get(self, remote_method):
+  @property
+  def service(self):
+    return self.__service
+
+  def get(self, service_path, remote_method):
     """Handler method for GET requests.
 
-    Delegates to handle.  Sets new class attributes:
-
     Args:
-      remote_method: Sub-path after service mapping has been matched.
+      service_path: Service path derived from request URL.
+      remote_method: Sub-path after service path has been matched.
     """
-    self.handle('GET', remote_method)
+    self.handle('GET', service_path, remote_method)
 
-  def post(self, remote_method):
+  def post(self, service_path, remote_method):
     """Handler method for POST requests.
 
-    Delegates to handle.  Sets new class attributes:
-
     Args:
-      remote_method: Sub-path after service mapping has been matched.
+      service_path: Service path derived from request URL.
+      remote_method: Sub-path after service path has been matched.
     """
-    self.handle('POST', remote_method)
+    self.handle('POST', service_path, remote_method)
 
   def redirect(self, uri, permanent=False):
     """Not supported for services."""
@@ -457,7 +460,7 @@ class ServiceHandler(webapp.RequestHandler):
                 # Must have remote method name.
                 remote_method)
 
-  def handle(self, http_method, remote_method):
+  def handle(self, http_method, service_path, remote_method):
     """Handle a service request.
 
     The handle method will handle either a GET or POST response.
@@ -467,6 +470,11 @@ class ServiceHandler(webapp.RequestHandler):
     If the protocol is not recognized, the request does not provide a correct
     request for that protocol or the service object does not support the
     requested RPC method, will return error code 400 in the response.
+
+    Args:
+      http_method: HTTP method of request.
+      service_path: Service path derived from request URL.
+      remote_method: Sub-path after service path has been matched.
     """
     # Provide server state to the service.  If the service object does not have
     # an "initialize_request_state" method, will not attempt to assign state.
@@ -478,11 +486,15 @@ class ServiceHandler(webapp.RequestHandler):
       server_port = self.request.environ.get('SERVER_PORT', None)
       if server_port:
         server_port = int(server_port)
-      request_state = remote.RequestState(
+      
+      request_state = remote.HttpRequestState(
           remote_host=self.request.environ.get('REMOTE_HOST', None),
           remote_address=self.request.environ.get('REMOTE_ADDR', None),
           server_host=self.request.environ.get('SERVER_HOST', None),
-          server_port=server_port)
+          server_port=server_port,
+          http_method=http_method,
+          service_path=service_path,
+          headers=[(k, self.request.headers[k]) for k in self.request.headers])
       state_initializer(request_state)
 
     # Search for mapper to mediate request.
