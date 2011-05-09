@@ -275,7 +275,7 @@ class ServiceApp(object):
     self.__service_class = service_class
     self.__service_path_regex = re.compile('(%s)%s' % (service_path,
                                                        _METHOD_PATTERN))
-    self.__protocols = protocols or Protocols()
+    self.__protocols = protocols
 
     self.__protocol_names = {}
     self.__content_types = {}
@@ -299,6 +299,7 @@ class ServiceApp(object):
 
   def run_application(self, environ, start_response):
     """Run the WSGI application."""
+    protocols = self.__protocols or environ['protorpc.protocols']
 
     def http_error(status):
       """Helper function that returns an error to client."""
@@ -306,7 +307,7 @@ class ServiceApp(object):
       content_type = environ.get('CONTENT_TYPE', None)
       if content_type is not None:
         try:
-          self.__protocols.lookup_by_content_type(content_type)
+          protocols.lookup_by_content_type(content_type)
         except KeyError:
           content_type = None
       if content_type is None:
@@ -328,7 +329,7 @@ class ServiceApp(object):
 
     # Check HTTP method.
     # TODO(rafek): Allow for other methods.
-    http_method = environ['HTTP_METHOD']
+    http_method = environ['REQUEST_METHOD']
     if http_method != 'POST':
       http_error('404 HTTP method %s not supported' % http_method)
       return
@@ -353,7 +354,7 @@ class ServiceApp(object):
       return
 
     try:
-      protocol_config = self.__protocols.lookup_by_content_type(content_type)
+      protocol_config = protocols.lookup_by_content_type(content_type)
     except KeyError:
       http_error('400 Unrecognized content-type %s for '
                  'ProtoRPC request' % content_type)
