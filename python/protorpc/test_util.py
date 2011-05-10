@@ -30,6 +30,7 @@ conform.
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import re
+import socket
 import types
 import unittest
 
@@ -533,3 +534,19 @@ def do_with(context, function, *args, **kwargs):
     context.__exit__(*sys.exc_info())
   finally:
     context.__exit__(None, None, None)
+
+
+def pick_unused_port():
+  """Fine an unused port to use in tests.
+
+    Derived from Damon Kohlers example:
+
+      http://code.activestate.com/recipes/531822-pick-unused-port
+  """
+  temp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  try:
+    temp.bind(('localhost', 0))
+    port = temp.getsockname()[1]
+  finally:
+    temp.close()
+  return port

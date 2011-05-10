@@ -24,9 +24,28 @@
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cStringIO
+import threading
 import unittest
+from wsgiref import simple_server
+from wsgiref import validate
+
+from protorpc import test_util
+from protorpc import transport
+from protorpc import remote
+from protorpc import service_handlers
 
 from google.appengine.ext import webapp
+
+
+class TestService(remote.Service):
+  """Service used to do end to end tests with."""
+
+  @remote.method(test_util.OptionalMessage,
+                 test_util.OptionalMessage)
+  def optional_message(self, request):
+    if request.string_value:
+      request.string_value = '+%s' % request.string_value
+    return request
 
 
 def GetDefaultEnvironment():
@@ -78,7 +97,7 @@ def GetDefaultEnvironment():
   }
 
 
-class RequestHandlerTestBase(unittest.TestCase):
+class RequestHandlerTestBase(test_util.TestCase):
   """Base class for writing RequestHandler tests.
 
   To test a specific request handler override CreateRequestHandler.
@@ -163,3 +182,154 @@ class RequestHandlerTestBase(unittest.TestCase):
     self.response = webapp.Response()
     self.handler = self.CreateRequestHandler()
     self.handler.initialize(self.request, self.response)
+
+
+class ServerThread(threading.Thread):
+  """Thread responsible for managing wsgi server.
+
+  This server does not just attach to the socket and listen for requests.  This
+  is because the server classes in Python 2.5 or less have no way to shut them
+  down.  Instead, the thread must be notified of how many requests it will
+  receive so that it listens for each one individually.  Tests should tell how
+  many requests to listen for using the handle_request method.
+  """
+
+  def __lock(method):
+    """Decorator for methods that need to run in critical section."""
+    def wrapper(self, *args, **kwargs):
+      self.__condition.acquire()
+      try:
+        method(self, *args, **kwargs)
+      finally:
+        self.__condition.release()
+    wrapper.__name__ = method.__name__
+    return wrapper
+
+  def __init__(self, server, *args, **kwargs):
+    """Constructor.
+
+    Args:
+      server: The WSGI server that is served by this thread.
+      As per threading.Thread base class.
+
+    State:
+      __condition: Condition used to lock access to thread state.
+      __serving: Server is still expected to be serving.  When False server
+        knows to shut itself down.
+      __started: Thread has been started.  Necessary to prevent requests
+        from coming to server before the WSGI server is ready to handle them.
+      __requests: Number of requests that server should handle before waiting
+        for additional notification.
+    """
+    self.server = server
+    self.__condition = threading.Condition()
+    self.__serving = True
+    self.__started = False
+    self.__requests = 0
+
+    super(ServerThread, self).__init__(*args, **kwargs)
+
+  @__lock
+  def shutdown(self):
+    """Notify server that it must shutdown gracefully."""
+    self.__serving = False
+    self.__condition.notify()
+
+  @__lock
+  def handle_request(self, request_count=1):
+    """Notify the server that it must handle a number of incoming requests.
+
+    Args:
+      request_count: Number of requests to expect.
+    """
+    self.__requests += request_count
+    self.__condition.notify()
+
+  @__lock
+  def wait_until_running(self):
+    """Wait until the server thread is known to be running.
+
+    This method should be called immediately after the threads "start" method
+    has been called.  Without waiting it is possible for the parent thread to
+    start notifying this thread about incoming requests before it is ready to
+    receive them.
+    """
+    while not self.__started:
+      self.__condition.wait()
+
+  @__lock
+  def run(self):
+    """Handle incoming requests until shutdown."""
+    self.__started = True
+    self.__condition.notifyAll()
+    while self.__serving:
+      if self.__requests == 0:
+        self.__condition.wait()
+      else:
+        self.server.handle_request()
+        self.__requests -= 1
+
+    self.server = None
+
+
+class ServerTransportWrapper(transport.Transport):
+  """Wrapper for a real transport that notifies server thread about requests.
+
+  Since the server thread must receive notifications about requests that it must
+  handle, it is helpful to have a transport wrapper that actually does this
+  notification on each request.
+  """
+
+  def __init__(self, server_thread, transport):
+    """Constructor.
+
+    Args:
+      server_thread: Instance of ServerThread to notify upon each request.
+      transport: Actual transport that is being wrapped.
+    """
+    self.server_thread = server_thread
+    self.transport = transport
+
+  def send_rpc(self, *args, **kwargs):
+    """Send an RPC via wrapped transport, notifying server."""
+    self.server_thread.handle_request()
+    return self.transport.send_rpc(*args, **kwargs)
+
+
+class TestService(remote.Service):
+  """Service used to do end to end tests with."""
+
+  @remote.method(test_util.OptionalMessage,
+                 test_util.OptionalMessage)
+  def optional_message(self, request):
+    if request.string_value:
+      request.string_value = '+%s' % request.string_value
+    return request
+
+
+class EndToEndTestBase(test_util.TestCase):
+
+  # Sub-classes my override to create alternate configurations.
+  DEFAULT_MAPPING = service_handlers.service_mapping(
+    [('/my/service', TestService)])
+
+  def setUp(self):
+    self.port = test_util.pick_unused_port()
+    self.server, self.application = self.StartWebServer(self.port)
+    self.connection = ServerTransportWrapper(
+      self.server,
+      transport.HttpTransport('http://localhost:%d/my/service' % self.port))
+    self.stub = TestService.Stub(self.connection)
+
+  def tearDown(self):
+    self.server.shutdown()
+
+  def StartWebServer(self, port):
+    """Start web server."""
+    application = webapp.WSGIApplication(self.DEFAULT_MAPPING, True)
+    validated_application = validate.validator(application)
+    server = simple_server.make_server('localhost', port, validated_application)
+    server = ServerThread(server)
+    server.start()
+    server.wait_until_running()
+    return server, application
