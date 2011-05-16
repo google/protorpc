@@ -32,6 +32,9 @@ var LABEL = {
 };
 
 
+var objectId = 0;
+
+
 /**
  * Variants defined in protorpc/messages.py.
  */
@@ -267,8 +270,10 @@ function buildFieldForm(form, allowRepeated) {
     var controlData = $('<td>');
     if (form.field.label != LABEL.REQUIRED && allowRepeated) {
         form.enabled = false;
-      var checkbox = $('<input type="checkbox">').appendTo(controlData);
-      var disableMessage = $('<i>Do not send</i>').appendTo(inputData);
+      var checkbox_id = 'checkbox-' + objectId++;
+      $('<label for="' + checkbox_id + '">Enabled</label>').appendTo(controlData);
+      var checkbox = $('<input id="' + checkbox_id + '" type="checkbox">').appendTo(controlData);
+      var disableMessage = $('<div>').appendTo(inputData);
       checkbox.change(toggleInput(checkbox, form, disableMessage));
     } else {
       buildIndividualForm(form);
