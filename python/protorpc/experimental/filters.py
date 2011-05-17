@@ -27,9 +27,12 @@ def static_page(content='',
 
 
 HTTP_OK = static_page()
+
 HTTP_BAD_REQUEST = static_page(status=(400, 'Bad Request'))
 HTTP_UNAUTHORIZED = static_page(status=(401, 'Unauthorized'))
 HTTP_NOT_FOUND = static_page(status=(404, 'Not Found'))
+
+HTTP_INTERNAL_SERVER_ERROR = static_page((500, 'Internal Server Error'))
 
 PROTOCOLS_ENVIRON = 'protorpc.protocols'
 
@@ -79,8 +82,14 @@ def set_header(name, value, app=HTTP_OK):
   return set_environ(name, value, app=app)
 
 
-def environ_equals(name, string, **kwargs):
-  return check_header(name, lambda value: value == string, **kwargs)
+def environ_equals(name, value, **kwargs):
+  return filter_environ(
+    name, lambda environ_value: environ_value == value, **kwargs)
+
+
+def expect_environ(name, **kwargs):
+  return filter_environ(
+    name, lambda environ_value: environ_value is not None, **kwargs)
 
 
 def match_environ(name, regex, exact=True, **kwargs):
