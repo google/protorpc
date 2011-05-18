@@ -327,7 +327,7 @@ class TestService(remote.Service):
   def raise_rpc_error(self, request):
     raise remote.NetworkError('Uncaught network error')
 
-  @remote.remote(message_types.VoidMessage, test_util.NestedMessage)
+  @remote.method(message_types.VoidMessage, test_util.NestedMessage)
   def return_bad_message(self, request):
     return test_util.NestedMessage()
 
