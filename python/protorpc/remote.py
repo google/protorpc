@@ -116,6 +116,7 @@ from protorpc import util
 
 __all__ = [
     'ApplicationError',
+    'MethodNotFoundError',
     'NetworkError',
     'RequestError',
     'RpcError',
@@ -172,6 +173,7 @@ class RpcStatus(messages.Message):
     SERVER_ERROR = 3
     NETWORK_ERROR = 4
     APPLICATION_ERROR = 5
+    METHOD_NOT_FOUND_ERROR = 6
 
   state = messages.EnumField(State, 1, required=True)
   error_message = messages.StringField(2)
@@ -212,6 +214,12 @@ class RequestError(RpcError):
   STATE = RpcState.REQUEST_ERROR
 
 
+class MethodNotFoundError(RequestError):
+  """Raised when unknown method requested by RPC."""
+
+  STATE = RpcState.METHOD_NOT_FOUND_ERROR
+
+
 class NetworkError(RpcError):
   """Raised when network error occurs during RPC."""
 
@@ -242,10 +250,7 @@ class ApplicationError(RpcError):
       or unicode string.
     """
     super(ApplicationError, self).__init__(message)
-    if error_name is None:
-      self.error_name = None
-    else:
-      self.error_name = error_name
+    self.error_name = error_name
 
   def __str__(self):
     return self.args[0]
@@ -263,6 +268,7 @@ _RPC_STATE_TO_ERROR = {
   RpcState.NETWORK_ERROR: NetworkError,
   RpcState.SERVER_ERROR: ServerError,
   RpcState.APPLICATION_ERROR: ApplicationError,
+  RpcState.METHOD_NOT_FOUND_ERROR: MethodNotFoundError,
 }
 
 class _RemoteMethodInfo(object):

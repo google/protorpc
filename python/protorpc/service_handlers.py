@@ -96,6 +96,7 @@ import itertools
 import logging
 import re
 import sys
+import traceback
 import urllib
 import weakref
 
@@ -441,24 +442,30 @@ class ServiceHandler(webapp.RequestHandler):
     """Not supported for services."""
     raise NotImplementedError('Services do not currently support redirection.')
 
-  def __match_request(self, mapper, http_method, remote_method):
+  def __send_error(self,
+                   http_code,
+                   status_state,
+                   error_message,
+                   mapper,
+                   error_name=None):
+    status = remote.RpcStatus(state=status_state,
+                              error_message=error_message,
+                              error_name=error_name)
+    encoded_status = mapper.build_response(self, status)
+    self.response.headers['content-type'] = mapper.default_content_type
+
+    logging.error(error_message)
+    self.response.set_status(http_code, error_message)
+
+  def __get_content_type(self):
     content_type = self.request.headers.get('content-type', None)
     if not content_type:
       content_type = self.request.environ.get('HTTP_CONTENT_TYPE', None)
     if not content_type:
-      return False
+      return None
 
     # Lop off parameters from the end (for example content-encoding)
-    content_type = content_type.split(';', 1)[0]
-
-    return bool(http_method in mapper.http_methods and
-
-                # Must have correct content type.
-                content_type and
-                content_type.lower() in mapper.content_types and
-
-                # Must have remote method name.
-                remote_method)
+    return content_type.split(';', 1)[0].lower()
 
   def handle(self, http_method, service_path, remote_method):
     """Handle a service request.
@@ -486,7 +493,7 @@ class ServiceHandler(webapp.RequestHandler):
       server_port = self.request.environ.get('SERVER_PORT', None)
       if server_port:
         server_port = int(server_port)
-      
+
       request_state = remote.HttpRequestState(
           remote_host=self.request.environ.get('REMOTE_HOST', None),
           remote_address=self.request.environ.get('REMOTE_ADDR', None),
@@ -497,39 +504,68 @@ class ServiceHandler(webapp.RequestHandler):
           headers=[(k, self.request.headers[k]) for k in self.request.headers])
       state_initializer(request_state)
 
-    # Search for mapper to mediate request.
-    for mapper in self.__factory.all_request_mappers():
-      if self.__match_request(mapper, http_method, remote_method):
-        break
-    else:
-      message = 'Unrecognized RPC format.'
-      logging.error(message)
+    content_type = self.__get_content_type()
+    if not content_type:
+      message = 'Invalid RPC request: missing content-type'
       self.response.set_status(400, message)
       return
 
-    try:
-      try:
-        method = getattr(self.service, remote_method)
-        method_info = method.remote
-      except AttributeError, err:
-        message = 'Unrecognized RPC method: %s' % remote_method
-        logging.error(message)
-        self.response.set_status(400, message)
-        return
-
-      request = mapper.build_request(self, method_info.request_type)
-    except (RequestError, messages.DecodeError), err:
-      logging.error('Error building request: %s', err)
-      self.response.set_status(400, 'Invalid RPC request.')
+    # Search for mapper to mediate request.
+    for mapper in self.__factory.all_request_mappers():
+      if content_type in mapper.content_types:
+        break
+    else:
+      message = ('Unsupported content-type: %s' % content_type)
+      logging.error(message)
+      self.response.set_status(415, message)
       return
 
-    response = method(request)
-
     try:
+      if http_method not in mapper.http_methods:
+        message = 'Unsupported HTTP method: %s' % http_method
+        logging.error(message)
+        self.response.set_status(405, message)
+        return
+
+      try:
+        try:
+          method = getattr(self.service, remote_method)
+          method_info = method.remote
+        except AttributeError, err:
+          self.__send_error(
+          400, remote.RpcState.METHOD_NOT_FOUND_ERROR,
+            'Unrecognized RPC method: %s' % remote_method,
+            mapper)
+          return
+
+        request = mapper.build_request(self, method_info.request_type)
+      except (RequestError, messages.DecodeError), err:
+        self.__send_error(400,
+                          remote.RpcState.REQUEST_ERROR,
+                          'Error parsing ProtoRPC request (%s)' % err,
+                          mapper)
+        return
+
+      try:
+        response = method(request)
+      except remote.ApplicationError, err:
+        self.__send_error(400,
+                          remote.RpcState.APPLICATION_ERROR,
+                          err.message,
+                          mapper,
+                          err.error_name)
+        return
+
       mapper.build_response(self, response)
-    except ResponseError, err:
-      logging.error('Error building response: %s', err)
-      self.response.set_status(500, 'Invalid RPC response.')
+    except Exception, err:
+      logging.error('An unexpected error occured when handling RPC: %s',
+                    err, exc_info=1)
+      
+      self.__send_error(500,
+                        remote.RpcState.SERVER_ERROR,
+                        'Internal Server Error',
+                        mapper)
+      return
 
 
 # TODO(rafek): Support tag-id only forms.

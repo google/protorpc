@@ -127,7 +127,8 @@ def VerifyResponse(test,
                    response,
                    expected_status,
                    expected_status_message,
-                   expected_content):
+                   expected_content,
+                   expected_content_type='application/x-www-form-urlencoded'):
   def write(content):
     if expected_content == '':
       test.assertEquals('', content)
@@ -138,6 +139,9 @@ def VerifyResponse(test,
     status, message = response.split(' ', 1)
     test.assertEquals(expected_status, status)
     test.assertEquals(expected_status_message, message)
+    for name, value in headers:
+      if name.lower() == 'content-type':
+        test.assertEquals(expected_content_type, value)
     return write
 
   response.wsgi_write(start_response)
@@ -264,9 +268,11 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.rpc_mapper1 = self.mox.CreateMock(service_handlers.RPCMapper)
     self.rpc_mapper1.http_methods = set(['POST'])
     self.rpc_mapper1.content_types = set(['application/x-www-form-urlencoded'])
+    self.rpc_mapper1.default_content_type = 'application/x-www-form-urlencoded'
     self.rpc_mapper2 = self.mox.CreateMock(service_handlers.RPCMapper)
     self.rpc_mapper2.http_methods = set(['GET'])
-    self.rpc_mapper2.content_types = set(['application/x-www-form-urlencoded'])
+    self.rpc_mapper2.content_types = set(['application/json'])
+    self.rpc_mapper2.default_content_type = 'application/json'
     self.factory = service_handlers.ServiceHandlerFactory(
         self.CreateService)
     self.factory.add_request_mapper(self.rpc_mapper1)
@@ -282,15 +288,16 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
       environ['SERVER_HOST'] = self.server_host
     return environ
 
-  def VerifyResponse(self,
-                      expected_status,
-                      expected_status_message,
-                      expected_content):
+  def VerifyResponse(self, *args, **kwargs):
     VerifyResponse(self,
                    self.response,
-                   expected_status,
-                   expected_status_message,
-                   expected_content)
+                   *args, **kwargs)
+
+  def ExpectRpcError(self, mapper, state, error_message, error_name=None):
+    mapper.build_response(self.handler,
+                          remote.RpcStatus(state=state,
+                                           error_message=error_message,
+                                           error_name=error_name))
 
   def testRedirect(self):
     """Test that redirection is disabled."""
@@ -305,6 +312,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
       output = '%s %s %s' % (response.integer_field,
                              response.string_field,
                              response.enum_field)
+      handler.response.headers['content-type'] = (
+        'application/x-www-form-urlencoded')
       handler.response.out.write(output)
     self.rpc_mapper1.build_response(
         self.handler, mox.IsA(Response1)).WithSideEffects(build_response)
@@ -329,12 +338,15 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
       output = '%s %s %s' % (response.integer_field,
                              response.string_field,
                              response.enum_field)
+      handler.response.headers['content-type'] = (
+        'application/x-www-form-urlencoded')
       handler.response.out.write(output)
     self.rpc_mapper2.build_response(
         self.handler, mox.IsA(Response1)).WithSideEffects(build_response)
 
     self.mox.ReplayAll()
 
+    self.handler.request.headers['Content-Type'] = 'application/json'
     self.handler.handle('GET', '/my_service', 'method1')
 
     self.VerifyResponse('200', 'OK', '1 a VAL1')
@@ -365,7 +377,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('200', 'OK', '1 a VAL1')
+    self.VerifyResponse('200', 'OK', '1 a VAL1', 'text/html; charset=utf-8')
 
     self.mox.VerifyAll()
 
@@ -382,6 +394,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
       output = '%s %s %s' % (response.integer_field,
                              response.string_field,
                              response.enum_field)
+      handler.response.headers['content-type'] = (
+        'application/x-www-form-urlencoded')
       handler.response.out.write(output)
     self.rpc_mapper1.build_response(
         self.handler, mox.IsA(Response1)).WithSideEffects(build_response)
@@ -416,6 +430,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
       output = '%s %s %s' % (response.integer_field,
                              response.string_field,
                              response.enum_field)
+      handler.response.headers['Content-Type'] = (
+        'application/x-www-form-urlencoded')
       handler.response.out.write(output)
     self.rpc_mapper1.build_response(
         self.handler, mox.IsA(Response1)).WithSideEffects(build_response)
@@ -428,7 +444,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('200', 'OK', '1 a VAL1')
+    self.VerifyResponse('200', 'OK', '1 a VAL1',
+                        'application/x-www-form-urlencoded')
 
     self.mox.VerifyAll()
 
@@ -449,8 +466,13 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.rpc_mapper1.build_request(
         self.handler, Request1).AndReturn(Request1())
+
+    def build_response(handler, response):
+      handler.response.headers['Content-Type'] = (
+        'application/x-www-form-urlencoded')
+      handler.response.out.write('whatever')
     self.rpc_mapper1.build_response(
-        self.handler, mox.IsA(Response1))
+        self.handler, mox.IsA(Response1)).WithSideEffects(build_response)
 
     def verify_state(state):
       return (
@@ -469,7 +491,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('200', 'OK', '')
+    self.VerifyResponse('200', 'OK', 'whatever')
 
     self.mox.VerifyAll()
 
@@ -492,8 +514,13 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.rpc_mapper1.build_request(
         self.handler, Request1).AndReturn(Request1())
+
+    def build_response(handler, response):
+      handler.response.headers['Content-Type'] = (
+        'application/x-www-form-urlencoded')
+      handler.response.out.write('whatever')
     self.rpc_mapper1.build_response(
-        self.handler, mox.IsA(Response1))
+        self.handler, mox.IsA(Response1)).WithSideEffects(build_response)
 
     def verify_state(state):
       return (None is state.remote_host and
@@ -506,7 +533,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('200', 'OK', '')
+    self.VerifyResponse('200', 'OK', 'whatever')
 
     self.mox.VerifyAll()
 
@@ -516,7 +543,10 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.handler.handle('UNKNOWN', '/my_service', 'does_not_matter')
 
-    self.VerifyResponse('400', 'Unrecognized RPC format.', '')
+    self.VerifyResponse('405',
+                        "Unsupported HTTP method: UNKNOWN",
+                        '',
+                        'text/html; charset=utf-8')
 
     self.mox.VerifyAll()
 
@@ -527,7 +557,10 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.request.headers['Content-Type'] = 'image/png'
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('400', 'Unrecognized RPC format.', '')
+    self.VerifyResponse('415',
+                        'Unsupported content-type: image/png',
+                        '',
+                        'text/html; charset=utf-8')
 
     self.mox.VerifyAll()
 
@@ -538,12 +571,17 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     del self.handler.request.headers['Content-Type']
     self.handler.handle('/my_service', 'POST', 'method1')
 
-    self.VerifyResponse('400', 'Unrecognized RPC format.', '')
+    self.VerifyResponse('400', 'Invalid RPC request: missing content-type', '',
+                        'text/html; charset=utf-8')
 
     self.mox.VerifyAll()
 
   def testNoSuchMethod(self):
     """When service method not found."""
+    self.ExpectRpcError(self.rpc_mapper1,
+                        remote.RpcState.METHOD_NOT_FOUND_ERROR,
+                        'Unrecognized RPC method: no_such_method')
+
     self.mox.ReplayAll()
 
     self.handler.handle('POST', '/my_service', 'no_such_method')
@@ -554,6 +592,10 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
   def testNoSuchRemoteMethod(self):
     """When service method exists but is not remote."""
+    self.ExpectRpcError(self.rpc_mapper1,
+                        remote.RpcState.METHOD_NOT_FOUND_ERROR,
+                        'Unrecognized RPC method: not_remote')
+
     self.mox.ReplayAll()
 
     self.handler.handle('POST', '/my_service', 'not_remote')
@@ -569,11 +611,20 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.rpc_mapper1.build_request(
         self.handler, Request1).WithSideEffects(build_request)
 
+    self.ExpectRpcError(self.rpc_mapper1,
+                        remote.RpcState.REQUEST_ERROR,
+                        'Error parsing ProtoRPC request '
+                        '(This is a request error)')
+
     self.mox.ReplayAll()
 
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('400', 'Invalid RPC request.', '')
+    self.VerifyResponse('400',
+                        'Error parsing ProtoRPC request '
+                        '(This is a request error)',
+                        '')
+
 
     self.mox.VerifyAll()
 
@@ -584,11 +635,19 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.rpc_mapper1.build_request(
         self.handler, Request1).WithSideEffects(build_request)
 
+    self.ExpectRpcError(self.rpc_mapper1,
+                        remote.RpcState.REQUEST_ERROR,
+                        r'Error parsing ProtoRPC request '
+                        r'(This is a decode error)')
+
     self.mox.ReplayAll()
 
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('400', 'Invalid RPC request.', '')
+    self.VerifyResponse('400',
+                        'Error parsing ProtoRPC request '
+                        '(This is a decode error)',
+                        '')
 
     self.mox.VerifyAll()
 
@@ -601,11 +660,15 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
         self.handler, mox.IsA(Response1)).AndRaise(
         service_handlers.ResponseError)
 
+    self.ExpectRpcError(self.rpc_mapper1,
+                        remote.RpcState.SERVER_ERROR,
+                        'Internal Server Error')
+
     self.mox.ReplayAll()
 
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('500', 'Invalid RPC response.', '')
+    self.VerifyResponse('500', 'Internal Server Error', '')
 
     self.mox.VerifyAll()
 
@@ -880,7 +943,8 @@ class ProtocolMapperTestBase(object):
                    self.service_handler.response,
                    '200',
                    'OK',
-                   self.protocol.encode_message(self.response_message))
+                   self.protocol.encode_message(self.response_message),
+                   self.content_type)
 
 
 class URLEncodedRPCMapperTest(ProtocolMapperTestBase, RPCMapperTestBase):
