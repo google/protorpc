@@ -38,12 +38,17 @@
       });
 
   </script>
+  <style type="text/css">
+    .error-messages {
+        color: RED;
+    }
+  </style>
   </head>
 
   <body>
     {% block top %}Need top{% endblock %}</h1>
 
-    <div id="error-messages"></div>
+    <div class="error-messages" id="error-messages"></div>
 
     {% block body %}Need body{% endblock %}
 

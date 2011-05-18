@@ -80,19 +80,40 @@ function error(message) {
 
 
 /**
+ * Display request errors in error panel.
+ * @param {object} XMLHttpRequest object.
+ */
+function handleRequestError(response) {
+    var contentType = response.getResponseHeader('content-type');
+    if (contentType == 'application/json') {
+        var response_error = $.parseJSON(response.responseText);
+        var error_message = response_error.error_message;
+        if (error.state == 'APPLICATION_ERROR' && error.error_name) {
+            var error_message = error_message + ' (' + error.error_name + ')';
+        }
+    } else {
+        error_message = '' + response.status + ': ' + response.statusText;
+    }
+
+    error(error_message);
+}
+
+
+/**
  * Send JSON RPC to remote method.
  * @param {string} path Path of service on originating server to send request.
  * @param {string} method Name of method to invoke.
  * @param {Object} request Message to send as request.
  * @param {function} on_success Function to call upon successful request.
  */
-function sendRequest(path, method, request, on_success) {
+function sendRequest(path, method, request, onSuccess) {
   $.ajax({url: path + '.' + method,
           type: 'POST',
           contentType: 'application/json',
           data: $.toJSON(request),
           dataType: 'json',
-          success: on_success
+          success: onSuccess,
+          error: handleRequestError
          });
 }
 
