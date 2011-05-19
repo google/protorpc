@@ -16,14 +16,14 @@ from protorpc import webapp_test_util
 
 class ServiceAppTest(end2end_test.EndToEndTest):
 
-  def setUp(self):
+  '''def setUp(self):
     self.port = test_util.pick_unused_port()
     self.server, self.application = self.StartWebServer(self.port)
     self.connection = webapp_test_util.ServerTransportWrapper(
       self.server,
       transport.HttpTransport('http://localhost:%d/my/service' % self.port,
                               protocol=protojson))
-    self.stub = webapp_test_util.TestService.Stub(self.connection)
+    self.stub = webapp_test_util.TestService.Stub(self.connection)'''
 
   def tearDown(self):
     self.server.shutdown()

@@ -60,7 +60,8 @@ class FiltersTestBase(test_util.TestCase):
                     expected_content_type=None):
     expected_headers = expected_headers or {}
     expected_headers['content-length'] = str(len(expected_content))
-    expected_headers['content-type'] = expected_content_type or 'text/html'
+    expected_headers['content-type'] = (
+      expected_content_type or 'text/html; charset=utf-8')
     self.assertEquals(code, response.code)
     self.assertEquals(expected_content, response.read())
     response_headers = dict(response.info().items())
@@ -75,7 +76,8 @@ class FiltersTestBase(test_util.TestCase):
     except urllib2.HTTPError, err:
       self.assertEquals(expected_code, err.code)
       expected_headers = expected_headers or {}
-      expected_headers['content-type'] = expected_content_type or 'text/html'
+      expected_headers['content-type'] = (
+        expected_content_type or 'text/html; charset=utf-8')
       expected_headers['content-length'] = str(len(expected_content))
       self.CheckHeaders(expected_headers,
                         dict(err.hdrs.items()))

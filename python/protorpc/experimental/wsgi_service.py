@@ -23,6 +23,7 @@ and move around unexpectedly.  Use at your own risk.
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import cgi
 import logging
 
 from wsgiref import headers as wsgi_headers
@@ -38,6 +39,14 @@ __all__ = [
 ]
 
 _METHOD_PATTERN = r'(?:\.([^?]*))?'
+
+
+def protorpc_response(message, protocol, *args, **kwargs):
+  encoded_message = protocol.encode_message(message)
+  return filters.static_page(encoded_message,
+                             content_type=protocol.CONTENT_TYPE,
+                             *args,
+                             **kwargs)
 
 
 @util.positional(1)
@@ -67,12 +76,14 @@ def service_app(service_factory,
       if not content_type:
         return filters.HTTP_BAD_REQUEST(environ, start_response)
 
+    content_type, _ = cgi.parse_header(content_type)
+
     local_protocols = protocols or environ.get(filters.PROTOCOLS_ENVIRON)
 
     try:
       config = local_protocols.lookup_by_content_type(content_type)
     except KeyError:
-      return filters.HTTP_BAD_REQUEST(environ, start_response)
+      return filters.HTTP_UNSUPPORTED_MEDIA_TYPE(environ, start_response)
 
     # New service instance.
     service_instance = service_class()
@@ -99,35 +110,61 @@ def service_app(service_factory,
     try:
       method = getattr(service_instance, method_name)
     except AttributeError:
-      return HTTP_BAD_REQUEST(environ, start_response)
+      response_app = protorpc_response(
+        remote.RpcStatus(
+          state=remote.RpcState.METHOD_NOT_FOUND_ERROR,
+          error_message='Unrecognized RPC method: %s' % method_name),
+          protocol=config.protocol,
+        status=(400, 'Bad Request'))
+      return response_app(environ, start_response)
 
     try:
       remote_info = getattr(method, 'remote')
     except AttributeError:
-      return HTTP_BAD_REQUEST(environ, start_response)
+      return filters.HTTP_BAD_REQUEST(environ, start_response)
 
     request_type = remote_info.request_type
 
     # Parse request.
-    logging.error(environ)
     body = environ['wsgi.input']
     content = body.read(int(environ['CONTENT_LENGTH']))
     try:
       request = config.protocol.decode_message(request_type, content)
-    except messages.DecodeError:
-      return HTTP_BAD_REQUEST(environ, start_response)
+    except (messages.DecodeError, messages.ValidationError), err:
+      response_app = protorpc_response(
+        remote.RpcStatus(
+          state=remote.RpcState.REQUEST_ERROR,
+          error_message=('Error parsing ProtoRPC request '
+                         '(Unable to parse request content: %s)' % err)),
+        protocol=config.protocol,
+        status=(400, 'Bad Request'))
+      return response_app(environ, start_response)
 
     # Execute method.
     try:
-      response = method(request)
-    except:
-      return HTTP_INTERNAL_REQUEST_ERROR(environ, start_response)
+      try:
+        response = method(request)
+      except remote.ApplicationError, err:
+        response_app = protorpc_response(
+          remote.RpcStatus(
+            state=remote.RpcState.APPLICATION_ERROR,
+            error_message=err.message,
+            error_name=err.error_name),
+          protocol=config.protocol,
+          status=(400, 'Bad Request'))
+        return response_app(environ, start_response)
 
-    # Build and send response.
-    try:
+      # Build and send response.
+
       encoded_response = config.protocol.encode_message(response)
-    except messages.ValidationError, err:
-      return HTTP_INTERNAL_REQUEST_ERROR(environ, start_response)
+    except Exception, err:
+      response_app = protorpc_response(
+        remote.RpcStatus(
+          state=remote.RpcState.SERVER_ERROR,
+          error_message='Internal Server Error'),
+        protocol=config.protocol,
+        status=(500, 'Internal Server Error'))
+      return response_app(environ, start_response)
 
     start_response('200 OK', [('content-type', content_type),
                               ('content-length', str(len(encoded_response)))])
@@ -137,7 +174,8 @@ def service_app(service_factory,
 
   # Must be POST.
   application = filters.environ_equals('REQUEST_METHOD', 'POST',
-                                       app=application)
+                                       app=application,
+                                       on_error=filters.HTTP_METHOD_NOT_ALLOWED)
 
   # Must match request path.  Parses out actual service-path.
   application = filters.match_path(r'(%s)%s' % (service_path, _METHOD_PATTERN),

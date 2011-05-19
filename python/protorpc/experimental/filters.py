@@ -7,7 +7,7 @@ from protorpc import util
 @util.positional(1)
 def static_page(content='',
                 status='200 OK',
-                content_type='text/html',
+                content_type='text/html; charset=utf-8',
                 headers=None):
   if not isinstance(status, basestring):
     status = '%d %s' % tuple(status)
@@ -31,8 +31,10 @@ HTTP_OK = static_page()
 HTTP_BAD_REQUEST = static_page(status=(400, 'Bad Request'))
 HTTP_UNAUTHORIZED = static_page(status=(401, 'Unauthorized'))
 HTTP_NOT_FOUND = static_page(status=(404, 'Not Found'))
+HTTP_METHOD_NOT_ALLOWED = static_page(status=(405, 'Method Not Allowed'))
+HTTP_UNSUPPORTED_MEDIA_TYPE = static_page(status=(415, 'Unsupported Media Type'))
 
-HTTP_INTERNAL_SERVER_ERROR = static_page((500, 'Internal Server Error'))
+HTTP_INTERNAL_SERVER_ERROR = static_page(status=(500, 'Internal Server Error'))
 
 PROTOCOLS_ENVIRON = 'protorpc.protocols'
 
