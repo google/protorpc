@@ -38,6 +38,16 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
     self.assertEquals(test_util.OptionalMessage(string_value='+blar'),
                       self.stub.optional_message(string_value='blar'))
 
+  def testSimpleRequestComplexContentType(self):
+    response = self.DoRawRequest(
+      'optional_message',
+      content='{"string_value": "blar"}',
+      content_type='application/json; charset=utf-8')
+    headers = response.headers
+    self.assertEquals(200, response.code)
+    self.assertEquals('{"string_value": "+blar"}', response.read())
+    self.assertEquals('application/json', headers['content-type'])
+
   def testMissingContentType(self):
     code, content, headers = self.RawRequestError(
       'optional_message',
@@ -45,7 +55,7 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
       content_type='')
     self.assertEquals(400, code)
     self.assertEquals('', content)
-    self.assertEquals(headers['content-type'], 'text/html; charset=utf-8')
+    self.assertEquals('text/html; charset=utf-8', headers['content-type'])
 
   def testUnsupportedContentType(self):
     code, content, headers = self.RawRequestError(
