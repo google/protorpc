@@ -35,7 +35,7 @@ from protorpc import protojson
 from protorpc import remote
 from protorpc import test_util
 from protorpc import transport
-from protorpc import service_handlers
+from protorpc.webapp import service_handlers
 
 from google.appengine.ext import webapp
 
@@ -180,7 +180,7 @@ class RequestHandlerTestBase(test_util.TestCase):
     """
     environment = self.GetEnvironment()
     environment.update(change_environ or {})
-    
+
     self.request = webapp.Request(environment)
     self.response = webapp.Response()
     self.handler = self.CreateRequestHandler()

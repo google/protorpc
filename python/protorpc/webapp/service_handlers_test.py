@@ -29,7 +29,6 @@ import urllib
 from wsgiref import headers
 
 from google.appengine.ext import webapp
-from protorpc import forms
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import protojson
@@ -37,9 +36,10 @@ from protorpc import protourlencode
 from protorpc import message_types
 from protorpc import registry
 from protorpc import remote
-from protorpc import service_handlers
 from protorpc import test_util
 from protorpc import webapp_test_util
+from protorpc.webapp import forms
+from protorpc.webapp import service_handlers
 
 import mox
 

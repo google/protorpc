@@ -28,8 +28,8 @@ import logging
 import time
 
 from protorpc import messages
-from protorpc import service_handlers
 from protorpc import remote
+from protorpc.webapp import service_handlers
 
 package = 'protorpc.echo'
 
@@ -79,7 +79,7 @@ class EchoData(messages.Message):
 
 class EchoService(remote.Service):
   """Echo service echos response to client."""
-    
+
   @remote.method(EchoData, EchoData)
   def echo(self, request):
     """Echo method."""

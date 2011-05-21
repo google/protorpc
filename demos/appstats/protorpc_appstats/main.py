@@ -21,7 +21,7 @@ import re
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
-from protorpc import service_handlers
+from protorpc.webapp import service_handlers
 
 import protorpc_appstats
 

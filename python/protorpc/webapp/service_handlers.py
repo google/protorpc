@@ -102,7 +102,6 @@ import weakref
 
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util as webapp_util
-from protorpc import forms
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import protojson
@@ -110,6 +109,7 @@ from protorpc import protourlencode
 from protorpc import registry
 from protorpc import remote
 from protorpc import util
+from protorpc.webapp import forms
 
 __all__ = [
     'Error',

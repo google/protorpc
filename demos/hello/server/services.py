@@ -16,8 +16,8 @@
 #
 
 from protorpc import messages
-from protorpc import service_handlers
 from protorpc import remote
+from protorpc.webapp import service_handlers
 
 
 class HelloRequest(messages.Message):
@@ -31,7 +31,7 @@ class HelloResponse(messages.Message):
 
 
 class HelloService(remote.Service):
-    
+
   @remote.method(HelloRequest, HelloResponse)
   def hello(self, request):
     return HelloResponse(hello='Hello there, %s!' % request.my_name)
