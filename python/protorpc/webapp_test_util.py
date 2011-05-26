@@ -349,9 +349,8 @@ class EndToEndTestBase(test_util.TestCase):
   def setUp(self):
     self.port = test_util.pick_unused_port()
     self.server, self.application = self.StartWebServer(self.port)
-    self.connection = ServerTransportWrapper(
-      self.server,
-      transport.HttpTransport(self.service_url, protocol=protojson))
+    self.connection = ServerTransportWrapper(self.server,
+                                             self.CreateTransport())
     self.stub = TestService.Stub(self.connection)
     self.alternate_stub = AlternateService.Stub(self.connection)
 
@@ -362,9 +361,17 @@ class EndToEndTestBase(test_util.TestCase):
   def service_url(self):
     return 'http://localhost:%d/my/service' % self.port
 
+  def CreateWSGIApplication(self):
+    """Create WSGI application used on the server side for testing."""
+    return webapp.WSGIApplication(self.DEFAULT_MAPPING, True)
+
+  def CreateTransport(self):
+    """Create a new transportation object."""
+    return transport.HttpTransport(self.service_url, protocol=protojson)
+
   def StartWebServer(self, port):
     """Start web server."""
-    application = webapp.WSGIApplication(self.DEFAULT_MAPPING, True)
+    application = self.CreateWSGIApplication()
     validated_application = validate.validator(application)
     server = simple_server.make_server('localhost', port, validated_application)
     server = ServerThread(server)
