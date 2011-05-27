@@ -304,11 +304,18 @@ class ServerTransportWrapper(transport.Transport):
 class TestService(remote.Service):
   """Service used to do end to end tests with."""
 
+  def __init__(self, message='uninitialized'):
+    self.__message = message
+
   @remote.method(test_util.OptionalMessage, test_util.OptionalMessage)
   def optional_message(self, request):
     if request.string_value:
       request.string_value = '+%s' % request.string_value
     return request
+
+  @remote.method(message_types.VoidMessage, test_util.OptionalMessage)
+  def init_parameter(self, request):
+    return test_util.OptionalMessage(string_value=self.__message)
 
   @remote.method(test_util.NestedMessage, test_util.NestedMessage)
   def nested_message(self, request):
@@ -344,15 +351,25 @@ class EndToEndTestBase(test_util.TestCase):
 
   # Sub-classes my override to create alternate configurations.
   DEFAULT_MAPPING = service_handlers.service_mapping(
-    [('/my/service', TestService)])
+    [('/my/service', TestService),
+     ('/my/other_service', TestService.new_factory('initialized')),
+    ])
 
   def setUp(self):
     self.port = test_util.pick_unused_port()
     self.server, self.application = self.StartWebServer(self.port)
-    self.connection = ServerTransportWrapper(self.server,
-                                             self.CreateTransport())
+
+    self.connection = ServerTransportWrapper(
+      self.server,
+      self.CreateTransport(self.service_url))
     self.stub = TestService.Stub(self.connection)
-    self.alternate_stub = AlternateService.Stub(self.connection)
+
+    self.other_connection = ServerTransportWrapper(
+      self.server,
+      self.CreateTransport(self.other_service_url))
+    self.other_stub = TestService.Stub(self.other_connection)
+
+    self.mismatched_stub = AlternateService.Stub(self.connection)
 
   def tearDown(self):
     self.server.shutdown()
@@ -361,13 +378,17 @@ class EndToEndTestBase(test_util.TestCase):
   def service_url(self):
     return 'http://localhost:%d/my/service' % self.port
 
+  @property
+  def other_service_url(self):
+    return 'http://localhost:%d/my/other_service' % self.port
+
   def CreateWSGIApplication(self):
     """Create WSGI application used on the server side for testing."""
     return webapp.WSGIApplication(self.DEFAULT_MAPPING, True)
 
-  def CreateTransport(self):
+  def CreateTransport(self, service_url):
     """Create a new transportation object."""
-    return transport.HttpTransport(self.service_url, protocol=protojson)
+    return transport.HttpTransport(service_url, protocol=protojson)
 
   def StartWebServer(self, port):
     """Start web server."""

@@ -141,7 +141,7 @@ def service_app(service_factory,
     request_protocol = get_environ(REQUEST_PROTOCOL_ENVIRON)
 
     # New service instance.
-    service_instance = service_factory()
+    service_instance = service_class()
     try:
       initialize_request_state = service_instance.initialize_request_state
     except AttributeError:

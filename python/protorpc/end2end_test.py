@@ -48,6 +48,12 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
     self.assertEquals('{"string_value": "+blar"}', response.read())
     self.assertEquals('application/json', headers['content-type'])
 
+  def testInitParameter(self):
+    self.assertEquals(test_util.OptionalMessage(string_value='uninitialized'),
+                      self.stub.init_parameter())
+    self.assertEquals(test_util.OptionalMessage(string_value='initialized'),
+                      self.other_stub.init_parameter())
+
   def testMissingContentType(self):
     code, content, headers = self.RawRequestError(
       'optional_message',
@@ -76,7 +82,7 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
   def testMethodNotFound(self):
     self.assertRaisesWithRegexpMatch(remote.MethodNotFoundError,
                                      'Unrecognized RPC method: does_not_exist',
-                                     self.alternate_stub.does_not_exist)
+                                     self.mismatched_stub.does_not_exist)
 
   def testBadMessageError(self):
     code, content, headers = self.RawRequestError('nested_message',
