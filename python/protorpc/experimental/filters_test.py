@@ -251,18 +251,6 @@ class SetEnvironTest(FiltersTestBase):
     self.CheckResponse(response, expected_content='blar')
 
 
-class UseProtocolsTest(FiltersTestBase):
-
-  def testUseProtocols(self):
-    protocols = object()
-    def has_protocols(environ, start_response):
-      content = str(environ[filters.PROTOCOLS_ENVIRON] is protocols)
-      return filters.static_page(content)(environ, start_response)
-    self.StartWebServer(filters.use_protocols(protocols, app=has_protocols))
-    response = self.SendRequest('/')
-    self.CheckResponse(response, expected_content='True')
-
-
 class SetHeaderTest(FiltersTestBase):
 
   def testSetHeader(self):

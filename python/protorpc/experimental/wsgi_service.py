@@ -47,8 +47,31 @@ RESPONSE_PROTOCOL_ENVIRON = 'protorpc.response.protocol'
 SERVICE_PATH_ENVIRON = 'protorpc.service.path'
 METHOD_NAME_ENVIRON = 'protorpc.method.name'
 
+WSGI_TRACE_ENVIRON = 'protorpc.wsgi.trace'
+
+def wsgi_trace(description):
+  def wsgi_trace_decorator(app):
+    def wsgi_trace_wrapper(environ, start_response):
+      outer_trace = False
+      tracer = environ.get(WSGI_TRACE_ENVIRON)
+      if tracer is None:
+        tracer = []
+        environ[WSGI_TRACE_ENVIRON] = tracer
+        outer_trace = True
+      try:
+        return app(environ, start_response)
+      finally:
+        tracer.append(description)
+        if outer_trace:
+          del environ[WSGI_TRACE_ENVIRON]
+          trace_string = '\n'.join('  %s' % trace for trace in tracer)
+          logging.debug('WSGI Trace:\n%s', trace_string)
+    return wsgi_trace_wrapper
+  return wsgi_trace_decorator
+
 
 def use_protocols(protocols, app=filters.HTTP_OK):
+  @wsgi_trace('Use protocols %r' % (protocols.names,))
   def use_protocols_middleware(environ, start_request):
     environ[PROTOCOLS_ENVIRON] = protocols
     return app(environ, start_request)
@@ -56,6 +79,7 @@ def use_protocols(protocols, app=filters.HTTP_OK):
 
 
 def match_protocol(app=filters.HTTP_OK, protocols=None):
+  @wsgi_trace('Matching protocols')
   def match_protocol_middleware(environ, start_response):
     # Make sure there is a content-type.
     content_type = environ.get('CONTENT_TYPE')
@@ -86,12 +110,16 @@ def match_protocol(app=filters.HTTP_OK, protocols=None):
 
 
 @util.positional(1)
-def match_method(service_path=r'.*',
+def match_method(service_path=None,
                  app=filters.HTTP_OK,
                  on_error=filters.HTTP_NOT_FOUND):
+  if service_path is None:
+    service_path = r'[^.]*'
   match_regex = re.compile(r'^(%s)%s$' % (service_path, _METHOD_PATTERN))
+  @wsgi_trace('Match method on service-path %s' % service_path)
   def match_method_middleware(environ, start_response):
-    match = match_regex.match(environ['PATH_INFO'])
+    path_info = environ['PATH_INFO']
+    match = match_regex.match(path_info)
     if not match:
       return on_error(environ, start_response)
     else:
@@ -111,7 +139,7 @@ def protorpc_response(message, protocol, *args, **kwargs):
 
 @util.positional(2)
 def service_app(service_factory,
-                service_path,
+                service_path=None,
                 app=None,
                 protocols=None):
   if isinstance(service_factory, type):
@@ -124,10 +152,10 @@ def service_app(service_factory,
       raise filters.ServiceConfigurationError(
         'Do not provide default application for service with no '
         'explicit service path')
-    service_path = r'.*'
 
   app = app or filters.HTTP_NOT_FOUND
 
+  @wsgi_trace('Service application %s' % (service_class.__name__))
   def service_app_application(environ, start_response):
     def get_environ(name):
       value = environ.get(name)
@@ -141,7 +169,7 @@ def service_app(service_factory,
     request_protocol = get_environ(REQUEST_PROTOCOL_ENVIRON)
 
     # New service instance.
-    service_instance = service_class()
+    service_instance = service_factory()
     try:
       initialize_request_state = service_instance.initialize_request_state
     except AttributeError:

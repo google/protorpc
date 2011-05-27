@@ -14,16 +14,16 @@ from protorpc import transport
 from protorpc import webapp_test_util
 
 
-class ServiceAppTest(end2end_test.EndToEndTest):
+def app_mapping(mapping, on_error=filters.HTTP_NOT_FOUND):
+  application = on_error
+  for path, app in reversed(mapping):
+    application = wsgi_service.match_method(path,
+                                            app=app,
+                                            on_error=application)
+  return application
 
-  '''def setUp(self):
-    self.port = test_util.pick_unused_port()
-    self.server, self.application = self.StartWebServer(self.port)
-    self.connection = webapp_test_util.ServerTransportWrapper(
-      self.server,
-      transport.HttpTransport('http://localhost:%d/my/service' % self.port,
-                              protocol=protojson))
-    self.stub = webapp_test_util.TestService.Stub(self.connection)'''
+
+class ServiceAppTest(end2end_test.EndToEndTest):
 
   def tearDown(self):
     self.server.shutdown()
@@ -34,10 +34,20 @@ class ServiceAppTest(end2end_test.EndToEndTest):
     protocols.add_protocol(protojson, 'json', 'application/json')
 
     application = wsgi_service.service_app(webapp_test_util.TestService,
-                                           service_path='/my/service',
                                            protocols=protocols)
     validated_application = validate.validator(application)
-    server = simple_server.make_server('localhost', port, validated_application)
+
+    other_application = wsgi_service.service_app(
+      webapp_test_util.TestService.new_factory('initialized'),
+      protocols=protocols)
+    other_validated_application = validate.validator(other_application)
+
+    applications = app_mapping([
+      ('/my/service', validated_application),
+      ('/my/other_service', other_validated_application),
+    ])
+    
+    server = simple_server.make_server('localhost', port, applications)
     server = webapp_test_util.ServerThread(server)
     server.start()
     server.wait_until_running()
