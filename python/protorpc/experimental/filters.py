@@ -36,8 +36,6 @@ HTTP_UNSUPPORTED_MEDIA_TYPE = static_page(status=(415, 'Unsupported Media Type')
 
 HTTP_INTERNAL_SERVER_ERROR = static_page(status=(500, 'Internal Server Error'))
 
-PROTOCOLS_ENVIRON = 'protorpc.protocols'
-
 
 def filter_request(filter, app=HTTP_OK, on_error=HTTP_BAD_REQUEST):
   def filter_request_application(environ, start_response):
@@ -124,30 +122,4 @@ def app_mapping(mapping, on_error=HTTP_NOT_FOUND):
   application = on_error
   for path, app in reversed(mapping):
     application = match_path(path, app=app, on_error=application)
-  return application
-
-
-def service_app(service_factory,
-                service_path=None,
-                protocols=None,
-                app=HTTP_NOT_FOUND):
-
-  def service_app_application(environ, start_response):
-    pass
-
-  application = environ_equals('REQUEST_METHOD',
-                               'POST',
-                               app=application
-                               **kwargs)
-
-  if service_path is None:
-    service_path = '/%s' + service_class.definition_name().replace('.', '/')
-
-  application = match_path(service_path,
-                           app=application,
-                           on_error=app)
-
-  if protocols:
-    set_protocols(protocols, app=application)
-
   return application

@@ -25,6 +25,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cgi
 import logging
+import re
 
 from wsgiref import headers as wsgi_headers
 
@@ -40,6 +41,65 @@ __all__ = [
 
 _METHOD_PATTERN = r'(?:\.([^?]*))?'
 
+PROTOCOLS_ENVIRON = 'protorpc.protocols'
+REQUEST_PROTOCOL_ENVIRON = 'protorpc.request.protocol'
+RESPONSE_PROTOCOL_ENVIRON = 'protorpc.response.protocol'
+SERVICE_PATH_ENVIRON = 'protorpc.service.path'
+METHOD_NAME_ENVIRON = 'protorpc.method.name'
+
+
+def use_protocols(protocols, app=filters.HTTP_OK):
+  def use_protocols_middleware(environ, start_request):
+    environ[PROTOCOLS_ENVIRON] = protocols
+    return app(environ, start_request)
+  return use_protocols_middleware
+
+
+def match_protocol(app=filters.HTTP_OK, protocols=None):
+  def match_protocol_middleware(environ, start_response):
+    # Make sure there is a content-type.
+    content_type = environ.get('CONTENT_TYPE')
+    if not content_type:
+      #content_type = environ.get('HTTP_CONTENT_TYPE')
+      if not content_type:
+        return filters.HTTP_BAD_REQUEST(environ, start_response)
+
+    content_type, _ = cgi.parse_header(content_type)
+    protocols = environ.get(PROTOCOLS_ENVIRON)
+    if not protocols:
+      raise Exception('Protocols are not configured in WSGI chain')
+
+    try:
+      config = protocols.lookup_by_content_type(content_type)
+    except KeyError:
+      return filters.HTTP_UNSUPPORTED_MEDIA_TYPE(environ, start_response)
+
+    environ[REQUEST_PROTOCOL_ENVIRON] = config
+    environ[RESPONSE_PROTOCOL_ENVIRON] = config
+
+    return app(environ, start_response)
+
+  if protocols:
+    return use_protocols(protocols, match_protocol_middleware)
+  else:
+    return match_protocol_middleware
+
+
+@util.positional(1)
+def match_method(service_path=r'.*',
+                 app=filters.HTTP_OK,
+                 on_error=filters.HTTP_NOT_FOUND):
+  match_regex = re.compile(r'^(%s)%s$' % (service_path, _METHOD_PATTERN))
+  def match_method_middleware(environ, start_response):
+    match = match_regex.match(environ['PATH_INFO'])
+    if not match:
+      return on_error(environ, start_response)
+    else:
+      environ[SERVICE_PATH_ENVIRON] = match.group(1)
+      environ[METHOD_NAME_ENVIRON] = match.group(2)
+    return app(environ, start_response)
+  return match_method_middleware
+      
 
 def protorpc_response(message, protocol, *args, **kwargs):
   encoded_message = protocol.encode_message(message)
@@ -49,7 +109,7 @@ def protorpc_response(message, protocol, *args, **kwargs):
                              **kwargs)
 
 
-@util.positional(1)
+@util.positional(2)
 def service_app(service_factory,
                 service_path,
                 app=None,
@@ -60,7 +120,7 @@ def service_app(service_factory,
     service_class = service_factory.service_class
 
   if service_path is None:
-    if app != None:
+    if app is not None:
       raise filters.ServiceConfigurationError(
         'Do not provide default application for service with no '
         'explicit service path')
@@ -69,24 +129,19 @@ def service_app(service_factory,
   app = app or filters.HTTP_NOT_FOUND
 
   def service_app_application(environ, start_response):
-    # Make sure there is a content-type.
-    content_type = environ.get('CONTENT_TYPE')
-    if not content_type:
-      content_type = environ.get('HTTP_CONTENT_TYPE')
-      if not content_type:
-        return filters.HTTP_BAD_REQUEST(environ, start_response)
+    def get_environ(name):
+      value = environ.get(name)
+      if not value:
+        raise Exception('Value for %s missing from quest environment' % name)
+      return value
 
-    content_type, _ = cgi.parse_header(content_type)
-
-    local_protocols = protocols or environ.get(filters.PROTOCOLS_ENVIRON)
-
-    try:
-      config = local_protocols.lookup_by_content_type(content_type)
-    except KeyError:
-      return filters.HTTP_UNSUPPORTED_MEDIA_TYPE(environ, start_response)
+    # Get necessary pieces from the environment.
+    method_name = get_environ(METHOD_NAME_ENVIRON)
+    service_path = get_environ(SERVICE_PATH_ENVIRON)
+    request_protocol = get_environ(REQUEST_PROTOCOL_ENVIRON)
 
     # New service instance.
-    service_instance = service_class()
+    service_instance = service_factory()
     try:
       initialize_request_state = service_instance.initialize_request_state
     except AttributeError:
@@ -99,14 +154,13 @@ def service_app(service_factory,
             name[len('HTTP_'):].lower().replace('_', '-'), value))
       initialize_request_state(remote.HttpRequestState(
         http_method='POST',
-        service_path=environ['PATH_INFO.0'],
+        service_path=service_path,
         headers=header_list,
         remote_host=environ.get('REMOTE_HOST', None),
         remote_address=environ.get('REMOTE_ADDR', None),
         server_host=environ.get('SERVER_HOST', None)))
 
     # Resolve method.
-    method_name = environ['PATH_INFO.1']
     try:
       method = getattr(service_instance, method_name)
     except AttributeError:
@@ -114,7 +168,7 @@ def service_app(service_factory,
         remote.RpcStatus(
           state=remote.RpcState.METHOD_NOT_FOUND_ERROR,
           error_message='Unrecognized RPC method: %s' % method_name),
-          protocol=config.protocol,
+          protocol=request_protocol.protocol,
         status=(400, 'Bad Request'))
       return response_app(environ, start_response)
 
@@ -129,14 +183,14 @@ def service_app(service_factory,
     body = environ['wsgi.input']
     content = body.read(int(environ['CONTENT_LENGTH']))
     try:
-      request = config.protocol.decode_message(request_type, content)
+      request = request_protocol.protocol.decode_message(request_type, content)
     except (messages.DecodeError, messages.ValidationError), err:
       response_app = protorpc_response(
         remote.RpcStatus(
           state=remote.RpcState.REQUEST_ERROR,
           error_message=('Error parsing ProtoRPC request '
                          '(Unable to parse request content: %s)' % err)),
-        protocol=config.protocol,
+        protocol=request_protocol.protocol,
         status=(400, 'Bad Request'))
       return response_app(environ, start_response)
 
@@ -150,24 +204,25 @@ def service_app(service_factory,
             state=remote.RpcState.APPLICATION_ERROR,
             error_message=err.message,
             error_name=err.error_name),
-          protocol=config.protocol,
+          protocol=request_protocol.protocol,
           status=(400, 'Bad Request'))
         return response_app(environ, start_response)
 
       # Build and send response.
 
-      encoded_response = config.protocol.encode_message(response)
+      encoded_response = request_protocol.protocol.encode_message(response)
     except Exception, err:
       response_app = protorpc_response(
         remote.RpcStatus(
           state=remote.RpcState.SERVER_ERROR,
           error_message='Internal Server Error'),
-        protocol=config.protocol,
+        protocol=request_protocol.protocol,
         status=(500, 'Internal Server Error'))
       return response_app(environ, start_response)
 
-    start_response('200 OK', [('content-type', content_type),
-                              ('content-length', str(len(encoded_response)))])
+    start_response('200 OK',
+                   [('content-type', request_protocol.default_content_type),
+                    ('content-length', str(len(encoded_response)))])
     return [encoded_response]
 
   application = service_app_application
@@ -177,13 +232,11 @@ def service_app(service_factory,
                                        app=application,
                                        on_error=filters.HTTP_METHOD_NOT_ALLOWED)
 
-  # Must match request path.  Parses out actual service-path.
-  application = filters.match_path(r'(%s)%s' % (service_path, _METHOD_PATTERN),
-                                   app=application,
-                                   on_error=app)
+  # Match protocol based on content-type.
+  application = match_protocol(application, protocols)
 
-  if not protocols:
-    application = filters.expect_environ(filters.PROTOCOLS_ENVIRON,
-                                         app=application)
+  # Must match request path.  Parses out actual service-path.  A non-match is
+  # akin to a 404 by default.  Will pass through to next application on miss.
+  application = match_method(service_path, app=application, on_error=app)
 
   return application
