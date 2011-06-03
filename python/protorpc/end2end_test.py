@@ -76,8 +76,9 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
     code, content, headers = self.RawRequestError('optional_message',
                                                   content=None)
     self.assertEquals(405, code)
-    self.assertEquals('', content)
-    self.assertEquals(headers['content-type'], 'text/html; charset=utf-8')
+    self.assertTrue(
+        '/my/service.optional_message is a ProtoRPC method' in content)
+    self.assertEquals(headers['content-type'], 'text/plain; charset=utf-8')
 
   def testMethodNotFound(self):
     self.assertRaisesWithRegexpMatch(remote.MethodNotFoundError,

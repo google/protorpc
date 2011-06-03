@@ -21,6 +21,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cgi
 import cStringIO
+import logging
 import os
 import re
 import sys
@@ -133,7 +134,9 @@ def VerifyResponse(test,
     if expected_content == '':
       test.assertEquals('', content)
     else:
-      test.assertNotEquals(-1, content.find(expected_content))
+      test.assertNotEquals(-1, content.find(expected_content),
+                           'Expected to find:\n%s\n\nActual content: \n%s' % (
+                             expected_content, content))
 
   def start_response(response, headers):
     status, message = response.split(' ', 1)
@@ -538,7 +541,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.mox.VerifyAll()
 
   def testNoMatch_UnknownHTTPMethod(self):
-    """Test what happens when no RPCMapper matches.."""
+    """Test what happens when no RPCMapper matches."""
     self.mox.ReplayAll()
 
     self.handler.handle('UNKNOWN', '/my_service', 'does_not_matter')
@@ -550,8 +553,21 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.mox.VerifyAll()
 
+  def testNoMatch_GetNotSupported(self):
+    """Test what happens when GET is not supported."""
+    self.mox.ReplayAll()
+
+    self.handler.handle('GET', '/my_service', 'method1')
+
+    self.VerifyResponse('405',
+                        "Unsupported HTTP method: GET",
+                        '',
+                        'text/html; charset=utf-8')
+
+    self.mox.VerifyAll()
+
   def testNoMatch_UnknownContentType(self):
-    """Test what happens when no RPCMapper matches.."""
+    """Test what happens when no RPCMapper matches."""
     self.mox.ReplayAll()
 
     self.handler.request.headers['Content-Type'] = 'image/png'
@@ -697,6 +713,60 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.post('/my_other_service', 'method2')
 
     self.mox.VerifyAll()
+
+  def testGetNoMethod(self):
+    self.handler.get('/my_service', '')
+    self.assertEquals(405, self.handler.response.status)
+    self.assertEquals('/my_service is a ProtoRPC service.\n\n'
+                      'Service %s.Service\n\n'
+                      'More about ProtoRPC: '
+                      'http://code.google.com/p/google-protorpc\n' %
+                      __name__,
+                      self.handler.response.out.getvalue())
+    self.assertEquals(
+        'nosniff',
+        self.handler.response.headers['x-content-type-options'])
+
+  def testGetNotSupported(self):
+    self.handler.get('/my_service', 'method1')
+    self.assertEquals(405, self.handler.response.status)
+    self.assertEquals('/my_service.method1 is a ProtoRPC method.\n\n'
+                      'Service %s.Service\n\n'
+                      'More about ProtoRPC: '
+                      'http://code.google.com/p/google-protorpc\n' %
+                      __name__,
+                      self.handler.response.out.getvalue())
+    self.assertEquals(
+        'nosniff',
+        self.handler.response.headers['x-content-type-options'])
+
+  def testGetUnknownContentType(self):
+    self.handler.request.headers['content-type'] = 'image/png'
+    self.handler.get('/my_service', 'method1')
+    self.assertEquals(415, self.handler.response.status)
+    self.assertEquals('/my_service.method1 is a ProtoRPC method.\n\n'
+                      'Service %s.Service\n\n'
+                      'More about ProtoRPC: '
+                      'http://code.google.com/p/google-protorpc\n' %
+                      __name__,
+                      self.handler.response.out.getvalue())
+    self.assertEquals(
+        'nosniff',
+        self.handler.response.headers['x-content-type-options'])
+
+  def testGetMissingContentType(self):
+    del self.handler.request.headers['content-type']
+    self.handler.get('/my_service', 'method1')
+    self.assertEquals(400, self.handler.response.status)
+    self.assertEquals('/my_service.method1 is a ProtoRPC method.\n\n'
+                      'Service %s.Service\n\n'
+                      'More about ProtoRPC: '
+                      'http://code.google.com/p/google-protorpc\n' %
+                      __name__,
+                      self.handler.response.out.getvalue())
+    self.assertEquals(
+        'nosniff',
+        self.handler.response.headers['x-content-type-options'])
 
 
 class RPCMapperTestBase(test_util.TestCase):
@@ -1043,7 +1113,7 @@ class ServiceMappingTest(test_util.TestCase):
     pattern, factory = mapping[1]
     self.assertEquals('%s/form/(.+)' % registry_path, pattern)
     self.assertEquals(forms.ResourceHandler, factory)
-      
+
 
   def DoMappingTest(self,
                     services,
@@ -1079,7 +1149,7 @@ class ServiceMappingTest(test_util.TestCase):
       mapped_path = r'(%s)%s' %  (path, service_handlers._METHOD_PATTERN)
       mapped_factory = dict(mapped_services)[mapped_path]
       self.assertEquals(service, mapped_factory.service_factory)
-  
+
   def testServiceMapping_Empty(self):
     """Test an empty service mapping."""
     self.DoMappingTest({})
@@ -1149,7 +1219,7 @@ class ServiceMappingTest(test_util.TestCase):
       service_handlers.service_mapping,
       [MyService, MyService])
 
-    
+
 class GetCalled(remote.Service):
 
   def __init__(self, test):
@@ -1159,7 +1229,7 @@ class GetCalled(remote.Service):
   def my_method(self, request):
     self.test.request = request
     return Response1(string_field='a response')
-    
+
 
 class TestRunServices(test_util.TestCase):
 
@@ -1185,7 +1255,7 @@ class TestRunServices(test_util.TestCase):
 
       service_handlers.run_services(
         [('/my_service', GetCalled.new_factory(self))], reg_path)
-      
+
       header, body = sys.stdout.getvalue().split('\n\n', 1)
 
       return (header.split('\n')[0],

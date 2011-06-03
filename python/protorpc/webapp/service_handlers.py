@@ -420,6 +420,25 @@ class ServiceHandler(webapp.RequestHandler):
   def service(self):
     return self.__service
 
+  def __show_info(self, service_path, remote_method):
+    self.response.headers['content-type'] = 'text/plain; charset=utf-8'
+    self.response.headers['x-content-type-options'] = 'nosniff'
+    if remote_method:
+      self.response.out.write('%s.%s is a ProtoRPC method.\n\n' %(
+        service_path, remote_method))
+    else:
+      self.response.out.write('%s is a ProtoRPC service.\n\n' % service_path)
+    definition_name_function = getattr(self.__service, 'definition_name', None)
+    if definition_name_function:
+      definition_name = definition_name_function()
+    else:
+      definition_name = '%s.%s' % (self.__service.__module__,
+                                   self.__service.__class__.__name__)
+    self.response.out.write('Service %s\n\n' % definition_name)
+
+    self.response.out.write('More about ProtoRPC: '
+                            'http://code.google.com/p/google-protorpc\n')
+
   def get(self, service_path, remote_method):
     """Handler method for GET requests.
 
@@ -427,7 +446,14 @@ class ServiceHandler(webapp.RequestHandler):
       service_path: Service path derived from request URL.
       remote_method: Sub-path after service path has been matched.
     """
-    self.handle('GET', service_path, remote_method)
+    if remote_method:
+      self.handle('GET', service_path, remote_method)
+    else:
+      self.error(405)
+
+    if self.response.status in (405, 415) or not self.__get_content_type():
+      self.__show_info(service_path, remote_method)
+
 
   def post(self, service_path, remote_method):
     """Handler method for POST requests.
@@ -560,7 +586,7 @@ class ServiceHandler(webapp.RequestHandler):
     except Exception, err:
       logging.error('An unexpected error occured when handling RPC: %s',
                     err, exc_info=1)
-      
+
       self.__send_error(500,
                         remote.RpcState.SERVER_ERROR,
                         'Internal Server Error',
