@@ -21,14 +21,8 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
 
-class MainHandler(webapp.RequestHandler):
-
-  def get(self):
-    self.redirect('/protorpc/form')
-
-
 application = webapp.WSGIApplication(
-    [('/', MainHandler)],
+    [('/', webapp.RedirectHandler.new_factory('/protorpc/form'))],
     debug=True)
 
 

@@ -34,6 +34,12 @@ from protorpc.webapp import service_handlers
 package = 'protorpc.echo'
 
 
+class SubMessage(messages.Message):
+  """A sub-message that can be required by EchoData."""
+
+  value = messages.StringField(1)
+
+
 class EchoData(messages.Message):
   """Echo message.
 
@@ -52,6 +58,7 @@ class EchoData(messages.Message):
   required = messages.EnumField(Color, 1,
                                 required=True,
                                 default=Color.BLUE)
+  required_message = messages.MessageField(SubMessage, 18, required=True)
 
   # Optional fields.
   a_string = messages.StringField(2)

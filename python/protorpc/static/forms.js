@@ -267,7 +267,6 @@ function buildRepeatedForm(form) {
 function buildFieldForm(form, allowRepeated) {
   // All form fields are added to a row of a table.
   var inputData = $('<td>');
-  form.container.append(nameData);
 
   // Set name.
   if (allowRepeated) {
@@ -325,7 +324,7 @@ function buildMessageForm(form, messageType) {
   if (messageType.fields) {
     $.each(messageType.fields, function(index, field) {
       var row = $('<tr>').appendTo(form.table);
-      fieldForm = new FormElement(field, row);
+      var fieldForm = new FormElement(field, row);
       fieldForm.parent = form;
       buildFieldForm(fieldForm, true);
       form.fields.push(fieldForm);
