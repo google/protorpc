@@ -30,7 +30,6 @@ import urllib2
 from wsgiref import simple_server
 from wsgiref import validate
 
-from protorpc import message_types
 from protorpc import protojson
 from protorpc import remote
 from protorpc import test_util
@@ -313,7 +312,7 @@ class TestService(remote.Service):
       request.string_value = '+%s' % request.string_value
     return request
 
-  @remote.method(message_types.VoidMessage, test_util.OptionalMessage)
+  @remote.method(response_type=test_util.OptionalMessage)
   def init_parameter(self, request):
     return test_util.OptionalMessage(string_value=self.__message)
 
@@ -322,19 +321,19 @@ class TestService(remote.Service):
     request.string_value = '+%s' % requset.string_value
     return request
 
-  @remote.method(message_types.VoidMessage, message_types.VoidMessage)
+  @remote.method()
   def raise_application_error(self, request):
     raise remote.ApplicationError('This is an application error', 'ERROR_NAME')
 
-  @remote.method(message_types.VoidMessage, message_types.VoidMessage)
+  @remote.method()
   def raise_unexpected_error(self, request):
     raise TypeError('Unexpected error')
 
-  @remote.method(message_types.VoidMessage, message_types.VoidMessage)
+  @remote.method()
   def raise_rpc_error(self, request):
     raise remote.NetworkError('Uncaught network error')
 
-  @remote.method(message_types.VoidMessage, test_util.NestedMessage)
+  @remote.method(response_type=test_util.NestedMessage)
   def return_bad_message(self, request):
     return test_util.NestedMessage()
 
@@ -342,7 +341,7 @@ class TestService(remote.Service):
 class AlternateService(remote.Service):
   """Service used to requesting non-existant methods."""
 
-  @remote.method(message_types.VoidMessage, message_types.VoidMessage)
+  @remote.method()
   def does_not_exist(self, request):
     raise NotImplementedError('Not implemented')
 

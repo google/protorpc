@@ -24,7 +24,6 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     super(MusicLibraryServiceTest, self).setUp()
 
     self.service = tunes_db.MusicLibraryService()
-    self.void = message_types.VoidMessage()
 
     # Create a bunch of artists.
     #
@@ -213,7 +212,7 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     response = self.service.search_artists(request)
     response.check_initialized()
 
-    self.assertEquals(None, response.artists)
+    self.assertEquals([], response.artists)
 
   def testSearchArtist_NamePrefix(self):
     """Test searching artists and matching by name prefix."""
@@ -341,16 +340,6 @@ class MusicLibraryServiceTest(datastore_test_util.DatastoreTest):
     self.assertEquals(1, len(response.albums))
     self.assertEquals(None, response.continuation)
     self.AssertAlbumMatches(self.thunder_lightening_strike, response.albums[0])
-
-  def testGetFileSet(self):
-    """Test getting the package set for the music service."""
-    request = message_types.VoidMessage()
-
-    expected = descriptor.describe_file_set([tunes_db])
-
-    response = self.service.get_file_set(request)
-    response.check_initialized()
-    self.assertEquals(expected, response)
 
 
 if __name__ == '__main__':

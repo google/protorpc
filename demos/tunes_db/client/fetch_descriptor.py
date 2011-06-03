@@ -28,7 +28,6 @@ import os
 import sys
 import urllib2
 
-from protorpc import message_types
 from protorpc import protobuf
 from protorpc import protojson
 from protorpc import registry
@@ -84,7 +83,7 @@ def main(argv):
   remote_registry = registry.RegistryService.Stub(http_transport)
 
   # Get complete list of services.
-  services = remote_registry.services(message_types.VoidMessage())
+  services = remote_registry.services()
 
   # Get file set for all services on server.
   get_file_set = registry.GetFileSetRequest()

@@ -323,7 +323,8 @@ class _RemoteMethodInfo(object):
     return self.__response_type
 
 
-def method(request_type, response_type):
+def method(request_type=message_types.VoidMessage,
+           response_type=message_types.VoidMessage):
   """Method decorator for creating remote methods.
 
   Args:
@@ -462,9 +463,13 @@ class StubBase(object):
       phone = messages.StringField(2)
       email = messages.StringField(3)
 
+    class NewContactResponse(message.Message):
+
+      contact_id = messages.StringField(1)
+
     class AccountService(remote.Service):
 
-      @remote.method(NewContact, message_types.VoidMessage):
+      @remote.method(NewContactRequest, NewContactResponse):
       def new_contact(self, request):
         ... implementation ...
 
@@ -475,7 +480,7 @@ class StubBase(object):
     request.name = 'Bob Somebody'
     request.phone = '+1 415 555 1234'
     
-    account_service_stub.new_contact(request)
+    response = account_service_stub.new_contact(request)
 
   The second way is to pass in keyword parameters that correspond with the root
   request message type:

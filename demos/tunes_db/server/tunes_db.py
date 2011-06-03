@@ -332,7 +332,7 @@ class MusicLibraryService(remote.Service):
     artist_id = model.AlbumInfo.artist.get_value_for_datastore(album_model)
     
     return Album(album_id=unicode(album_model.key()),
-                 artist_id=artist_id,
+                 artist_id=unicode(artist_id),
                  name=album_model.name,
                  released=album_model.released or None)
 
@@ -455,7 +455,7 @@ class MusicLibraryService(remote.Service):
     results, continuation = self.__search_info(request,
                                                model.ArtistInfo,
                                                self.__artist_from_model)
-    return SearchArtistsResponse(artists=results or None,
+    return SearchArtistsResponse(artists=results or [],
                                  continuation=continuation or None)
 
   @remote.method(AddAlbumRequest, AddAlbumResponse)

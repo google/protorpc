@@ -20,7 +20,6 @@ import logging
 import os
 
 from protorpc import descriptor
-from protorpc import message_types
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import remote
@@ -134,7 +133,7 @@ def load_full_proto(timestamp):
 class AppStatsService(remote.Service):
   """Service for getting access to AppStats data."""
 
-  @remote.method(message_types.VoidMessage, Summary)
+  @remote.method(response_type=Summary)
   def get_summary(self, request):
     """Get appstats summary."""
     response = Summary()
