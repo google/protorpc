@@ -16,10 +16,10 @@
 
 {% extends 'base.html' %}
 
-{% block title %}ProtoRPC Methods for {{hostname}}{% endblock %}
+{% block title %}ProtoRPC Methods for {{hostname|escape}}{% endblock %}
 
 {% block top %}
-<h3>ProtoRPC Methods for {{hostname}}</h3>
+<h3>ProtoRPC Methods for {{hostname|escape}}</h3>
 {% endblock %}
 
 {% block body %}

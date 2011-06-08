@@ -75,7 +75,7 @@ function FormElement(field, container) {
  * @param {string} message Message to display in panel.
  */
 function error(message) {
-  $('<div>').appendTo($('#error-messages')).text(message);
+  $('<div>').appendTo($('#error-messages')).text(escape(message));
 }
 
 
@@ -157,8 +157,8 @@ function buildEnumField(form) {
       option = $('<option>');
       option.
           appendTo(form.input).
-          attr('value', enumValue.name).
-          text(enumValue.name);
+          attr('value', escape(enumValue.name)).
+          text(escape(enumValue.name));
       if (enumValue.number == form.field.default_value) {
         option.attr('selected', 1);
       }
@@ -195,7 +195,7 @@ function buildBooleanField(form) {
 function buildTextField(form) {
   form.input = $('<input type="text">');
   form.input.
-      attr('value', form.field['default']);
+      attr('value', escape(form.field['default']));
 }
 
 
@@ -271,7 +271,7 @@ function buildFieldForm(form, allowRepeated) {
   // Set name.
   if (allowRepeated) {
     var nameData = $('<td>');
-    nameData.text(form.field.name + ':');
+    nameData.text(escape(form.field.name) + ':');
     form.container.append(nameData);
   }
 
@@ -359,13 +359,13 @@ function formatJSON(value, indent) {
     } else {
       result += '{<br>';
       $.each(value, function(name, item) {
-        result += (indentation + name + ': ' +
+        result += (indentation + escape(name) + ': ' +
                    formatJSON(item, indent + 1) + ',<br>');
       });
       result += indentation + '}';
     }
   } else {
-    result += value;
+    result += escape(value);
   }
 
   return result;
@@ -556,13 +556,13 @@ function showMethods() {
   if (serviceMap) {
     $.each(serviceMap, function(serviceName) {
       var descriptor = serviceDescriptors[serviceMap[serviceName]];
-      methodSelector.append(descriptor.name);
+      methodSelector.append(escape(descriptor.name));
       var block = $('<blockquote>').appendTo(methodSelector);
       $.each(descriptor.methods, function(index, method) {
         var url = (servicePath + '?path=' + serviceName +
                    '&method=' + method.name);
         var label = serviceName + '.' + method.name;
-        $('<a>').attr('href', url).text(label).appendTo(block);
+        $('<a>').attr('href', url).text(escape(label)).appendTo(block);
         $('<br>').appendTo(block);
       });
     });

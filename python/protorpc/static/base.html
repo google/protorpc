@@ -18,19 +18,19 @@
 <html>
   <head>
     <title>{% block title%}Need title{% endblock %}</title>
-    <script src="{{forms_path}}/jquery-1.4.2.min.js"
+    <script src="{{forms_path|escape}}/jquery-1.4.2.min.js"
             type="text/javascript">
     </script>
-    <script src="{{forms_path}}/jquery.json-2.2.min.js"
+    <script src="{{forms_path|escape}}/jquery.json-2.2.min.js"
             type="text/javascript">
     </script>
-    <script src="{{forms_path}}/forms.js"
+    <script src="{{forms_path|escape}}/forms.js"
             type="text/javascript">
     </script>
     <script type="text/javascript">
-      registryPath = "{{registry_path}}";
-      servicePath = "{{service_path}}";
-      methodName = "{{method_name}}";
+      registryPath = "{{registry_path|escape}}";
+      servicePath = "{{service_path|escape}}";
+      methodName = "{{method_name|escape}}";
 
       $(function() {
         {% block call %}
