@@ -21,14 +21,14 @@
 
 var FORM_VISIBILITY = {
   SHOW_FORM: 'Show Form',
-  HIDE_FORM: 'Hide Form',
+  HIDE_FORM: 'Hide Form'
 };
 
 
 var LABEL = {
   OPTIONAL: 'OPTIONAL',
   REQUIRED: 'REQUIRED',
-  REPEATED: 'REPEATED',
+  REPEATED: 'REPEATED'
 };
 
 
@@ -51,7 +51,7 @@ var VARIANT = {
     UINT32: 'UINT32',
     ENUM: 'ENUM',
     SINT32: 'SINT32',
-    SINT64: 'SINT64',
+    SINT64: 'SINT64'
 };
 
 
