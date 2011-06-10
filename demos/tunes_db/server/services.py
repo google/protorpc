@@ -29,6 +29,8 @@ see model.py.
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import appengine_config
+
 from protorpc.webapp import service_handlers
 
 import tunes_db

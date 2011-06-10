@@ -205,7 +205,7 @@ function buildTextField(form) {
  */
 function buildIndividualForm(form) {
   form.required = form.label == LABEL.REQUIRED;
-  
+
   if (form.field.variant == VARIANT.ENUM) {
     buildEnumField(form);
   } else if (form.field.variant == VARIANT.MESSAGE) {
@@ -433,7 +433,7 @@ function fromMessageForm(form) {
       } else {
         subMessage = fromIndividualForm(subForm);
       }
-        
+
       message[subForm.field.name] = subMessage;
     }
   });
@@ -559,7 +559,7 @@ function showMethods() {
       methodSelector.append(escape(descriptor.name));
       var block = $('<blockquote>').appendTo(methodSelector);
       $.each(descriptor.methods, function(index, method) {
-        var url = (servicePath + '?path=' + serviceName +
+        var url = (formPath + '?path=' + serviceName +
                    '&method=' + method.name);
         var label = serviceName + '.' + method.name;
         $('<a>').attr('href', url).text(escape(label)).appendTo(block);
@@ -587,11 +587,11 @@ function populateMessages(messages, container) {
     $.each(messages, function(messageIndex, message) {
       var messageName = container + '.' + message.name;
       messageDescriptors[messageName] = message
-        
+
       if (message.message_types) {
         populateMessages(message.message_types, messageName);
       }
-        
+
       if (message.enum_types) {
         $.each(message.enum_types, function(enumIndex, enumerated) {
           var enumName = messageName + '.' + enumerated.name;
@@ -664,4 +664,3 @@ function loadServices(when_done) {
         loadFileSets(when_done);
       });
 }
-
