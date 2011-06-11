@@ -39,19 +39,19 @@ var objectId = 0;
  * Variants defined in protorpc/messages.py.
  */
 var VARIANT = {
-    DOUBLE: 'DOUBLE',
-    FLOAT: 'FLOAT',
-    INT64: 'INT64',
-    UINT64: 'UINT64',
-    INT32: 'INT32',
-    BOOL: 'BOOL',
-    STRING: 'STRING',
-    MESSAGE: 'MESSAGE',
-    BYTES: 'BYTES',
-    UINT32: 'UINT32',
-    ENUM: 'ENUM',
-    SINT32: 'SINT32',
-    SINT64: 'SINT64'
+  DOUBLE: 'DOUBLE',
+  FLOAT: 'FLOAT',
+  INT64: 'INT64',
+  UINT64: 'UINT64',
+  INT32: 'INT32',
+  BOOL: 'BOOL',
+  STRING: 'STRING',
+  MESSAGE: 'MESSAGE',
+  BYTES: 'BYTES',
+  UINT32: 'UINT32',
+  ENUM: 'ENUM',
+  SINT32: 'SINT32',
+  SINT64: 'SINT64'
 };
 
 
@@ -75,7 +75,7 @@ function FormElement(field, container) {
  * @param {string} message Message to display in panel.
  */
 function error(message) {
-  $('<div>').appendTo($('#error-messages')).text(escape(message));
+  $('<div>').appendTo($('#error-messages')).text(message);
 }
 
 
@@ -84,18 +84,18 @@ function error(message) {
  * @param {object} XMLHttpRequest object.
  */
 function handleRequestError(response) {
-    var contentType = response.getResponseHeader('content-type');
-    if (contentType == 'application/json') {
-        var response_error = $.parseJSON(response.responseText);
-        var error_message = response_error.error_message;
-        if (error.state == 'APPLICATION_ERROR' && error.error_name) {
-            var error_message = error_message + ' (' + error.error_name + ')';
-        }
-    } else {
-        error_message = '' + response.status + ': ' + response.statusText;
-    }
+  var contentType = response.getResponseHeader('content-type');
+  if (contentType == 'application/json') {
+      var response_error = $.parseJSON(response.responseText);
+      var error_message = response_error.error_message;
+      if (error.state == 'APPLICATION_ERROR' && error.error_name) {
+          error_message = error_message + ' (' + error.error_name + ')';
+      }
+  } else {
+      error_message = '' + response.status + ': ' + response.statusText;
+  }
 
-    error(error_message);
+  error(error_message);
 }
 
 
@@ -128,7 +128,8 @@ function sendRequest(path, method, request, onSuccess) {
  */
 function toggleInput(checkbox, form, disableMessage) {
   return function() {
-    if (checkbox.attr('value') == 'on') {
+    var checked = checkbox.checked;
+    if (checked) {
       buildIndividualForm(form);
       form.enabled = true;
       disableMessage.hide();
@@ -137,7 +138,7 @@ function toggleInput(checkbox, form, disableMessage) {
       form.enabled = false;
       disableMessage.show();
     }
-  }
+  };
 }
 
 
@@ -157,8 +158,8 @@ function buildEnumField(form) {
       option = $('<option>');
       option.
           appendTo(form.input).
-          attr('value', escape(enumValue.name)).
-          text(escape(enumValue.name));
+          attr('value', enumValue.name).
+          text(enumValue.name);
       if (enumValue.number == form.field.default_value) {
         option.attr('selected', 1);
       }
@@ -182,9 +183,7 @@ function buildMessageField(form) {
  */
 function buildBooleanField(form) {
   form.input = $('<input type="checkbox">');
-  if (form.field.default_value == true) {
-      form.input.attr('value', 'on');
-  }
+  form.input[0].checked = Boolean(form.field.default_value);
 }
 
 
@@ -195,7 +194,7 @@ function buildBooleanField(form) {
 function buildTextField(form) {
   form.input = $('<input type="text">');
   form.input.
-      attr('value', escape(form.field['default']));
+      attr('value', form.field.default_value || '');
 }
 
 
@@ -243,7 +242,7 @@ function addRepeatedFieldItem(form) {
  * @param {FormElement} form Form to build element for.
  */
 function buildRepeatedForm(form) {
-  form.fields = []
+  form.fields = [];
   form.display = $('<table border="1" width="100%">').
       appendTo(form.container);
   var header_row = $('<tr>').appendTo(form.display);
@@ -271,7 +270,7 @@ function buildFieldForm(form, allowRepeated) {
   // Set name.
   if (allowRepeated) {
     var nameData = $('<td>');
-    nameData.text(escape(form.field.name) + ':');
+    nameData.text(form.field.name + ':');
     form.container.append(nameData);
   }
 
@@ -290,11 +289,12 @@ function buildFieldForm(form, allowRepeated) {
     var controlData = $('<td>');
     if (form.field.label != LABEL.REQUIRED && allowRepeated) {
         form.enabled = false;
-      var checkbox_id = 'checkbox-' + objectId++;
+      var checkbox_id = 'checkbox-' + objectId;
+      objectId++;
       $('<label for="' + checkbox_id + '">Enabled</label>').appendTo(controlData);
       var checkbox = $('<input id="' + checkbox_id + '" type="checkbox">').appendTo(controlData);
       var disableMessage = $('<div>').appendTo(inputData);
-      checkbox.change(toggleInput(checkbox, form, disableMessage));
+      checkbox.change(toggleInput(checkbox[0], form, disableMessage));
     } else {
       buildIndividualForm(form);
     }
@@ -334,6 +334,24 @@ function buildMessageForm(form, messageType) {
 
 
 /**
+ * HTML Escape a string
+ */
+function htmlEscape(value) {
+  if (typeof(value) == "string") {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/>/g, '&gt;')
+      .replace(/</g, '&lt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/ /g, '&nbsp;');
+  } else {
+    return value;
+  }
+}
+
+
+/**
  * JSON formatted in HTML for display to users.  This method recursively calls
  * itself to render sub-JSON objects.
  * @param {Object} value JSON object to format for display.
@@ -359,13 +377,13 @@ function formatJSON(value, indent) {
     } else {
       result += '{<br>';
       $.each(value, function(name, item) {
-        result += (indentation + escape(name) + ': ' +
+        result += (indentation + htmlEscape(name) + ': ' +
                    formatJSON(item, indent + 1) + ',<br>');
       });
       result += indentation + '}';
     }
   } else {
-    result += escape(value);
+    result += htmlEscape(value);
   }
 
   return result;
@@ -403,7 +421,7 @@ function fromIndividualForm(form) {
     return parseFloat(form.input.val());
 
   case VARIANT.BOOL:
-    return form.input.attr('value') == "on";
+    return form.input[0].checked;
     break;
 
   case VARIANT.ENUM:
@@ -412,8 +430,9 @@ function fromIndividualForm(form) {
     return form.input.val();
 
   default:
-    return parseInt(form.input.val());
+    break;
   }
+  return parseInt(form.input.val(), 10);
 }
 
 
@@ -451,7 +470,7 @@ function sendForm() {
   $('#error-messages').empty();
   $('#form-response').empty();
   message = fromMessageForm(root_form);
-  if (message == null) {
+  if (message === null) {
     return;
   }
 
@@ -556,13 +575,13 @@ function showMethods() {
   if (serviceMap) {
     $.each(serviceMap, function(serviceName) {
       var descriptor = serviceDescriptors[serviceMap[serviceName]];
-      methodSelector.append(escape(descriptor.name));
+      methodSelector.append(descriptor.name);
       var block = $('<blockquote>').appendTo(methodSelector);
       $.each(descriptor.methods, function(index, method) {
         var url = (formPath + '?path=' + serviceName +
                    '&method=' + method.name);
         var label = serviceName + '.' + method.name;
-        $('<a>').attr('href', url).text(escape(label)).appendTo(block);
+        $('<a>').attr('href', url).text(label).appendTo(block);
         $('<br>').appendTo(block);
       });
     });
@@ -586,7 +605,7 @@ function populateMessages(messages, container) {
   if (messages) {
     $.each(messages, function(messageIndex, message) {
       var messageName = container + '.' + message.name;
-      messageDescriptors[messageName] = message
+      messageDescriptors[messageName] = message;
 
       if (message.message_types) {
         populateMessages(message.message_types, messageName);
@@ -611,7 +630,7 @@ function populateMessages(messages, container) {
 function populateDescriptors(file_set) {
   serviceDescriptors = {};
   messageDescriptors = {};
-  enumDescriptors = {}
+  enumDescriptors = {};
   $.each(file_set.files, function(index, file) {
     if (file.service_types) {
       $.each(file.service_types, function(serviceIndex, service) {
@@ -657,7 +676,7 @@ function loadServices(when_done) {
       'services',
       {},
       function(response) {
-        serviceMap = {}
+        serviceMap = {};
         $.each(response.services, function(index, service) {
           serviceMap[service.name] = service.definition;
         });

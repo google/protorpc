@@ -78,6 +78,14 @@ class EchoData(messages.Message):
   colors = messages.EnumField(Color, 14, repeated=True)
   echos = messages.MessageField('EchoData', 15, repeated=True)
 
+  # With defaults
+  default_string = messages.StringField(19, default='a default')
+  default_int = messages.IntegerField(20, default=30)
+  default_float = messages.FloatField(21, default=3.1415)
+  default_bool = messages.BooleanField(22, default=True)
+  default_bytes = messages.BytesField(23, default='YSBieXRlcw==')
+  default_color = messages.EnumField(Color, 24, default=Color.GREEN)
+
   # If want_time is set to True, the response will contain current seconds
   # since epoch.
   want_time = messages.BooleanField(16)
