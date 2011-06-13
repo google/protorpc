@@ -145,6 +145,11 @@ def VerifyResponse(test,
     for name, value in headers:
       if name.lower() == 'content-type':
         test.assertEquals(expected_content_type, value)
+    for name, value in headers:
+      if name.lower() == 'x-content-type-options':
+        test.assertEquals('nosniff', value)
+      elif name.lower() == 'content-type':
+        test.assertFalse(value.lower().startswith('text/html'))
     return write
 
   response.wsgi_write(start_response)
@@ -370,6 +375,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
                              response.string_field,
                              response.enum_field)
       handler.response.out.write(output)
+      handler.response.headers['content-type'] = 'text/plain'
     self.rpc_mapper1.build_response(
         self.handler, mox.IsA(Response1)).WithSideEffects(build_response)
 
@@ -380,7 +386,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.handler.handle('POST', '/my_service', 'method1')
 
-    self.VerifyResponse('200', 'OK', '1 a VAL1', 'text/html; charset=utf-8')
+    self.VerifyResponse('200', 'OK', '1 a VAL1', 'text/plain')
 
     self.mox.VerifyAll()
 
@@ -547,9 +553,9 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.handle('UNKNOWN', '/my_service', 'does_not_matter')
 
     self.VerifyResponse('405',
-                        "Unsupported HTTP method: UNKNOWN",
+                        'Unsupported HTTP method: UNKNOWN',
                         '',
-                        'text/html; charset=utf-8')
+                        'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
 
@@ -560,9 +566,9 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.handle('GET', '/my_service', 'method1')
 
     self.VerifyResponse('405',
-                        "Unsupported HTTP method: GET",
+                        'Unsupported HTTP method: GET',
                         '',
-                        'text/html; charset=utf-8')
+                        'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
 
@@ -576,7 +582,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.VerifyResponse('415',
                         'Unsupported content-type: image/png',
                         '',
-                        'text/html; charset=utf-8')
+                        'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
 
@@ -588,7 +594,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.handle('/my_service', 'POST', 'method1')
 
     self.VerifyResponse('400', 'Invalid RPC request: missing content-type', '',
-                        'text/html; charset=utf-8')
+                        'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
 

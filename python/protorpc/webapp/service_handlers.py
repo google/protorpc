@@ -422,7 +422,6 @@ class ServiceHandler(webapp.RequestHandler):
 
   def __show_info(self, service_path, remote_method):
     self.response.headers['content-type'] = 'text/plain; charset=utf-8'
-    self.response.headers['x-content-type-options'] = 'nosniff'
     if remote_method:
       self.response.out.write('%s.%s is a ProtoRPC method.\n\n' %(
         service_path, remote_method))
@@ -449,6 +448,7 @@ class ServiceHandler(webapp.RequestHandler):
     if remote_method:
       self.handle('GET', service_path, remote_method)
     else:
+      self.response.headers['x-content-type-options'] = 'nosniff'
       self.error(405)
 
     if self.response.status in (405, 415) or not self.__get_content_type():
@@ -483,6 +483,12 @@ class ServiceHandler(webapp.RequestHandler):
     logging.error(error_message)
     self.response.set_status(http_code, error_message)
 
+  def __send_simple_error(self, code, message):
+    """Send error to caller without embedded message."""
+    self.response.headers['content-type'] = 'text/plain; charset=utf-8'
+    logging.error(message)
+    self.response.set_status(code, message)
+
   def __get_content_type(self):
     content_type = self.request.headers.get('content-type', None)
     if not content_type:
@@ -509,6 +515,8 @@ class ServiceHandler(webapp.RequestHandler):
       service_path: Service path derived from request URL.
       remote_method: Sub-path after service path has been matched.
     """
+    self.response.headers['x-content-type-options'] = 'nosniff'
+
     # Provide server state to the service.  If the service object does not have
     # an "initialize_request_state" method, will not attempt to assign state.
     try:
@@ -532,8 +540,7 @@ class ServiceHandler(webapp.RequestHandler):
 
     content_type = self.__get_content_type()
     if not content_type:
-      message = 'Invalid RPC request: missing content-type'
-      self.response.set_status(400, message)
+      self.__send_simple_error(400, 'Invalid RPC request: missing content-type')
       return
 
     # Search for mapper to mediate request.
@@ -541,16 +548,14 @@ class ServiceHandler(webapp.RequestHandler):
       if content_type in mapper.content_types:
         break
     else:
-      message = ('Unsupported content-type: %s' % content_type)
-      logging.error(message)
-      self.response.set_status(415, message)
+      self.__send_simple_error(415,
+                               'Unsupported content-type: %s' % content_type)
       return
 
     try:
       if http_method not in mapper.http_methods:
-        message = 'Unsupported HTTP method: %s' % http_method
-        logging.error(message)
-        self.response.set_status(405, message)
+        self.__send_simple_error(405,
+                                 'Unsupported HTTP method: %s' % http_method)
         return
 
       try:
