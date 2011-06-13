@@ -41,6 +41,14 @@ __all__ = [
 
 CONTENT_TYPE = 'application/json'
 
+ALTERNATIVE_CONTENT_TYPES = [
+  'application/x-javascript',
+  'text/javascript',
+  'text/x-javascript',
+  'text/x-json',
+  'text/json',
+]
+
 
 def _load_json_module():
   """Try to load a valid json module.
