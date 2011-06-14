@@ -153,7 +153,7 @@ def command(name, required=(), optional=()):
   """
   def check_params_decorator(function):
     def check_params_wrapper(options, *args):
-      if not (len(required) <= len(args) <= len(optional)):
+      if not (len(required) <= len(args) <= len(required) + len(optional)):
         sys.stderr.write("Incorrect usage for command '%s'\n\n" % name)
         usage()
       function(options, *args)
