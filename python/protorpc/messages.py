@@ -112,7 +112,7 @@ class InvalidNumberError(FieldDefinitionError):
 
 
 class MessageDefinitionError(Error):
-  """Enumeration definition error."""
+  """Message definition error."""
 
 
 class DuplicateNumberError(Error):
@@ -472,7 +472,7 @@ class Enum(object):
   def to_dict(cls):
     """Make dictionary version of enumerated class.
 
-    Dictionary created this way can be used with def_num and import_enum.
+    Dictionary created this way can be used with def_num.
 
     Returns:
       A dict (name) -> number
