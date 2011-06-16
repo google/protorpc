@@ -133,6 +133,11 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
       self.fail('Expected server error')
 
 
+class EndToEndWithUrlfetchTest(EndToEndTest):
+
+  USE_URLFETCH = True
+
+
 def main():
   unittest.main()
 

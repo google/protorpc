@@ -37,6 +37,7 @@ from protorpc import transport
 from protorpc.webapp import service_handlers
 
 from google.appengine.ext import webapp
+from google.appengine.ext import testbed
 
 
 class TestService(remote.Service):
@@ -291,13 +292,13 @@ class ServerTransportWrapper(transport.Transport):
     """
     self.server_thread = server_thread
     self.transport = transport
-    self.original_transport_rpc = self.transport._transport_rpc
-    self.transport._transport_rpc = self.transport_rpc
-    self.send_rpc = self.transport.send_rpc
+    self.original_send_rpc = self.transport.send_rpc
+    self.transport.send_rpc = self.send_rpc
+    self._start_rpc = self.transport._start_rpc
 
-  def transport_rpc(self, *args, **kwargs):
+  def send_rpc(self, *args, **kwargs):
     self.server_thread.handle_request()
-    return self.original_transport_rpc(*args, **kwargs)
+    return self.original_send_rpc(*args, **kwargs)
 
 
 class TestService(remote.Service):
@@ -354,9 +355,22 @@ class EndToEndTestBase(test_util.TestCase):
      ('/my/other_service', TestService.new_factory('initialized')),
     ])
 
+  USE_URLFETCH = False
+
   def setUp(self):
     self.port = test_util.pick_unused_port()
     self.server, self.application = self.StartWebServer(self.port)
+
+    self.testbed = testbed.Testbed()
+    self.testbed.activate()
+    self.testbed.init_urlfetch_stub()
+
+    if self.USE_URLFETCH:
+      if transport.urlfetch is None:
+        raise AssertionError('App Engine SDK is not in pythonpath')
+    else:
+      self._original_urlfetch = transport.urlfetch
+      transport.urlfetch = None
 
     self.connection = ServerTransportWrapper(
       self.server,
@@ -372,6 +386,10 @@ class EndToEndTestBase(test_util.TestCase):
 
   def tearDown(self):
     self.server.shutdown()
+    self.testbed.deactivate()
+
+    if not self.USE_URLFETCH:
+      transport.urlfetch = self._original_urlfetch
 
   @property
   def service_url(self):
