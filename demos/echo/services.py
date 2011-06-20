@@ -24,6 +24,8 @@ illustrating the forms interface.
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import appengine_config
+
 import logging
 import time
 

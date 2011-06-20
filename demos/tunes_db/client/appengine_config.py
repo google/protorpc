@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2010 Google Inc.
+# Copyright 2011 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,22 +15,7 @@
 # limitations under the License.
 #
 
-__author__ = 'rafek@google.com (Rafe Kaplan)'
+import os
+import sys
 
-import appengine_config
-
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import util
-
-
-application = webapp.WSGIApplication(
-    [('/', webapp.RedirectHandler.new_factory('/protorpc/form'))],
-    debug=True)
-
-
-def main():
-  util.run_wsgi_app(application)
-
-
-if __name__ == '__main__':
-  main()
+sys.path.insert(0, os.path.dirname(__file__))

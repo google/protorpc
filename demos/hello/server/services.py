@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+import appengine_config
+
 from protorpc import messages
 from protorpc import remote
 from protorpc.webapp import service_handlers

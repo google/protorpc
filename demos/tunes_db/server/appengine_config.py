@@ -11,3 +11,8 @@ def webapp_add_wsgi_middleware(app):
   from google.appengine.ext.appstats import recording
   app = recording.appstats_wsgi_middleware(app)
   return app
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))

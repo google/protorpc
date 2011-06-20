@@ -330,7 +330,7 @@ class MusicLibraryService(remote.Service):
       New Album message with contents of album_model copied in to it.
     """
     artist_id = model.AlbumInfo.artist.get_value_for_datastore(album_model)
-    
+
     return Album(album_id=unicode(album_model.key()),
                  artist_id=unicode(artist_id),
                  name=album_model.name,
@@ -447,7 +447,7 @@ class MusicLibraryService(remote.Service):
     else:
       artist = None
     return FetchArtistResponse(artist=artist)
-      
+
 
   @remote.method(SearchArtistsRequest, SearchArtistsResponse)
   def search_artists(self, request):
@@ -535,5 +535,5 @@ class MusicLibraryService(remote.Service):
                                                model.AlbumInfo,
                                                self.__album_from_model,
                                                customize_query)
-    return SearchAlbumsResponse(albums=results or None,
+    return SearchAlbumsResponse(albums=results or [],
                                 continuation=continuation or None)

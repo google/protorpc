@@ -21,6 +21,8 @@ This demonstrates how to use the Service API to connect to a service via
 another web-app.
 """
 
+import appengine_config
+
 import logging
 import os
 import urllib

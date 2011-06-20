@@ -17,6 +17,8 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import appengine_config
+
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
