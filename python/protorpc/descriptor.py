@@ -54,18 +54,21 @@ Example:
   field.number = 1
   field.label = FieldDescriptor.Label.REQUIRED
   field.variant = FieldDescriptor.Variant.INT64
+  fields.append(field)
 
   field = FieldDescriptor()
   field.name = 'y'
   field.number = 2
   field.label = FieldDescriptor.Label.REQUIRED
   field.variant = FieldDescriptor.Variant.INT64
+  fields.append(field)
 
   field = FieldDescriptor()
   field.name = 'color'
   field.number = 3
   field.label = FieldDescriptor.Label.OPTIONAL
   field.variant = FieldDescriptor.Variant.BYTES
+  fields.append(field)
 
   message = MessageDescriptor()
   message.name = 'Pixel'
