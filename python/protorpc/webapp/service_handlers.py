@@ -499,6 +499,17 @@ class ServiceHandler(webapp.RequestHandler):
     # Lop off parameters from the end (for example content-encoding)
     return content_type.split(';', 1)[0].lower()
 
+  def __headers(self, content_type):
+    for name in self.request.headers:
+      name = name.lower()
+      if name == 'content-type':
+        value = content_type
+      elif name == 'content-length':
+        value = str(len(self.request.body))
+      else:
+        value = self.request.headers.get(name, '')
+      yield name, value
+
   def handle(self, http_method, service_path, remote_method):
     """Handle a service request.
 
@@ -516,6 +527,7 @@ class ServiceHandler(webapp.RequestHandler):
       remote_method: Sub-path after service path has been matched.
     """
     self.response.headers['x-content-type-options'] = 'nosniff'
+    content_type = self.__get_content_type()
 
     # Provide server state to the service.  If the service object does not have
     # an "initialize_request_state" method, will not attempt to assign state.
@@ -535,10 +547,9 @@ class ServiceHandler(webapp.RequestHandler):
           server_port=server_port,
           http_method=http_method,
           service_path=service_path,
-          headers=[(k, self.request.headers[k]) for k in self.request.headers])
+          headers=list(self.__headers(content_type)))
       state_initializer(request_state)
 
-    content_type = self.__get_content_type()
     if not content_type:
       self.__send_simple_error(400, 'Invalid RPC request: missing content-type')
       return

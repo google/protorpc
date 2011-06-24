@@ -775,6 +775,34 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
         self.handler.response.headers['x-content-type-options'])
 
 
+class MissingContentLengthTests(ServiceHandlerTest):
+  """Test for when content-length is not set in the environment.
+
+  This test moves CONTENT_LENGTH from the environment to the
+  content-length header.
+  """
+
+  def GetEnvironment(self):
+    environment = super(MissingContentLengthTests, self).GetEnvironment()
+    content_length = str(environment.pop('CONTENT_LENGTH', '0'))
+    environment['HTTP_CONTENT_LENGTH'] = content_length
+    return environment
+
+
+class MissingContentTypeTests(ServiceHandlerTest):
+  """Test for when content-type is not set in the environment.
+
+  This test moves CONTENT_TYPE from the environment to the
+  content-type header.
+  """
+
+  def GetEnvironment(self):
+    environment = super(MissingContentLengthTests, self).GetEnvironment()
+    content_type = str(environment.pop('CONTENT_TYPE', None))
+    environment['HTTP_CONTENT_TYPE'] = content_type
+    return environment
+
+
 class RPCMapperTestBase(test_util.TestCase):
 
   def setUp(self):
