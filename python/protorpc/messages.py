@@ -678,10 +678,10 @@ class Message(object):
       quantity = IntegerField(2, required=True)
 
     class Order(Message):
-      symbol = StringProperty(1, required=True)
-      total_quantity = IntegerProperty(2, required=True)
-      trade_type = EnumProperty(TradeType, 3, required=True)
-      lots = MessageProperty(Lot, 4, repeated=True)
+      symbol = StringField(1, required=True)
+      total_quantity = IntegerField(2, required=True)
+      trade_type = EnumField(TradeType, 3, required=True)
+      lots = MessageField(Lot, 4, repeated=True)
       limit = IntegerField(5)
 
     order = Order(symbol='GOOG',
