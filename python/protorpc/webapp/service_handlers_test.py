@@ -231,12 +231,6 @@ class ServiceHandlerFactoryTest(test_util.TestCase):
 
     mappers = handler_factory.all_request_mappers()
 
-    # Verify URL encoded mapper.
-    url_encoded_mapper = mappers.next()
-    self.assertTrue(isinstance(url_encoded_mapper,
-                               service_handlers.URLEncodedRPCMapper))
-    self.assertEquals('my_prefix.', url_encoded_mapper.parameter_prefix)
-
     # Verify Protobuf encoded mapper.
     protobuf_mapper = mappers.next()
     self.assertTrue(isinstance(protobuf_mapper,
@@ -590,7 +584,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     """Test what happens when no RPCMapper matches.."""
     self.mox.ReplayAll()
 
-    del self.handler.request.headers['Content-Type']
+    self.handler.request.environ.pop('HTTP_CONTENT_TYPE', None)
+    self.handler.request.headers.pop('Content-Type', None)
     self.handler.handle('/my_service', 'POST', 'method1')
 
     self.VerifyResponse('400', 'Invalid RPC request: missing content-type', '',
@@ -760,20 +755,6 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
         'nosniff',
         self.handler.response.headers['x-content-type-options'])
 
-  def testGetMissingContentType(self):
-    del self.handler.request.headers['content-type']
-    self.handler.get('/my_service', 'method1')
-    self.assertEquals(400, self.handler.response.status)
-    self.assertEquals('/my_service.method1 is a ProtoRPC method.\n\n'
-                      'Service %s.Service\n\n'
-                      'More about ProtoRPC: '
-                      'http://code.google.com/p/google-protorpc\n' %
-                      __name__,
-                      self.handler.response.out.getvalue())
-    self.assertEquals(
-        'nosniff',
-        self.handler.response.headers['x-content-type-options'])
-
 
 class MissingContentLengthTests(ServiceHandlerTest):
   """Test for when content-length is not set in the environment.
@@ -797,8 +778,8 @@ class MissingContentTypeTests(ServiceHandlerTest):
   """
 
   def GetEnvironment(self):
-    environment = super(MissingContentLengthTests, self).GetEnvironment()
-    content_type = str(environment.pop('CONTENT_TYPE', None))
+    environment = super(MissingContentTypeTests, self).GetEnvironment()
+    content_type = str(environment.pop('CONTENT_TYPE', ''))
     environment['HTTP_CONTENT_TYPE'] = content_type
     return environment
 

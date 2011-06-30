@@ -379,7 +379,6 @@ class ServiceHandlerFactory(object):
     """
     factory = cls(service_factory)
 
-    factory.add_request_mapper(URLEncodedRPCMapper(parameter_prefix))
     factory.add_request_mapper(ProtobufRPCMapper())
     factory.add_request_mapper(JSONRPCMapper())
 
