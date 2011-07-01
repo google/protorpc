@@ -467,7 +467,7 @@ class ProtoConformanceTestBase(object):
     message = OptionalMessage()
     message.string_value = 'Latin'
     self.EncodeDecode(self.encoded_string_types, message)
-   
+
   def testEncodeUninitialized(self):
     """Test that cannot encode uninitialized message."""
     required = NestedMessage()

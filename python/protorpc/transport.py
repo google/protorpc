@@ -294,7 +294,8 @@ class HttpTransport(Transport):
           if status:
             return http_response.content, status
 
-          raise remote.ServerError, (http_response.content, http_response)
+          return None, remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
+                                        error_message=http_response.content)
 
       except urlfetch.DownloadError, err:
         raise remote.NetworkError, (str(err), err)
@@ -315,7 +316,6 @@ class HttpTransport(Transport):
 
     def _start_request(self, encoded_request):
       """Create the urllib2 request. """
-
       http_request = urllib2.Request(self._method_url, encoded_request)
       http_request.add_header('Content-type',
                               self._transport.protocol.CONTENT_TYPE)
@@ -327,14 +327,17 @@ class HttpTransport(Transport):
         http_response = urllib2.urlopen(self.__http_request)
       except urllib2.HTTPError, err:
         if err.code >= 400:
-          status = self._get_rpc_status(err.hdrs.get('content-type'), err.msg)
+          status = self._get_rpc_status(err.hdrs.get('content-type'),
+                                        err.read())
 
           if status:
             return err.msg, status
 
         # TODO: Map other types of errors to appropriate exceptions.
         _, _, trace_back = sys.exc_info()
-        raise remote.ServerError, (err.msg, err), trace_back
+        return None, remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
+                                      error_message='HTTP Error %s: %s' % (
+                                        err.code, err.msg))
 
       except urllib2.URLError, err:
         _, _, trace_back = sys.exc_info()
@@ -342,7 +345,10 @@ class HttpTransport(Transport):
           error_message = err
         else:
           error_message = err.args[0]
-        raise remote.NetworkError, (error_message, err), trace_back
+
+        return None, remote.RpcStatus(state=remote.RpcState.NETWORK_ERROR,
+                                      error_message='Network Error: %s' %
+                                      error_message)
 
       return http_response.read(), None
 

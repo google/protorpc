@@ -347,13 +347,7 @@ class AlternateService(remote.Service):
     raise NotImplementedError('Not implemented')
 
 
-class EndToEndTestBase(test_util.TestCase):
-
-  # Sub-classes my override to create alternate configurations.
-  DEFAULT_MAPPING = service_handlers.service_mapping(
-    [('/my/service', TestService),
-     ('/my/other_service', TestService.new_factory('initialized')),
-    ])
+class WebServerTestBase(test_util.TestCase):
 
   USE_URLFETCH = False
 
@@ -375,6 +369,44 @@ class EndToEndTestBase(test_util.TestCase):
     self.connection = ServerTransportWrapper(
       self.server,
       self.CreateTransport(self.service_url))
+
+  def tearDown(self):
+    self.server.shutdown()
+    self.testbed.deactivate()
+
+    if not self.USE_URLFETCH:
+      transport.urlfetch = self._original_urlfetch
+
+  def CreateTransport(self, service_url):
+    """Create a new transportation object."""
+    return transport.HttpTransport(service_url, protocol=protojson)
+
+  def StartWebServer(self, port):
+    """Start web server."""
+    application = self.CreateWsgiApplication()
+    validated_application = validate.validator(application)
+    server = simple_server.make_server('localhost', port, validated_application)
+    server = ServerThread(server)
+    server.start()
+    server.wait_until_running()
+    return server, application
+
+  @property
+  def service_url(self):
+    return 'http://localhost:%d/my/service' % self.port
+
+
+class EndToEndTestBase(WebServerTestBase):
+
+  # Sub-classes may override to create alternate configurations.
+  DEFAULT_MAPPING = service_handlers.service_mapping(
+    [('/my/service', TestService),
+     ('/my/other_service', TestService.new_factory('initialized')),
+    ])
+
+  def setUp(self):
+    super(EndToEndTestBase, self).setUp()
+
     self.stub = TestService.Stub(self.connection)
 
     self.other_connection = ServerTransportWrapper(
@@ -384,38 +416,13 @@ class EndToEndTestBase(test_util.TestCase):
 
     self.mismatched_stub = AlternateService.Stub(self.connection)
 
-  def tearDown(self):
-    self.server.shutdown()
-    self.testbed.deactivate()
-
-    if not self.USE_URLFETCH:
-      transport.urlfetch = self._original_urlfetch
-
-  @property
-  def service_url(self):
-    return 'http://localhost:%d/my/service' % self.port
-
   @property
   def other_service_url(self):
     return 'http://localhost:%d/my/other_service' % self.port
 
-  def CreateWSGIApplication(self):
+  def CreateWsgiApplication(self):
     """Create WSGI application used on the server side for testing."""
     return webapp.WSGIApplication(self.DEFAULT_MAPPING, True)
-
-  def CreateTransport(self, service_url):
-    """Create a new transportation object."""
-    return transport.HttpTransport(service_url, protocol=protojson)
-
-  def StartWebServer(self, port):
-    """Start web server."""
-    application = self.CreateWSGIApplication()
-    validated_application = validate.validator(application)
-    server = simple_server.make_server('localhost', port, validated_application)
-    server = ServerThread(server)
-    server.start()
-    server.wait_until_running()
-    return server, application
 
   def DoRawRequest(self,
                    method,
