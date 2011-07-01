@@ -34,6 +34,7 @@ import logging
 from protorpc import messages
 
 __all__ = [
+    'ALTERNATIVE_CONTENT_TYPES',
     'CONTENT_TYPE',
     'encode_message',
     'decode_message',

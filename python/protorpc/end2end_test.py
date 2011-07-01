@@ -61,7 +61,7 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
       content_type='')
     self.assertEquals(400, code)
     self.assertEquals('', content)
-    self.assertEquals('text/html; charset=utf-8', headers['content-type'])
+    self.assertEquals('text/plain; charset=utf-8', headers['content-type'])
 
   def testUnsupportedContentType(self):
     code, content, headers = self.RawRequestError(
@@ -70,7 +70,7 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
       content_type='image/png')
     self.assertEquals(415, code)
     self.assertEquals('', content)
-    self.assertEquals(headers['content-type'], 'text/html; charset=utf-8')
+    self.assertEquals(headers['content-type'], 'text/plain; charset=utf-8')
 
   def testUnsupportedHttpMethod(self):
     code, content, headers = self.RawRequestError('optional_message',
