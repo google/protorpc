@@ -232,9 +232,10 @@ class EnumTest(test_util.TestCase):
 
   def testEnumName(self):
     """Test enum name."""
-    self.assertEquals('messages_test.Color', Color.definition_name())
-    self.assertEquals('messages_test', Color.outer_definition_name())
-    self.assertEquals('messages_test', Color.definition_package())
+    module_name = test_util.get_module_name(EnumTest)
+    self.assertEquals('%s.Color' % module_name, Color.definition_name())
+    self.assertEquals(module_name, Color.outer_definition_name())
+    self.assertEquals(module_name, Color.definition_package())
 
   def testDefinitionName_OverrideModule(self):
     """Test enum module is overriden by module package name."""
@@ -277,19 +278,20 @@ class EnumTest(test_util.TestCase):
 
           pass
 
-    self.assertEquals('messages_test.MyMessage.NestedEnum',
+    module_name = test_util.get_module_name(EnumTest)
+    self.assertEquals('%s.MyMessage.NestedEnum' % module_name,
                       MyMessage.NestedEnum.definition_name())
-    self.assertEquals('messages_test.MyMessage',
+    self.assertEquals('%s.MyMessage' % module_name,
                       MyMessage.NestedEnum.outer_definition_name())
-    self.assertEquals('messages_test',
+    self.assertEquals(module_name,
                       MyMessage.NestedEnum.definition_package())
 
-    self.assertEquals('messages_test.MyMessage.NestedMessage.NestedEnum',
+    self.assertEquals('%s.MyMessage.NestedMessage.NestedEnum' % module_name,
                       MyMessage.NestedMessage.NestedEnum.definition_name())
     self.assertEquals(
-      'messages_test.MyMessage.NestedMessage',
+      '%s.MyMessage.NestedMessage' % module_name,
       MyMessage.NestedMessage.NestedEnum.outer_definition_name())
-    self.assertEquals('messages_test',
+    self.assertEquals(module_name,
                       MyMessage.NestedMessage.NestedEnum.definition_package())
 
   def testMessageDefinition(self):
@@ -1413,9 +1415,11 @@ class MessageTest(test_util.TestCase):
     class MyMessage(messages.Message):
       pass
 
-    self.assertEquals('messages_test.MyMessage', MyMessage.definition_name())
-    self.assertEquals('messages_test', MyMessage.outer_definition_name())
-    self.assertEquals('messages_test', MyMessage.definition_package())
+    module_name = test_util.get_module_name(FieldTest)
+    self.assertEquals('%s.MyMessage' % module_name,
+                      MyMessage.definition_name())
+    self.assertEquals(module_name, MyMessage.outer_definition_name())
+    self.assertEquals(module_name, MyMessage.definition_package())
 
     self.assertEquals(unicode, type(MyMessage.definition_name()))
     self.assertEquals(unicode, type(MyMessage.outer_definition_name()))
@@ -1467,20 +1471,21 @@ class MessageTest(test_util.TestCase):
 
           pass
 
-    self.assertEquals('messages_test.MyMessage.NestedMessage',
+    module_name = test_util.get_module_name(MessageTest)
+    self.assertEquals('%s.MyMessage.NestedMessage' % module_name,
                       MyMessage.NestedMessage.definition_name())
-    self.assertEquals('messages_test.MyMessage',
+    self.assertEquals('%s.MyMessage' % module_name,
                       MyMessage.NestedMessage.outer_definition_name())
-    self.assertEquals('messages_test',
+    self.assertEquals(module_name,
                       MyMessage.NestedMessage.definition_package())
 
-    self.assertEquals('messages_test.MyMessage.NestedMessage.NestedMessage',
+    self.assertEquals('%s.MyMessage.NestedMessage.NestedMessage' % module_name,
                       MyMessage.NestedMessage.NestedMessage.definition_name())
     self.assertEquals(
-      'messages_test.MyMessage.NestedMessage',
+      '%s.MyMessage.NestedMessage' % module_name,
       MyMessage.NestedMessage.NestedMessage.outer_definition_name())
     self.assertEquals(
-      'messages_test',
+      module_name,
       MyMessage.NestedMessage.NestedMessage.definition_package())
 
 

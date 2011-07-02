@@ -29,6 +29,8 @@ conform.
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import inspect
+import os
 import re
 import socket
 import types
@@ -537,7 +539,7 @@ def do_with(context, function, *args, **kwargs):
 
 
 def pick_unused_port():
-  """Fine an unused port to use in tests.
+  """Find an unused port to use in tests.
 
     Derived from Damon Kohlers example:
 
@@ -550,3 +552,21 @@ def pick_unused_port():
   finally:
     temp.close()
   return port
+
+
+def get_module_name(module_attribute):
+  """Get the module name.
+
+  Args:
+    module_attribute: An attribute of the module.
+
+  Returns:
+    The fully qualified module name or simple module name where
+    'module_attribute' is defined if the module name is "__main__".
+  """
+  if module_attribute.__module__ == '__main__':
+    module_file = inspect.getfile(module_attribute)
+    default = os.path.basename(module_file).split('.')[0]
+    return default
+  else:
+    return module_attribute.__module__

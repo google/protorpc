@@ -155,6 +155,7 @@ class DescribeFieldTest(test_util.TestCase):
 
       VAL = 1
 
+    module_name = test_util.get_module_name(MyEnum)
     field = messages.EnumField(MyEnum, 10, default=MyEnum.VAL)
     field.name = 'a_field'
 
@@ -163,7 +164,7 @@ class DescribeFieldTest(test_util.TestCase):
     expected.number = 10
     expected.label = descriptor.FieldDescriptor.Label.OPTIONAL
     expected.variant = messages.EnumField.DEFAULT_VARIANT
-    expected.type_name = 'descriptor_test.MyEnum'
+    expected.type_name = '%s.MyEnum' % module_name
     expected.default_value = '1'
 
     described = descriptor.describe_field(field)
@@ -269,10 +270,11 @@ class DescribeMethodTest(test_util.TestCase):
     def remote_method(request):
       pass
 
+    module_name = test_util.get_module_name(DescribeMethodTest)
     expected = descriptor.MethodDescriptor()
     expected.name = 'remote_method'
-    expected.request_type = 'descriptor_test.Request'
-    expected.response_type = 'descriptor_test.Response'
+    expected.request_type = '%s.Request' % module_name
+    expected.response_type = '%s.Response' % module_name
 
     described = descriptor.describe_method(remote_method)
     described.check_initialized()
@@ -504,7 +506,7 @@ class DescribeTest(test_util.TestCase):
     self.assertEquals(
       descriptor.describe_enum(test_util.OptionalMessage.SimpleEnum),
       descriptor.describe(test_util.OptionalMessage.SimpleEnum))
-      
+
   def testService(self):
     class Service(remote.Service):
       pass

@@ -42,7 +42,6 @@ class MyService1(remote.Service):
   @remote.method(test_util.NestedMessage, test_util.NestedMessage)
   def a_method(self, request):
     pass
-                 
 
 
 class MyService2(remote.Service):
@@ -66,13 +65,14 @@ class RegistryServiceTest(test_util.TestCase):
                                                      modules=self.modules)
 
   def CheckServiceMappings(self, mappings):
+    module_name = test_util.get_module_name(RegistryServiceTest)
     service1_mapping = registry.ServiceMapping()
     service1_mapping.name = 'my-service1'
-    service1_mapping.definition = 'registry_test.MyService1'
+    service1_mapping.definition = '%s.MyService1' % module_name
 
     service2_mapping = registry.ServiceMapping()
     service2_mapping.name = 'my-service2'
-    service2_mapping.definition = 'registry_test.MyService2'
+    service2_mapping.definition = '%s.MyService2' % module_name
 
     mappings.sort(key=lambda mapping: mapping.name)
 

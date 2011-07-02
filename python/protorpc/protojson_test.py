@@ -19,6 +19,7 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import __builtin__
 import base64
 import sys
 import unittest
@@ -213,11 +214,33 @@ class ValidJsonModule(object):
 class TestJsonDependencyLoading(test_util.TestCase):
   """Test loading various implementations of json."""
 
+  def get_import(self):
+    """Get __import__ method.
+
+    Returns:
+      The current __import__ method.
+    """
+    if isinstance(__builtins__, dict):
+      return __builtins__['__import__']
+    else:
+      return __builtins__.__import__
+
+  def set_import(self, new_import):
+    """Set __import__ method.
+
+    Args:
+      new_import: Function to replace __import__.
+    """
+    if isinstance(__builtins__, dict):
+      __builtins__['__import__'] = new_import
+    else:
+      __builtins__.__import__ = new_import
+
   def setUp(self):
     """Save original import function."""
     self.simplejson = sys.modules.pop('simplejson', None)
     self.json = sys.modules.pop('json', None)
-    self.original_import = __builtins__.__import__
+    self.original_import = self.get_import()
     def block_all_jsons(name, *args, **kwargs):
       if 'json' in name:
         if name in sys.modules:
@@ -227,11 +250,10 @@ class TestJsonDependencyLoading(test_util.TestCase):
         raise ImportError('Unable to find %s' % name)
       else:
         return self.original_import(name, *args, **kwargs)
-    __builtins__.__import__ = block_all_jsons
+    self.set_import(block_all_jsons)
 
   def tearDown(self):
     """Restore original import functions and any loaded modules."""
-    __builtins__.__import__ = self.original_import
 
     def reset_module(name, module):
       if module:

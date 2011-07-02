@@ -92,7 +92,7 @@ class RpcErrorTest(test_util.TestCase):
       exception = remote.RpcError.from_state
     self.assertEquals(remote.ServerError,
                       remote.RpcError.from_state('SERVER_ERROR'))
-  
+
 
 class ApplicationErrorTest(test_util.TestCase):
 
@@ -106,10 +106,10 @@ class ApplicationErrorTest(test_util.TestCase):
   def testRepr(self):
     self.assertEquals("ApplicationError('an error', 1)",
                       repr(remote.ApplicationError('an error', 1)))
-      
+
     self.assertEquals("ApplicationError('an error')",
                       repr(remote.ApplicationError('an error')))
-   
+
 
 class RemoteTest(test_util.TestCase):
   """Test remote method decorator."""
@@ -471,10 +471,11 @@ class ServiceTest(test_util.TestCase):
 
     factory = StatefulService.new_factory(1, state)
 
-    self.assertEquals('Creates new instances of service StatefulService.\n\n'
-                      'Returns:\n'
-                      '  New instance of __main__.StatefulService.',
-                      factory.func_doc)
+    module_name = ServiceTest.__module__
+    pattern = ('Creates new instances of service StatefulService.\n\n'
+               'Returns:\n'
+               '  New instance of %s.StatefulService.' % module_name)
+    self.assertEqual(pattern, factory.func_doc)
     self.assertEquals('StatefulService_service_factory', factory.func_name)
     self.assertEquals(StatefulService, factory.service_class)
 
@@ -510,9 +511,13 @@ class ServiceTest(test_util.TestCase):
     class TheService(remote.Service):
       pass
 
-    self.assertEquals('remote_test.TheService', TheService.definition_name())
-    self.assertEquals('remote_test', TheService.outer_definition_name())
-    self.assertEquals('remote_test', TheService.definition_package())
+    module_name = test_util.get_module_name(ServiceTest)
+    self.assertEqual(TheService.definition_name(),
+                     '%s.TheService' % module_name)
+    self.assertTrue(TheService.outer_definition_name(),
+                    module_name)
+    self.assertTrue(TheService.definition_package(),
+                    module_name)
 
   def testDefinitionNameWithPackage(self):
     """Test getting service definition name when package defined."""
