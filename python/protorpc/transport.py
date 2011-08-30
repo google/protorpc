@@ -23,6 +23,7 @@ transports such as HTTP.
 Includes HTTP transport built over urllib2.
 """
 
+import httplib
 import logging
 import sys
 import urllib2
@@ -294,8 +295,13 @@ class HttpTransport(Transport):
           if status:
             return http_response.content, status
 
-          return None, remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
-                                        error_message=http_response.content)
+          error_message = httplib.responses.get(http_response.status_code,
+                                                'Unknown Error')
+          return (None,
+                  remote.RpcStatus(
+                    state=remote.RpcState.SERVER_ERROR,
+                    error_message='HTTP Error %d: %s' % (
+                      http_response.status_code, error_message)))
 
       except urlfetch.DownloadError, err:
         raise remote.NetworkError, (str(err), err)

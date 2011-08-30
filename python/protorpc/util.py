@@ -34,6 +34,7 @@ __all__ = ['AcceptItem',
            'Error',
            'choose_content_type',
            'get_package_for_module',
+           'pad_string',
            'parse_accept_header',
            'positional',
 ]
@@ -45,6 +46,21 @@ class Error(Exception):
 
 class AcceptError(Error):
   """Raised when there is an error parsing the accept header."""
+
+
+def pad_string(string):
+  """Pad a string for safe HTTP error responses.
+
+  Prevents Internet Explorer from displaying their own error messages
+  when sent as the content of error responses.
+
+  Args:
+    string: A string.
+
+  Returns:
+    Formatted string left justified within a 512 byte field.
+  """
+  return string.ljust(512)
 
 
 def positional(max_positional_args):

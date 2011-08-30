@@ -38,6 +38,7 @@ from protorpc import message_types
 from protorpc import registry
 from protorpc import remote
 from protorpc import test_util
+from protorpc import util
 from protorpc import webapp_test_util
 from protorpc.webapp import forms
 from protorpc.webapp import service_handlers
@@ -132,7 +133,7 @@ def VerifyResponse(test,
                    expected_content_type='application/x-www-form-urlencoded'):
   def write(content):
     if expected_content == '':
-      test.assertEquals('', content)
+      test.assertEquals(util.pad_string(''), content)
     else:
       test.assertNotEquals(-1, content.find(expected_content),
                            'Expected to find:\n%s\n\nActual content: \n%s' % (
@@ -548,7 +549,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.VerifyResponse('405',
                         'Unsupported HTTP method: UNKNOWN',
-                        '',
+                        'Method Not Allowed',
                         'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
@@ -561,7 +562,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.VerifyResponse('405',
                         'Unsupported HTTP method: GET',
-                        '',
+                        'Method Not Allowed',
                         'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
@@ -575,7 +576,7 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
 
     self.VerifyResponse('415',
                         'Unsupported content-type: image/png',
-                        '',
+                        'Unsupported Media Type',
                         'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
@@ -588,7 +589,8 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.request.headers.pop('Content-Type', None)
     self.handler.handle('/my_service', 'POST', 'method1')
 
-    self.VerifyResponse('400', 'Invalid RPC request: missing content-type', '',
+    self.VerifyResponse('400', 'Invalid RPC request: missing content-type',
+                        'Bad Request',
                         'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
@@ -731,11 +733,12 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
   def testGetNotSupported(self):
     self.handler.get('/my_service', 'method1')
     self.assertEquals(405, self.handler.response.status)
-    self.assertEquals('/my_service.method1 is a ProtoRPC method.\n\n'
-                      'Service %s.Service\n\n'
-                      'More about ProtoRPC: '
-                      'http://code.google.com/p/google-protorpc\n' %
-                      __name__,
+    expected_message = ('/my_service.method1 is a ProtoRPC method.\n\n'
+                        'Service %s.Service\n\n'
+                        'More about ProtoRPC: '
+                        'http://code.google.com/p/google-protorpc\n' %
+                        __name__)
+    self.assertEquals(util.pad_string(expected_message),
                       self.handler.response.out.getvalue())
     self.assertEquals(
         'nosniff',
@@ -745,12 +748,13 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.request.headers['content-type'] = 'image/png'
     self.handler.get('/my_service', 'method1')
     self.assertEquals(415, self.handler.response.status)
-    self.assertEquals('/my_service.method1 is a ProtoRPC method.\n\n'
+    self.assertEquals(
+      util.pad_string('/my_service.method1 is a ProtoRPC method.\n\n'
                       'Service %s.Service\n\n'
                       'More about ProtoRPC: '
                       'http://code.google.com/p/google-protorpc\n' %
-                      __name__,
-                      self.handler.response.out.getvalue())
+                      __name__),
+      self.handler.response.out.getvalue())
     self.assertEquals(
         'nosniff',
         self.handler.response.headers['x-content-type-options'])

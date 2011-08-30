@@ -93,6 +93,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import array
 import cgi
 import itertools
+import httplib
 import logging
 import re
 import sys
@@ -235,7 +236,7 @@ class RPCMapper(object):
     except (messages.ValidationError, messages.DecodeError), err:
       raise RequestError('Unable to parse request content: %s' % err)
 
-  def build_response(self, handler, response):
+  def build_response(self, handler, response, pad_string=False):
     """Build response based on service object response message.
 
     Each request mapper implementation is responsible for converting a
@@ -451,6 +452,7 @@ class ServiceHandler(webapp.RequestHandler):
       self.error(405)
 
     if self.response.status in (405, 415) or not self.__get_content_type():
+      self.response.out.seek(0)
       self.__show_info(service_path, remote_method)
 
 
@@ -476,10 +478,14 @@ class ServiceHandler(webapp.RequestHandler):
     status = remote.RpcStatus(state=status_state,
                               error_message=error_message,
                               error_name=error_name)
-    encoded_status = mapper.build_response(self, status)
+    mapper.build_response(self, status)
     self.response.headers['content-type'] = mapper.default_content_type
 
     logging.error(error_message)
+    response_content = self.response.out.getvalue()
+    padding = ' ' * max(0, 512 - len(response_content))
+    self.response.out.write(padding)
+
     self.response.set_status(http_code, error_message)
 
   def __send_simple_error(self, code, message):
@@ -487,6 +493,9 @@ class ServiceHandler(webapp.RequestHandler):
     self.response.headers['content-type'] = 'text/plain; charset=utf-8'
     logging.error(message)
     self.response.set_status(code, message)
+
+    response_message = httplib.responses.get(code, 'Unknown Error')
+    self.response.out.write(util.pad_string(response_message))
 
   def __get_content_type(self):
     content_type = self.request.headers.get('content-type', None)

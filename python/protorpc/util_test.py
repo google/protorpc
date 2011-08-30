@@ -34,6 +34,18 @@ class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
   MODULE = util
 
 
+class PadStringTest(test_util.TestCase):
+
+  def testPadEmptyString(self):
+    self.assertEquals(' ' * 512, util.pad_string(''))
+
+  def testPadString(self):
+    self.assertEquals('hello' + (507 * ' '), util.pad_string('hello'))
+
+  def testPadLongString(self):
+    self.assertEquals('x' * 1000, util.pad_string('x' * 1000))
+
+
 class UtilTest(test_util.TestCase):
 
   def testDecoratedFunction_LengthZero(self):

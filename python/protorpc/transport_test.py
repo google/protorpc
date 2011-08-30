@@ -390,7 +390,8 @@ class HttpTransportUrlfetchTest(test_util.TestCase):
     rpc.wait()
     
     self.assertEquals(remote.RpcState.SERVER_ERROR, rpc.state)
-    self.assertEquals('an error', rpc.error_message)
+    self.assertEquals('HTTP Error 500: Internal Server Error',
+                      rpc.error_message)
     self.assertEquals(None, rpc.error_name)
 
 

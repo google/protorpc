@@ -27,6 +27,7 @@ from google.appengine.ext import webapp
 from protorpc import protojson
 from protorpc import remote
 from protorpc import test_util
+from protorpc import util
 from protorpc import webapp_test_util
 
 package = 'test_package'
@@ -60,8 +61,13 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
       content='{"string_value": "blar"}',
       content_type='')
     self.assertEquals(400, code)
-    self.assertEquals('', content)
+    self.assertEquals(util.pad_string('Bad Request'), content)
     self.assertEquals('text/plain; charset=utf-8', headers['content-type'])
+
+  def testWrongPath(self):
+    self.assertRaisesWithRegexpMatch(remote.ServerError,
+                                     'HTTP Error 404: Not Found',
+                                     self.bad_path_stub.optional_message)
 
   def testUnsupportedContentType(self):
     code, content, headers = self.RawRequestError(
@@ -69,15 +75,15 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
       content='{"string_value": "blar"}',
       content_type='image/png')
     self.assertEquals(415, code)
-    self.assertEquals('', content)
+    self.assertEquals(util.pad_string('Unsupported Media Type'), content)
     self.assertEquals(headers['content-type'], 'text/plain; charset=utf-8')
 
   def testUnsupportedHttpMethod(self):
-    code, content, headers = self.RawRequestError('optional_message',
-                                                  content=None)
+    code, content, headers = self.RawRequestError('optional_message')
     self.assertEquals(405, code)
     self.assertTrue(
-        '/my/service.optional_message is a ProtoRPC method' in content)
+      '/my/service.optional_message is a ProtoRPC method' in content,
+      'Expected user friendly error response, was: "%s"' % content)
     self.assertEquals(headers['content-type'], 'text/plain; charset=utf-8')
 
   def testMethodNotFound(self):
@@ -89,14 +95,14 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
     code, content, headers = self.RawRequestError('nested_message',
                                                   content='{}')
     self.assertEquals(400, code)
-    self.assertEquals(
-      protojson.encode_message(remote.RpcStatus(
-        state=remote.RpcState.REQUEST_ERROR,
-        error_message=('Error parsing ProtoRPC request '
-                       '(Unable to parse request content: '
-                       'Message NestedMessage is missing '
-                       'required field a_value)'))),
-      content)
+
+    expected_content = protojson.encode_message(remote.RpcStatus(
+      state=remote.RpcState.REQUEST_ERROR,
+      error_message=('Error parsing ProtoRPC request '
+                     '(Unable to parse request content: '
+                     'Message NestedMessage is missing '
+                     'required field a_value)')))
+    self.assertEquals(util.pad_string(expected_content), content)
     self.assertEquals(headers['content-type'], 'application/json')
 
   def testApplicationError(self):

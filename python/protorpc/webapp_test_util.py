@@ -370,6 +370,11 @@ class WebServerTestBase(test_util.TestCase):
       self.server,
       self.CreateTransport(self.service_url))
 
+    self.bad_path_connection = ServerTransportWrapper(
+      self.server,
+      self.CreateTransport(self.service_url + '_x'))
+    self.bad_path_stub = TestService.Stub(self.bad_path_connection)
+
   def tearDown(self):
     self.server.shutdown()
     self.testbed.deactivate()
@@ -441,7 +446,7 @@ class EndToEndTestBase(WebServerTestBase):
 
   def RawRequestError(self,
                       method,
-                      content='',
+                      content=None,
                       content_type='application/json',
                       headers=None):
     try:
