@@ -25,6 +25,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cStringIO
 import threading
+import time
 import unittest
 import urllib2
 from wsgiref import simple_server
@@ -197,17 +198,6 @@ class ServerThread(threading.Thread):
   many requests to listen for using the handle_request method.
   """
 
-  def __lock(method):
-    """Decorator for methods that need to run in critical section."""
-    def wrapper(self, *args, **kwargs):
-      self.__condition.acquire()
-      try:
-        method(self, *args, **kwargs)
-      finally:
-        self.__condition.release()
-    wrapper.__name__ = method.__name__
-    return wrapper
-
   def __init__(self, server, *args, **kwargs):
     """Constructor.
 
@@ -225,30 +215,17 @@ class ServerThread(threading.Thread):
         for additional notification.
     """
     self.server = server
+    self.server.socket.settimeout(0.1)
     self.__condition = threading.Condition()
     self.__serving = True
     self.__started = False
-    self.__requests = 0
 
     super(ServerThread, self).__init__(*args, **kwargs)
 
-  @__lock
   def shutdown(self):
     """Notify server that it must shutdown gracefully."""
     self.__serving = False
-    self.__condition.notify()
 
-  @__lock
-  def handle_request(self, request_count=1):
-    """Notify the server that it must handle a number of incoming requests.
-
-    Args:
-      request_count: Number of requests to expect.
-    """
-    self.__requests += request_count
-    self.__condition.notify()
-
-  @__lock
   def wait_until_running(self):
     """Wait until the server thread is known to be running.
 
@@ -258,47 +235,16 @@ class ServerThread(threading.Thread):
     receive them.
     """
     while not self.__started:
-      self.__condition.wait()
+      time.sleep(0.1)
 
-  @__lock
   def run(self):
     """Handle incoming requests until shutdown."""
     self.__started = True
-    self.__condition.notifyAll()
+
     while self.__serving:
-      if self.__requests == 0:
-        self.__condition.wait()
-      else:
-        self.server.handle_request()
-        self.__requests -= 1
+      self.server.handle_request()
 
     self.server = None
-
-
-class ServerTransportWrapper(transport.Transport):
-  """Wrapper for a real transport that notifies server thread about requests.
-
-  Since the server thread must receive notifications about requests that it must
-  handle, it is helpful to have a transport wrapper that actually does this
-  notification on each request.
-  """
-
-  def __init__(self, server_thread, transport):
-    """Constructor.
-
-    Args:
-      server_thread: Instance of ServerThread to notify upon each request.
-      transport: Actual transport that is being wrapped.
-    """
-    self.server_thread = server_thread
-    self.transport = transport
-    self.original_send_rpc = self.transport.send_rpc
-    self.transport.send_rpc = self.send_rpc
-    self._start_rpc = self.transport._start_rpc
-
-  def send_rpc(self, *args, **kwargs):
-    self.server_thread.handle_request()
-    return self.original_send_rpc(*args, **kwargs)
 
 
 class TestService(remote.Service):
@@ -353,6 +299,7 @@ class WebServerTestBase(test_util.TestCase):
 
   def setUp(self):
     self.port = test_util.pick_unused_port()
+
     self.server, self.application = self.StartWebServer(self.port)
 
     self.testbed = testbed.Testbed()
@@ -366,13 +313,9 @@ class WebServerTestBase(test_util.TestCase):
       self._original_urlfetch = transport.urlfetch
       transport.urlfetch = None
 
-    self.connection = ServerTransportWrapper(
-      self.server,
-      self.CreateTransport(self.service_url))
+    self.connection = self.CreateTransport(self.service_url)
 
-    self.bad_path_connection = ServerTransportWrapper(
-      self.server,
-      self.CreateTransport(self.service_url + '_x'))
+    self.bad_path_connection = self.CreateTransport(self.service_url + '_x')
     self.bad_path_stub = TestService.Stub(self.bad_path_connection)
 
   def tearDown(self):
@@ -414,9 +357,7 @@ class EndToEndTestBase(WebServerTestBase):
 
     self.stub = TestService.Stub(self.connection)
 
-    self.other_connection = ServerTransportWrapper(
-      self.server,
-      self.CreateTransport(self.other_service_url))
+    self.other_connection = self.CreateTransport(self.other_service_url)
     self.other_stub = TestService.Stub(self.other_connection)
 
     self.mismatched_stub = AlternateService.Stub(self.connection)
@@ -441,7 +382,6 @@ class EndToEndTestBase(WebServerTestBase):
     request = urllib2.Request('%s.%s' % (self.service_url, method),
                               content,
                               headers)
-    self.server.handle_request()
     return urllib2.urlopen(request)
 
   def RawRequestError(self,
