@@ -37,6 +37,7 @@ __all__ = ['AcceptItem',
            'pad_string',
            'parse_accept_header',
            'positional',
+           'PROTORPC_PROJECT_URL',
 ]
 
 

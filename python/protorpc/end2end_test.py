@@ -81,9 +81,12 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
   def testUnsupportedHttpMethod(self):
     code, content, headers = self.RawRequestError('optional_message')
     self.assertEquals(405, code)
-    self.assertTrue(
-      '/my/service.optional_message is a ProtoRPC method' in content,
-      'Expected user friendly error response, was: "%s"' % content)
+    self.assertEquals(
+      util.pad_string('/my/service.optional_message is a ProtoRPC method.\n\n'
+                      'Service protorpc.webapp_test_util.TestService\n\n'
+                      'More about ProtoRPC: '
+                      'http://code.google.com/p/google-protorpc\n'),
+      content)
     self.assertEquals(headers['content-type'], 'text/plain; charset=utf-8')
 
   def testMethodNotFound(self):

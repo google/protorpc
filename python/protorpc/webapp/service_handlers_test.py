@@ -561,8 +561,12 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
     self.handler.handle('GET', '/my_service', 'method1')
 
     self.VerifyResponse('405',
-                        'Unsupported HTTP method: GET',
                         'Method Not Allowed',
+                        '/my_service.method1 is a ProtoRPC method.\n\n'
+                        'Service %s.Service\n\n'
+                        'More about ProtoRPC: '
+                        'http://code.google.com/p/google-protorpc' %
+                        (__name__,),
                         'text/plain; charset=utf-8')
 
     self.mox.VerifyAll()
@@ -720,12 +724,13 @@ class ServiceHandlerTest(webapp_test_util.RequestHandlerTestBase):
   def testGetNoMethod(self):
     self.handler.get('/my_service', '')
     self.assertEquals(405, self.handler.response.status)
-    self.assertEquals('/my_service is a ProtoRPC service.\n\n'
+    self.assertEquals(
+      util.pad_string('/my_service is a ProtoRPC service.\n\n'
                       'Service %s.Service\n\n'
                       'More about ProtoRPC: '
                       'http://code.google.com/p/google-protorpc\n' %
-                      __name__,
-                      self.handler.response.out.getvalue())
+                      __name__),
+      self.handler.response.out.getvalue())
     self.assertEquals(
         'nosniff',
         self.handler.response.headers['x-content-type-options'])

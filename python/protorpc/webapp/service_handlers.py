@@ -422,21 +422,24 @@ class ServiceHandler(webapp.RequestHandler):
 
   def __show_info(self, service_path, remote_method):
     self.response.headers['content-type'] = 'text/plain; charset=utf-8'
+    response_message = []
     if remote_method:
-      self.response.out.write('%s.%s is a ProtoRPC method.\n\n' %(
+      response_message.append('%s.%s is a ProtoRPC method.\n\n' %(
         service_path, remote_method))
     else:
-      self.response.out.write('%s is a ProtoRPC service.\n\n' % service_path)
+      response_message.append('%s is a ProtoRPC service.\n\n' % service_path)
     definition_name_function = getattr(self.__service, 'definition_name', None)
     if definition_name_function:
       definition_name = definition_name_function()
     else:
       definition_name = '%s.%s' % (self.__service.__module__,
                                    self.__service.__class__.__name__)
-    self.response.out.write('Service %s\n\n' % definition_name)
 
-    self.response.out.write('More about ProtoRPC: '
-                            'http://code.google.com/p/google-protorpc\n')
+    response_message.append('Service %s\n\n' % definition_name)
+    response_message.append('More about ProtoRPC: ')
+      
+    response_message.append('http://code.google.com/p/google-protorpc\n')
+    self.response.out.write(util.pad_string(''.join(response_message)))
 
   def get(self, service_path, remote_method):
     """Handler method for GET requests.
@@ -445,16 +448,7 @@ class ServiceHandler(webapp.RequestHandler):
       service_path: Service path derived from request URL.
       remote_method: Sub-path after service path has been matched.
     """
-    if remote_method:
-      self.handle('GET', service_path, remote_method)
-    else:
-      self.response.headers['x-content-type-options'] = 'nosniff'
-      self.error(405)
-
-    if self.response.status in (405, 415) or not self.__get_content_type():
-      self.response.out.seek(0)
-      self.__show_info(service_path, remote_method)
-
+    self.handle('GET', service_path, remote_method)
 
   def post(self, service_path, remote_method):
     """Handler method for POST requests.
@@ -488,14 +482,16 @@ class ServiceHandler(webapp.RequestHandler):
 
     self.response.set_status(http_code, error_message)
 
-  def __send_simple_error(self, code, message):
+  def __send_simple_error(self, code, message, pad=True):
     """Send error to caller without embedded message."""
     self.response.headers['content-type'] = 'text/plain; charset=utf-8'
     logging.error(message)
     self.response.set_status(code, message)
 
     response_message = httplib.responses.get(code, 'Unknown Error')
-    self.response.out.write(util.pad_string(response_message))
+    if pad:
+      response_message = util.pad_string(response_message)
+    self.response.out.write(response_message)
 
   def __get_content_type(self):
     content_type = self.request.headers.get('content-type', None)
@@ -535,6 +531,12 @@ class ServiceHandler(webapp.RequestHandler):
       remote_method: Sub-path after service path has been matched.
     """
     self.response.headers['x-content-type-options'] = 'nosniff'
+    if not remote_method and http_method == 'GET':
+      # Special case a normal get request, presumably via a browser.
+      self.error(405)
+      self.__show_info(service_path, remote_method)
+      return
+
     content_type = self.__get_content_type()
 
     # Provide server state to the service.  If the service object does not have
@@ -567,14 +569,22 @@ class ServiceHandler(webapp.RequestHandler):
       if content_type in mapper.content_types:
         break
     else:
-      self.__send_simple_error(415,
-                               'Unsupported content-type: %s' % content_type)
+      if http_method == 'GET':
+        self.error(httplib.UNSUPPORTED_MEDIA_TYPE)
+        self.__show_info(service_path, remote_method)
+      else:
+        self.__send_simple_error(httplib.UNSUPPORTED_MEDIA_TYPE,
+                                 'Unsupported content-type: %s' % content_type)
       return
 
     try:
       if http_method not in mapper.http_methods:
-        self.__send_simple_error(405,
-                                 'Unsupported HTTP method: %s' % http_method)
+        if http_method == 'GET':
+          self.error(httplib.METHOD_NOT_ALLOWED)
+          self.__show_info(service_path, remote_method)
+        else:
+          self.__send_simple_error(httplib.METHOD_NOT_ALLOWED,
+                                   'Unsupported HTTP method: %s' % http_method)
         return
 
       try:
