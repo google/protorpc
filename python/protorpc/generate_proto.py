@@ -21,10 +21,10 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import logging
 
-from protorpc import descriptor
-from protorpc import generate
-from protorpc import messages
-from protorpc import util
+from . import descriptor
+from . import generate
+from . import messages
+from . import util
 
 
 __all__ = ['format_proto_file']

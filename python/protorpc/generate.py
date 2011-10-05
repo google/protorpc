@@ -19,8 +19,8 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import contextlib
 
-from protorpc import messages
-from protorpc import util
+from . import messages
+from . import util
 
 __all__ = ['IndentationError',
            'IndentWriter',

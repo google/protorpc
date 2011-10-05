@@ -34,10 +34,10 @@ A configured registry is itself a remote service and should reference itself.
 import sys
 import weakref
 
-from protorpc import descriptor
-from protorpc import messages
-from protorpc import remote
-from protorpc import util
+from . import descriptor
+from . import messages
+from . import remote
+from . import util
 
 
 __all__ = [

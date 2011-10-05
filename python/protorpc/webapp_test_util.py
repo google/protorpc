@@ -31,11 +31,11 @@ import urllib2
 from wsgiref import simple_server
 from wsgiref import validate
 
-from protorpc import protojson
-from protorpc import remote
-from protorpc import test_util
-from protorpc import transport
-from protorpc.webapp import service_handlers
+from . import protojson
+from . import remote
+from . import test_util
+from . import transport
+from .webapp import service_handlers
 
 from google.appengine.ext import webapp
 from google.appengine.ext import testbed

@@ -28,10 +28,10 @@ import logging
 import sys
 import urllib2
 
-from protorpc import messages
-from protorpc import protobuf
-from protorpc import remote
-from protorpc import util
+from . import messages
+from . import protobuf
+from . import remote
+from . import util
 
 try:
   from google.appengine.api import urlfetch

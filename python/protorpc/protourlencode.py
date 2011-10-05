@@ -92,8 +92,8 @@ import cgi
 import re
 import urllib
 
-from protorpc import messages
-from protorpc import util
+from . import messages
+from . import util
 
 __all__ = ['CONTENT_TYPE',
            'URLEncodedRequestBuilder',

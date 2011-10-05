@@ -19,10 +19,10 @@ from __future__ import with_statement
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
-from protorpc import descriptor
-from protorpc import generate
-from protorpc import messages
-from protorpc import util
+from . import descriptor
+from . import generate
+from . import messages
+from . import util
 
 
 __all__ = ['format_python_file']

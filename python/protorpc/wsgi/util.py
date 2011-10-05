@@ -24,7 +24,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import httplib
 
-from protorpc import util
+from .. import util
 
 
 @util.positional(1)

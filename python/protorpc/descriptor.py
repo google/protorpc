@@ -103,8 +103,8 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import codecs
 import types
 
-from protorpc import messages
-from protorpc import util
+from . import messages
+from . import util
 
 
 __all__ = ['EnumDescriptor',
@@ -460,7 +460,7 @@ def describe_file(module):
   # file
   # TODO(rafek): Straighten out this dependency.  Possibly move these functions
   # from descriptor to their own module.
-  from protorpc import remote
+  from . import remote
 
   descriptor = FileDescriptor()
   descriptor.package = util.get_package_for_module(module)
@@ -533,7 +533,7 @@ def describe(value):
     Descriptor message class if object is describable as a descriptor, else
     None.
   """
-  from protorpc import remote
+  from . import remote
   if isinstance(value, types.ModuleType):
     return describe_file(value)
   elif callable(value) and hasattr(value, 'remote'):

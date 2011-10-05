@@ -108,10 +108,10 @@ import os
 import sys
 from wsgiref import headers as wsgi_headers
 
-from protorpc import message_types
-from protorpc import messages
-from protorpc import descriptor
-from protorpc import util
+from . import message_types
+from . import messages
+from . import descriptor
+from . import util
 
 
 __all__ = [

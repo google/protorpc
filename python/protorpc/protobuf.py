@@ -35,7 +35,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import array
 import cStringIO
 
-from protorpc import messages
+from . import messages
 # TODO(rafek): Do something about this dependency maybe.
 from google.net.proto import ProtocolBuffer
 

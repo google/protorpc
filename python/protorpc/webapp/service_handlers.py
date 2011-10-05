@@ -103,14 +103,14 @@ import weakref
 
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util as webapp_util
-from protorpc import messages
-from protorpc import protobuf
-from protorpc import protojson
-from protorpc import protourlencode
-from protorpc import registry
-from protorpc import remote
-from protorpc import util
-from protorpc.webapp import forms
+from .. import messages
+from .. import protobuf
+from .. import protojson
+from .. import protourlencode
+from .. import registry
+from .. import remote
+from .. import util
+from . import forms
 
 __all__ = [
     'Error',

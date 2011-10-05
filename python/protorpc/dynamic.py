@@ -25,7 +25,7 @@ from google.protobuf import descriptor
 from google.protobuf import message
 from google.protobuf import reflection
 
-from protorpc import util
+from . import util
 
 
 __all__ = ['Error',

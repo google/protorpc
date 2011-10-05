@@ -51,7 +51,7 @@ import traceback
 import types
 import weakref
 
-from protorpc import util
+from . import util
 
 __all__ = ['MAX_ENUM_VALUE',
            'MAX_FIELD_NUMBER',

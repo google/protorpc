@@ -31,7 +31,7 @@ import cStringIO
 import base64
 import logging
 
-from protorpc import messages
+from . import messages
 
 __all__ = [
     'ALTERNATIVE_CONTENT_TYPES',

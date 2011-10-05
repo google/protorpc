@@ -33,12 +33,12 @@ import re
 
 from wsgiref import headers as wsgi_headers
 
-from protorpc import protobuf
-from protorpc import protojson
-from protorpc import messages
-from protorpc import remote
-from protorpc import util
-from protorpc.wsgi import util as wsgi_util
+from .. import protobuf
+from .. import protojson
+from .. import messages
+from .. import remote
+from .. import util
+from . import util as wsgi_util
 
 __all__ = [
   'service_app',

@@ -19,7 +19,7 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
-from protorpc import messages
+from . import messages
 
 
 class VoidMessage(messages.Message):

@@ -36,7 +36,7 @@ import socket
 import types
 import unittest
 
-from protorpc import messages
+from . import messages
 
 # Unicode of the word "Russian" in cyrillic.
 RUSSIAN = u'\u0440\u0443\u0441\u0441\u043a\u0438\u0439'

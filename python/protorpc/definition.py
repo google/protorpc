@@ -23,11 +23,11 @@ import new
 import sys
 import urllib2
 
-from protorpc import descriptor
-from protorpc import messages
-from protorpc import protobuf
-from protorpc import remote
-from protorpc import util
+from . import descriptor
+from . import messages
+from . import protobuf
+from . import remote
+from . import util
 
 __all__ = [
     'define_enum',
