@@ -97,10 +97,10 @@ def service_mapping(service_factory, service_path=r'.*'):
                  'Service %s\n\n'
                  'More about ProtoRPC: '
                  '%s\n' %
-                 (util.PROTORPC_PROJECT_URL,
-                  service_path,
+                 (service_path,
                   method_name,
-                  service_class.definition_name().encode('utf-8')))
+                  service_class.definition_name().encode('utf-8'),
+                  util.PROTORPC_PROJECT_URL))
       error_handler = wsgi_util.error(
         httplib.METHOD_NOT_ALLOWED,
         httplib.responses[httplib.METHOD_NOT_ALLOWED],

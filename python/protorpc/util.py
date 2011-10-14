@@ -49,6 +49,9 @@ class AcceptError(Error):
   """Raised when there is an error parsing the accept header."""
 
 
+PROTORPC_PROJECT_URL = 'http://code.google.com/p/google-protorpc'
+
+
 def pad_string(string):
   """Pad a string for safe HTTP error responses.
 
