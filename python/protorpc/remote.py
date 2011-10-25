@@ -110,6 +110,8 @@ from wsgiref import headers as wsgi_headers
 
 from . import message_types
 from . import messages
+from . import protobuf
+from . import protojson
 from . import descriptor
 from . import util
 
@@ -1195,3 +1197,15 @@ class Protocols(object):
       KeyError if there is no protocol for content-type.
     """
     return self.__by_content_type[content_type.lower()]
+
+  @classmethod
+  def new_default(cls):
+    """Create default protocols configuration.
+
+    Returns:
+      New Protocols instance configured for protobuf and protorpc.
+    """
+    protocols = cls()
+    protocols.add_protocol(protobuf, 'protobuf')
+    protocols.add_protocol(protojson, 'protojson')
+    return protocols

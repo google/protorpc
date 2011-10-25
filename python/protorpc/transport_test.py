@@ -180,10 +180,24 @@ class TransportTest(test_util.TestCase):
     self.assertEquals(response, rpc.response)
 
   def testDefaultProtocol(self):
-    self.do_test(protobuf, transport.Transport())
+    trans = transport.Transport()
+    self.do_test(protobuf, trans)
+    self.assertEquals(protobuf, trans.protocol_config.protocol)
+    self.assertEquals('default', trans.protocol_config.name)
 
   def testAlternateProtocol(self):
-    self.do_test(protojson, transport.Transport(protocol=protojson))
+    trans = transport.Transport(protocol=protojson)
+    self.do_test(protojson, trans)
+    self.assertEquals(protojson, trans.protocol_config.protocol)
+    self.assertEquals('default', trans.protocol_config.name)
+
+  def testProtocolConfig(self):
+    protocol_config = remote.ProtocolConfig(
+      protojson, 'protoconfig', 'image/png')
+    trans = transport.Transport(protocol=protocol_config)
+    self.do_test(protojson, trans)
+    self.assertTrue(trans.protocol_config is protocol_config)
+
 
 @remote.method(Message, Message)
 def my_method(self, request):

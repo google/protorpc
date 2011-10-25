@@ -53,7 +53,7 @@ _HTTP_UNSUPPORTED_MEDIA_TYPE = wsgi_util.error(httplib.UNSUPPORTED_MEDIA_TYPE)
 
 
 @util.positional(2)
-def service_mapping(service_factory, service_path=r'.*'):
+def service_mapping(service_factory, service_path=r'.*', protocols=None):
   """WSGI application that handles a single ProtoRPC service mapping.
 
   Args:
@@ -62,13 +62,11 @@ def service_mapping(service_factory, service_path=r'.*'):
       instance or a service class whose constructor requires no parameters.
     service_path: Regular expression for matching requests against.  Requests
       that do not have matching paths will cause a 404 (Not Found) response.
+    protocols: remote.Protocols instance that configures supported protocols
+      on server.
   """
-  # Just create default protocols configuration.
-  # Includes protobuf and protojson.
-  # TODO(rafek): Support user provided protocols configuration.
-  protocols = remote.Protocols()
-  protocols.add_protocol(protobuf, 'protobuf')
-  protocols.add_protocol(protojson, 'protojson')
+  if protocols is None:
+    protocols = remote.Protocols.new_default()
 
   service_class = getattr(service_factory, 'service_class', service_factory)
   remote_methods = service_class.all_remote_methods()

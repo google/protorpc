@@ -28,6 +28,7 @@ from google.appengine.ext import webapp
 from protorpc import end2end_test
 from protorpc import protojson
 from protorpc import remote
+from protorpc import transport
 from protorpc import test_util
 from protorpc import webapp_test_util
 from protorpc.wsgi import service
@@ -35,13 +36,18 @@ from protorpc.wsgi import service
 
 class ProtoRpcServiceTest(end2end_test.EndToEndTest):
 
+  def setUp(self):
+    self.protocols = None
+    super(ProtoRpcServiceTest, self).setUp()
+
   def  CreateWsgiApplication(self):
     """Create WSGI application used on the server side for testing."""
     my_service = service.service_mapping(webapp_test_util.TestService,
                                          '/my/service')
     my_other_service = service.service_mapping(
       webapp_test_util.TestService.new_factory('initialized'),
-      '/my/other_service')
+      '/my/other_service',
+      protocols=self.protocols)
 
     def request_router(environ, start_response):
       path_info = environ['PATH_INFO']
@@ -51,6 +57,17 @@ class ProtoRpcServiceTest(end2end_test.EndToEndTest):
         return my_other_service(environ, start_response)
       raise AssertionError('Should never get here')
     return request_router
+
+  def testAlternateProtocols(self):
+    self.protocols = remote.Protocols()
+    self.protocols.add_protocol(protojson, 'altproto', 'image/png')
+    self.ResetServer()
+
+    self.connection = transport.HttpTransport(
+      self.service_url, protocol=self.protocols.lookup_by_name('altproto'))
+    self.stub = webapp_test_util.TestService.Stub(self.connection)
+
+    self.stub.optional_message(string_value='alternate-protocol')
 
 
 def main():

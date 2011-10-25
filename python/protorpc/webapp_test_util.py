@@ -298,9 +298,6 @@ class WebServerTestBase(test_util.TestCase):
   USE_URLFETCH = False
 
   def setUp(self):
-    self.port = test_util.pick_unused_port()
-
-    self.server, self.application = self.StartWebServer(self.port)
 
     self.testbed = testbed.Testbed()
     self.testbed.activate()
@@ -313,7 +310,8 @@ class WebServerTestBase(test_util.TestCase):
       self._original_urlfetch = transport.urlfetch
       transport.urlfetch = None
 
-    self.connection = self.CreateTransport(self.service_url)
+    self.server = None
+    self.ResetServer()
 
     self.bad_path_connection = self.CreateTransport(self.service_url + '_x')
     self.bad_path_stub = TestService.Stub(self.bad_path_connection)
@@ -321,9 +319,18 @@ class WebServerTestBase(test_util.TestCase):
   def tearDown(self):
     self.server.shutdown()
     self.testbed.deactivate()
-
+    
     if not self.USE_URLFETCH:
       transport.urlfetch = self._original_urlfetch
+
+  def ResetServer(self):
+    if self.server:
+      self.server.shutdown()
+
+    self.port = test_util.pick_unused_port()
+    self.server, self.application = self.StartWebServer(self.port)
+
+    self.connection = self.CreateTransport(self.service_url)
 
   def CreateTransport(self, service_url):
     """Create a new transportation object."""

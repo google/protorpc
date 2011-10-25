@@ -27,6 +27,7 @@ from wsgiref import headers
 from protorpc import descriptor
 from protorpc import message_types
 from protorpc import messages
+from protorpc import protobuf
 from protorpc import protojson
 from protorpc import remote
 from protorpc import test_util
@@ -868,6 +869,16 @@ class ProtocolsTest(test_util.TestCase):
     self.assertEquals(
       'json2',
       self.protocols.lookup_by_content_type('text/Plain').name)
+
+  def testNewDefault(self):
+    protocols = remote.Protocols.new_default()
+    self.assertEquals(('protobuf', 'protojson'), protocols.names)
+
+    protobuf_protocol = protocols.lookup_by_name('protobuf')
+    self.assertEquals(protobuf, protobuf_protocol.protocol)
+
+    protojson_protocol = protocols.lookup_by_name('protojson')
+    self.assertEquals(protojson, protojson_protocol.protocol)
 
 
 def main():

@@ -157,14 +157,25 @@ class Transport(object):
 
     Args:
       protocol: The protocol implementation.  Must implement encode_message and
-        decode_message.
+        decode_message.  Can also be an instance of remote.ProtocolConfig.
     """
     self.__protocol = protocol
+    if isinstance(protocol, remote.ProtocolConfig):
+      self.__protocol = protocol.protocol
+      self.__protocol_config = protocol
+    else:
+      self.__protocol = protocol
+      self.__protocol_config = remote.ProtocolConfig(protocol, 'default')
 
   @property
   def protocol(self):
     """Protocol associated with this transport."""
     return self.__protocol
+
+  @property
+  def protocol_config(self):
+    """Protocol associated with this transport."""
+    return self.__protocol_config
 
   def send_rpc(self, remote_info, request):
     """Initiate sending an RPC over the transport.
@@ -366,7 +377,7 @@ class HttpTransport(Transport):
       service_url: URL where the service is located.  All communication via
         the transport will go to this URL.
       protocol: The protocol implementation.  Must implement encode_message and
-        decode_message.
+        decode_message.  Can also be an instance of remote.ProtocolConfig.
     """
     super(HttpTransport, self).__init__(protocol=protocol)
     self.__service_url = service_url
