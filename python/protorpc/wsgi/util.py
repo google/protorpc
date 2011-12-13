@@ -141,7 +141,7 @@ def first_found(apps):
     final_result = {}  # Used in absence of Python local scoping.
 
     def first_found_start_response(status, response_headers):
-      """Replacement for start_response as passed in to mapping_app.
+      """Replacement for start_response as passed in to first_found_app.
 
       Called by each application in apps instead of the real start response.
       Checks the response status, and if anything other than 404, sets 'status'
@@ -158,10 +158,10 @@ def first_found(apps):
       final_result['response_headers'] = response_headers
 
     for app in apps:
-      response = app(environ, mapping_start_response)
+      response = app(environ, first_found_start_response)
       if final_result:
         start_response(final_result['status'], final_result['response_headers'])
         return response
 
     return not_found(environ, start_response)
-  return mapping_app
+  return first_found_app
