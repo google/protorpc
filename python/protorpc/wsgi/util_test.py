@@ -25,8 +25,13 @@ from wsgiref import simple_server
 from wsgiref import validate
 
 from protorpc import test_util
+from protorpc import util
 from protorpc import webapp_test_util
 from protorpc.wsgi import util as wsgi_util
+
+APP1 = wsgi_util.static_page('App1')
+APP2 = wsgi_util.static_page('App2')
+NOT_FOUND = wsgi_util.error(httplib.NOT_FOUND)
 
 
 class WsgiTestBase(test_util.TestCase):
@@ -181,7 +186,99 @@ class StaticPageBase(WsgiTestBase):
                        'z': 'bin',
                       },
                       headers)
-  
+
+
+class FirstFoundTest(WsgiTestBase):
+
+  def testEmptyConfiguration(self):
+    self.StartServer(wsgi_util.first_found([]))
+    status, status_text, content, headers = self.DoHttpRequest('/')
+    self.assertEquals(httplib.NOT_FOUND, status)
+    self.assertEquals(httplib.responses[httplib.NOT_FOUND], status_text)
+    self.assertEquals(util.pad_string(httplib.responses[httplib.NOT_FOUND]),
+                      content)
+    self.assertEquals({'content-length': '512',
+                       'content-type': 'text/plain; charset=utf-8',
+                      },
+                      headers)
+
+  def testOneApp(self):
+    self.StartServer(wsgi_util.first_found([APP1]))
+
+    status, status_text, content, headers = self.DoHttpRequest('/')
+    self.assertEquals(httplib.OK, status)
+    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals('App1', content)
+    self.assertEquals({'content-length': '4',
+                       'content-type': 'text/html; charset=utf-8',
+                      },
+                      headers)
+
+  def testIterator(self):
+    self.StartServer(wsgi_util.first_found(iter([APP1])))
+
+    status, status_text, content, headers = self.DoHttpRequest('/')
+    self.assertEquals(httplib.OK, status)
+    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals('App1', content)
+    self.assertEquals({'content-length': '4',
+                       'content-type': 'text/html; charset=utf-8',
+                      },
+                      headers)
+
+    # Do request again to make sure iterator was properly copied.
+    status, status_text, content, headers = self.DoHttpRequest('/')
+    self.assertEquals(httplib.OK, status)
+    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals('App1', content)
+    self.assertEquals({'content-length': '4',
+                       'content-type': 'text/html; charset=utf-8',
+                      },
+                      headers)
+
+  def testTwoApps(self):
+    self.StartServer(wsgi_util.first_found([APP1, APP2]))
+
+    status, status_text, content, headers = self.DoHttpRequest('/')
+    self.assertEquals(httplib.OK, status)
+    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals('App1', content)
+    self.assertEquals({'content-length': '4',
+                       'content-type': 'text/html; charset=utf-8',
+                      },
+                      headers)
+
+  def testFirstNotFound(self):
+    self.StartServer(wsgi_util.first_found([NOT_FOUND, APP2]))
+
+    status, status_text, content, headers = self.DoHttpRequest('/')
+    self.assertEquals(httplib.OK, status)
+    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals('App2', content)
+    self.assertEquals({'content-length': '4',
+                       'content-type': 'text/html; charset=utf-8',
+                      },
+                      headers)
+
+  def testOnlyNotFound(self):
+    def current_error(environ, start_response):
+      """The variable current_status is defined in loop after StartServer."""
+      headers = [('content-type', 'text/plain')]
+      status_line = '%03d Whatever' % current_status
+      start_response(status_line, headers)
+      return []
+
+    self.StartServer(wsgi_util.first_found([current_error, APP2]))
+
+    statuses_to_check = sorted(httplib.responses.iterkeys())
+    # 100, 204 and 304 have slightly different expectations, so they are left
+    # out of this test in order to keep the code simple.
+    for dont_check in (100, 200, 204, 304, 404):
+      statuses_to_check.remove(dont_check)
+    for current_status in statuses_to_check:
+      status, status_text, content, headers = self.DoHttpRequest('/')
+      self.assertEquals(current_status, status)
+      self.assertEquals('Whatever', status_text)
 
 
 if __name__ == '__main__':
