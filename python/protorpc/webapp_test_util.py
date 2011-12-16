@@ -296,6 +296,7 @@ class AlternateService(remote.Service):
 class WebServerTestBase(test_util.TestCase):
 
   USE_URLFETCH = False
+  SERVICE_PATH = '/my/service'
 
   def setUp(self):
 
@@ -323,12 +324,12 @@ class WebServerTestBase(test_util.TestCase):
     if not self.USE_URLFETCH:
       transport.urlfetch = self._original_urlfetch
 
-  def ResetServer(self):
+  def ResetServer(self, application=None):
     if self.server:
       self.server.shutdown()
 
     self.port = test_util.pick_unused_port()
-    self.server, self.application = self.StartWebServer(self.port)
+    self.server, self.application = self.StartWebServer(self.port, application)
 
     self.connection = self.CreateTransport(self.service_url)
 
@@ -336,9 +337,10 @@ class WebServerTestBase(test_util.TestCase):
     """Create a new transportation object."""
     return transport.HttpTransport(service_url, protocol=protojson)
 
-  def StartWebServer(self, port):
+  def StartWebServer(self, port, application=None):
     """Start web server."""
-    application = self.CreateWsgiApplication()
+    if not application:
+      application = self.CreateWsgiApplication()
     validated_application = validate.validator(application)
     server = simple_server.make_server('localhost', port, validated_application)
     server = ServerThread(server)
@@ -346,9 +348,12 @@ class WebServerTestBase(test_util.TestCase):
     server.wait_until_running()
     return server, application
 
+  def make_service_url(self, path):
+    return 'http://localhost:%d%s' % (self.port, path)
+
   @property
   def service_url(self):
-    return 'http://localhost:%d/my/service' % self.port
+    return self.make_service_url(self.SERVICE_PATH)
 
 
 class EndToEndTestBase(WebServerTestBase):

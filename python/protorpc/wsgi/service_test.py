@@ -28,17 +28,23 @@ from google.appengine.ext import webapp
 from protorpc import end2end_test
 from protorpc import protojson
 from protorpc import remote
+from protorpc import registry
 from protorpc import transport
 from protorpc import test_util
 from protorpc import webapp_test_util
 from protorpc.wsgi import service
+from protorpc.wsgi import util
 
 
-class ProtoRpcServiceTest(end2end_test.EndToEndTest):
+class ServiceMappingTest(end2end_test.EndToEndTest):
 
   def setUp(self):
     self.protocols = None
-    super(ProtoRpcServiceTest, self).setUp()
+    super(ServiceMappingTest, self).setUp()
+
+  def CreateServices(self):
+
+    return my_service, my_other_service
 
   def  CreateWsgiApplication(self):
     """Create WSGI application used on the server side for testing."""
@@ -49,14 +55,7 @@ class ProtoRpcServiceTest(end2end_test.EndToEndTest):
       '/my/other_service',
       protocols=self.protocols)
 
-    def request_router(environ, start_response):
-      path_info = environ['PATH_INFO']
-      if path_info.startswith('/my/service'):
-        return my_service(environ, start_response)
-      elif path_info.startswith('/my/other_service'):
-        return my_other_service(environ, start_response)
-      raise AssertionError('Should never get here')
-    return request_router
+    return util.first_found([my_service, my_other_service])
 
   def testAlternateProtocols(self):
     self.protocols = remote.Protocols()
@@ -68,6 +67,121 @@ class ProtoRpcServiceTest(end2end_test.EndToEndTest):
     self.stub = webapp_test_util.TestService.Stub(self.connection)
 
     self.stub.optional_message(string_value='alternate-protocol')
+
+
+class ProtoServiceMappingsTest(ServiceMappingTest):
+
+  def  CreateWsgiApplication(self):
+    """Create WSGI application used on the server side for testing."""
+    return service.service_mappings(
+      [('/my/service', webapp_test_util.TestService),
+       ('/my/other_service',
+        webapp_test_util.TestService.new_factory('initialized'))
+      ])
+
+  def GetRegistryStub(self, path='/protorpc'):
+    service_url = self.make_service_url(path)
+    transport = self.CreateTransport(service_url)
+    return registry.RegistryService.Stub(transport)
+
+  def testRegistry(self):
+    registry_client = self.GetRegistryStub()
+    services = registry_client.services()
+    self.assertEquals(
+      registry.ServicesResponse(
+        services=[
+          registry.ServiceMapping(
+            name='/my/other_service',
+            definition='protorpc.webapp_test_util.TestService'),
+          registry.ServiceMapping(
+            name='/my/service',
+            definition='protorpc.webapp_test_util.TestService'),
+          ]),
+      services)
+
+  def testRegistryDictionary(self):
+    self.ResetServer(service.service_mappings(
+      {'/my/service': webapp_test_util.TestService,
+       '/my/other_service':
+           webapp_test_util.TestService.new_factory('initialized'),
+      }))
+    registry_client = self.GetRegistryStub()
+    services = registry_client.services()
+    self.assertEquals(
+      registry.ServicesResponse(
+        services=[
+          registry.ServiceMapping(
+            name='/my/other_service',
+            definition='protorpc.webapp_test_util.TestService'),
+          registry.ServiceMapping(
+            name='/my/service',
+            definition='protorpc.webapp_test_util.TestService'),
+          ]),
+      services)
+
+  def testNoRegistry(self):
+    self.ResetServer(service.service_mappings(
+      [('/my/service', webapp_test_util.TestService),
+       ('/my/other_service',
+        webapp_test_util.TestService.new_factory('initialized'))
+      ],
+      registry_path=None))
+    registry_client = self.GetRegistryStub()
+    self.assertRaisesWithRegexpMatch(
+      remote.ServerError,
+      'HTTP Error 404: Not Found',
+      registry_client.services)
+
+  def testAltRegistry(self):
+    self.ResetServer(service.service_mappings(
+      [('/my/service', webapp_test_util.TestService),
+       ('/my/other_service',
+        webapp_test_util.TestService.new_factory('initialized'))
+      ],
+      registry_path='/registry'))
+    registry_client = self.GetRegistryStub('/registry')
+    services = registry_client.services()
+    self.assertEquals(
+      registry.ServicesResponse(
+        services=[
+          registry.ServiceMapping(
+            name='/my/other_service',
+            definition='protorpc.webapp_test_util.TestService'),
+          registry.ServiceMapping(
+            name='/my/service',
+            definition='protorpc.webapp_test_util.TestService'),
+          ]),
+      services)
+
+  def testDuplicateRegistryEntry(self):
+    self.assertRaisesWithRegexpMatch(
+      remote.ServiceConfigurationError,
+      "Path '/my/service' is already defined in service mapping",
+      service.service_mappings,
+      [('/my/service', webapp_test_util.TestService),
+       ('/my/service',
+        webapp_test_util.TestService.new_factory('initialized'))
+      ])
+
+  def testRegex(self):
+    self.ResetServer(service.service_mappings(
+      [('/my/[0-9]+', webapp_test_util.TestService.new_factory('service')),
+       ('/my/[a-z]+',
+            webapp_test_util.TestService.new_factory('other-service')),
+      ]))
+    my_service_url = 'http://localhost:%d/my/12345' % self.port
+    my_other_service_url = 'http://localhost:%d/my/blarblar' % self.port
+
+    my_service = webapp_test_util.TestService.Stub(
+      transport.HttpTransport(my_service_url))
+    my_other_service = webapp_test_util.TestService.Stub(
+      transport.HttpTransport(my_other_service_url))
+
+    response = my_service.init_parameter()
+    self.assertEquals('service', response.string_value)
+
+    response = my_other_service.init_parameter()
+    self.assertEquals('other-service', response.string_value)
 
 
 def main():
