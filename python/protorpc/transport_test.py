@@ -208,8 +208,6 @@ class HttpTransportUrllibTest(test_util.TestCase):
 
   def setUp(self):
     super(HttpTransportUrllibTest, self).setUp()
-    self.original_urlfetch = transport.urlfetch
-    transport.urlfetch = None
 
     self.trans = transport.HttpTransport('http://myserver/myservice',
                                          protocol=protojson)
@@ -225,7 +223,6 @@ class HttpTransportUrllibTest(test_util.TestCase):
 
   def tearDown(self):
     super(HttpTransportUrllibTest, self).tearDown()
-    transport.urlfetch = self.original_urlfetch
 
     self.mox.UnsetStubs()
     self.mox.VerifyAll()
@@ -334,6 +331,18 @@ class HttpTransportUrllibTest(test_util.TestCase):
     self.assertEquals(None, rpc.error_name)
 
 
+class NoModuleHttpTransportUrllibTest(HttpTransportUrllibTest):
+
+  def setUp(self):
+    self.original_urlfetch = transport.urlfetch
+    transport.urlfetch = None
+    super(NoModuleHttpTransportUrllibTest, self).setUp()
+
+  def tearDown(self):
+    transport.urlfetch = self.original_urlfetch
+    super(NoModuleHttpTransportUrllibTest, self).tearDown()
+
+
 class URLFetchResponse(object):
 
   def __init__(self, content, status_code, headers):
@@ -346,6 +355,12 @@ class HttpTransportUrlfetchTest(test_util.TestCase):
 
   def setUp(self):
     super(HttpTransportUrlfetchTest, self).setUp()
+
+    # Need to initialize the urlfetch stub so that urlfetch detection works
+    # properly.
+    self.testbed = testbed.Testbed()
+    self.testbed.activate()
+    self.testbed.init_urlfetch_stub()
 
     self.trans = transport.HttpTransport('http://myserver/myservice',
                                          protocol=protojson)
@@ -364,6 +379,8 @@ class HttpTransportUrlfetchTest(test_util.TestCase):
 
   def tearDown(self):
     super(HttpTransportUrlfetchTest, self).tearDown()
+
+    self.testbed.deactivate()
 
     self.mox.UnsetStubs()
     self.mox.VerifyAll()
