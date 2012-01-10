@@ -51,7 +51,7 @@ above functionality.  It implements all required and optional methods for a
 service.  It also has convenience methods for creating factory functions that
 can pass persistent global state to a new service instance.
 
-The 'remote' decorator is used to declare which methods of a class are
+The 'method' decorator is used to declare which methods of a class are
 meant to service RPCs.  While this decorator is not responsible for handling
 actual remote method invocations, such as handling sockets, handling various
 RPC protocols and checking messages for correctness, it does attach information
@@ -638,7 +638,7 @@ class _ServiceClass(type):
 
           if get_remote_method_info(value):
             raise ServiceDefinitionError(
-              'Do not use remote decorator when overloading remote method %s '
+              'Do not use method decorator when overloading remote method %s '
               'on service %s.' %
               (attribute, name))
 

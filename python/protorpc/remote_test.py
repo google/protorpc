@@ -112,10 +112,10 @@ class ApplicationErrorTest(test_util.TestCase):
                       repr(remote.ApplicationError('an error')))
 
 
-class RemoteTest(test_util.TestCase):
+class MethodTest(test_util.TestCase):
   """Test remote method decorator."""
 
-  def testRemote(self):
+  def testMethod(self):
     """Test use of remote decorator."""
     self.assertEquals(SimpleRequest,
                       BasicService.remote_method.remote.request_type)
@@ -124,7 +124,7 @@ class RemoteTest(test_util.TestCase):
     self.assertTrue(isinstance(BasicService.remote_method.remote.method,
                                types.FunctionType))
 
-  def testRemoteMessageResolution(self):
+  def testMethodMessageResolution(self):
     """Test use of remote decorator to resolve message types by name."""
     class OtherService(remote.Service):
 
@@ -137,7 +137,7 @@ class RemoteTest(test_util.TestCase):
     self.assertEquals(SimpleResponse,
                       OtherService.remote_method.remote.response_type)
 
-  def testRemoteMessageResolution_NotFound(self):
+  def testMethodMessageResolution_NotFound(self):
     """Test failure to find message types."""
     class OtherService(remote.Service):
 
@@ -414,11 +414,19 @@ class ServiceTest(test_util.TestCase):
     class SubClass(MyService):
 
       def remote_method(self, request):
-        pass
+        response = super(SubClass, self).remote_method(request)
+        response.value = '(%s)' % response.value
+        return response
 
     self.assertEquals({'remote_method': SubClass.remote_method,
                       },
                       SubClass.all_remote_methods())
+
+    instance = SubClass()
+    self.assertEquals('(Hello)',
+                      instance.remote_method(Request(value='Hello')).value)
+    self.assertEquals(Request, SubClass.remote_method.remote.request_type)
+    self.assertEquals(Response, SubClass.remote_method.remote.response_type)
 
   def testOverrideMethodWithRemote(self):
     """Test trying to override a remote method with remote decorator."""
@@ -430,7 +438,7 @@ class ServiceTest(test_util.TestCase):
           pass
 
     self.assertRaisesWithRegexpMatch(remote.ServiceDefinitionError,
-                                     'Do not use remote decorator when '
+                                     'Do not use method decorator when '
                                      'overloading remote method remote_method '
                                      'on service SubClass',
                                      do_override)
