@@ -49,7 +49,7 @@ class ValidationErrorTest(test_util.TestCase):
     """Test string version of ValidationError when no name provided."""
     validation_error = messages.ValidationError('Validation error')
     validation_error.field_name = 'a_field'
-    self.assertEquals('Field a_field: Validation error', str(validation_error))
+    self.assertEquals('Validation error', str(validation_error))
 
 
 class EnumTest(test_util.TestCase):
@@ -370,19 +370,19 @@ class FieldListTest(test_util.TestCase):
   def testConstructor_InvalidValues(self):
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>), "
-                "found 1 (type <type 'str'>)"),
+      re.escape("Expected type (<type 'int'>, <type 'long'>) "
+                "for IntegerField, found 1 (type <type 'str'>)"),
       messages.FieldList, self.integer_field, ["1", "2", "3"])
 
   def testConstructor_Scalars(self):
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      "Field is repeated. Found: 3",
+      "IntegerField is repeated. Found: 3",
       messages.FieldList, self.integer_field, 3)
 
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      "Field is repeated. Found: <listiterator object",
+      "IntegerField is repeated. Found: <listiterator object",
       messages.FieldList, self.integer_field, iter([1, 2, 3]))
 
   def testSetSlice(self):
@@ -397,8 +397,8 @@ class FieldListTest(test_util.TestCase):
       field_list[1:3] = ['10', '20']
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>), "
-                "found 10 (type <type 'str'>)"),
+      re.escape("Expected type (<type 'int'>, <type 'long'>) "
+                "for IntegerField, found 10 (type <type 'str'>)"),
       setslice)
 
   def testSetItem(self):
@@ -413,8 +413,8 @@ class FieldListTest(test_util.TestCase):
       field_list[0] = '10'
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>), "
-                "found 10 (type <type 'str'>)"),
+      re.escape("Expected type (<type 'int'>, <type 'long'>) "
+                "for IntegerField, found 10 (type <type 'str'>)"),
       setitem)
 
   def testAppend(self):
@@ -424,13 +424,14 @@ class FieldListTest(test_util.TestCase):
 
   def testAppend_InvalidValues(self):
     field_list = messages.FieldList(self.integer_field, [2])
+    field_list.name = 'a_field'
 
     def append():
       field_list.append('10')
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>), "
-                "found 10 (type <type 'str'>)"),
+      re.escape("Expected type (<type 'int'>, <type 'long'>) "
+                "for IntegerField, found 10 (type <type 'str'>)"),
       append)
 
   def testExtend(self):
@@ -445,8 +446,8 @@ class FieldListTest(test_util.TestCase):
       field_list.extend(['10'])
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>), "
-                "found 10 (type <type 'str'>)"),
+      re.escape("Expected type (<type 'int'>, <type 'long'>) "
+                "for IntegerField, found 10 (type <type 'str'>)"),
       extend)
 
   def testInsert(self):
@@ -461,8 +462,8 @@ class FieldListTest(test_util.TestCase):
       field_list.insert(1, '10')
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>), "
-                "found 10 (type <type 'str'>)"),
+      re.escape("Expected type (<type 'int'>, <type 'long'>) "
+                "for IntegerField, found 10 (type <type 'str'>)"),
       insert)
 
 
@@ -563,6 +564,14 @@ class FieldTest(test_util.TestCase):
     # Run defaults test again checking for str/unicode compatiblity.
     defaults[messages.StringField] = 'abc'
     self.ActionOnAllFieldClasses(action)
+
+  def testStringField_BadUnicodeInDefault(self):
+    """Test binary values in string field."""
+    self.assertRaisesWithRegexpMatch(
+      messages.InvalidDefaultError,
+      'Invalid default value for StringField: \211: '
+      'Field encountered non-ASCII string \211:',
+      messages.StringField, 1, default='\x89')
 
   def testDefaultFields_InvalidSingle(self):
     """Test default field is correct type."""
@@ -729,7 +738,8 @@ class FieldTest(test_util.TestCase):
       field = field_class(1, repeated=True)
       field.validate(None)
       self.assertRaisesWithRegexpMatch(messages.ValidationError,
-                                       'Repeated values may not be None',
+                                       'Repeated values for %s may '
+                                       'not be None' % field_class.__name__,
                                        field.validate,
                                        [None])
       self.assertRaises(messages.ValidationError,
@@ -1018,7 +1028,7 @@ class FieldTest(test_util.TestCase):
     thing = Thing()
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      'Field string_field: Encountered non-ASCII string',
+      'Field string_field encountered non-ASCII string',
       setattr, thing, 'string_field', test_util.BINARY)
 
 
@@ -1405,7 +1415,7 @@ class MessageTest(test_util.TestCase):
     message_field.validate(message)
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      "Field is repeated. Found: <SubMessage>",
+      "Field val is repeated. Found: <SubMessage>",
       setattr, message, 'val', SubMessage())
     message.val = [SubMessage()]
     message_field.validate(message)
