@@ -51,6 +51,7 @@ class MyMessage(messages.Message):
   an_enum = messages.EnumField(Color, 6)
   a_nested = messages.MessageField(Nested, 7)
   a_repeated = messages.IntegerField(8, repeated=True)
+  a_repeated_float = messages.FloatField(9, repeated=True)
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
@@ -143,11 +144,32 @@ class ProtojsonTest(test_util.TestCase,
     self.assertTrue(isinstance(message.a_float, float))
     self.assertEquals(10.0, message.a_float)
 
+  def testConvertStringToNumbers(self):
+    """Test that strings passed to integer fields are converted."""
+    message = protojson.decode_message(MyMessage,
+                                       """{"an_integer": "10",
+                                           "a_float": "3.5",
+                                           "a_repeated": ["1", "2"],
+                                           "a_repeated_float": ["1.5", "2", 10]
+                                           }""")
+
+    self.assertEquals(MyMessage(an_integer=10,
+                                a_float=3.5,
+                                a_repeated=[1, 2],
+                                a_repeated_float=[1.5, 2.0, 10.0]),
+                      message)
+
   def testWrongTypeAssignment(self):
     """Test when wrong type is assigned to a field."""
     self.assertRaises(messages.ValidationError,
                       protojson.decode_message,
                       MyMessage, '{"a_string": 10}')
+    self.assertRaises(messages.ValidationError,
+                      protojson.decode_message,
+                      MyMessage, '{"an_integer": 10.2}')
+    self.assertRaises(messages.ValidationError,
+                      protojson.decode_message,
+                      MyMessage, '{"an_integer": "10.2"}')
 
   def testNumericEnumeration(self):
     """Test that numbers work for enum values."""
