@@ -36,12 +36,24 @@ NOT_FOUND = wsgi_util.error(httplib.NOT_FOUND)
 
 class WsgiTestBase(test_util.TestCase):
 
+  server_thread = None
+
+  def tearDown(self):
+    super(WsgiTestBase, self).tearDown()
+    self.StopServer()
+
+  def StopServer(self):
+    if self.server_thread:
+      self.server_thread.shutdown()
+      self.server_thread.join()
+
   def StartServer(self, app):
     self.validated = validate.validator(app)
     self.port = test_util.pick_unused_port()
     self.server = simple_server.make_server('localhost',
                                             self.port,
                                             self.validated)
+    self.StopServer()
     self.server_thread = webapp_test_util.ServerThread(self.server)
     self.server_thread.start()
     self.server_thread.wait_until_running()
@@ -283,4 +295,3 @@ class FirstFoundTest(WsgiTestBase):
 
 if __name__ == '__main__':
   unittest.main()
-

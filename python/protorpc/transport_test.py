@@ -20,6 +20,7 @@ import types
 import unittest
 import urllib2
 
+from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import urlfetch
 from google.appengine.api import urlfetch_stub
 from google.appengine.ext import testbed
@@ -33,6 +34,30 @@ from protorpc import transport
 from protorpc import webapp_test_util
 
 import mox
+
+
+def reset_urlfetch():
+  """Configure urlfetch library on transport module."""
+  transport.urlfetch = urlfetch
+  transport.apiproxy_stub_map = apiproxy_stub_map
+
+
+def clear_urlfetch():
+  """Clear urlfetch module from transport library."""
+  try:
+    del transport.urlfetch
+  except AttributeError:
+    pass
+
+  try:
+    del transport.apiproxy_stub_map
+  except AttributeError:
+    pass
+
+
+def setUp(self):
+  # Always have consistent starting transport module.
+  reset_urlfetch()
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
@@ -325,7 +350,7 @@ class HttpTransportUrllibTest(test_util.TestCase):
     request = Message(value=u'The request value')
     rpc = trans.send_rpc(my_method.remote, request)
     rpc.wait()
-    
+
     self.assertEquals(remote.RpcState.NETWORK_ERROR, rpc.state)
     self.assertEquals('Network Error: a bad connection', rpc.error_message)
     self.assertEquals(None, rpc.error_name)
@@ -334,13 +359,12 @@ class HttpTransportUrllibTest(test_util.TestCase):
 class NoModuleHttpTransportUrllibTest(HttpTransportUrllibTest):
 
   def setUp(self):
-    self.original_urlfetch = transport.urlfetch
-    transport.urlfetch = None
     super(NoModuleHttpTransportUrllibTest, self).setUp()
+    clear_urlfetch()
 
   def tearDown(self):
-    transport.urlfetch = self.original_urlfetch
     super(NoModuleHttpTransportUrllibTest, self).tearDown()
+    reset_urlfetch()
 
 
 class URLFetchResponse(object):
@@ -361,6 +385,9 @@ class HttpTransportUrlfetchTest(test_util.TestCase):
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.testbed.init_urlfetch_stub()
+
+    transport.urlfetch = urlfetch
+    transport.apiproxy_stub_map = apiproxy_stub_map
 
     self.trans = transport.HttpTransport('http://myserver/myservice',
                                          protocol=protojson)
@@ -419,7 +446,7 @@ class HttpTransportUrlfetchTest(test_util.TestCase):
 
     rpc = self.trans.send_rpc(my_method.remote, self.request)
     rpc.wait()
-    
+
     self.assertEquals(remote.RpcState.SERVER_ERROR, rpc.state)
     self.assertEquals('HTTP Error 500: Internal Server Error',
                       rpc.error_message)
