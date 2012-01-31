@@ -37,7 +37,7 @@ try:
   from google.appengine.api import urlfetch
   from google.appengine.api import apiproxy_stub_map
 except ImportError:
-  urlfetch = None
+  pass
 
 __all__ = [
   'RpcStateError',
@@ -382,7 +382,12 @@ class HttpTransport(Transport):
     super(HttpTransport, self).__init__(protocol=protocol)
     self.__service_url = service_url
 
-    if urlfetch and apiproxy_stub_map.apiproxy.GetStub('urlfetch'):
+    try:
+      has_urlfetch = urlfetch
+    except NameError:
+      has_urlfetch = False
+
+    if has_urlfetch and apiproxy_stub_map.apiproxy.GetStub('urlfetch'):
       self.__request_type = self.__UrlfetchRequest
     else:
       self.__request_type = self.__UrllibRequest
