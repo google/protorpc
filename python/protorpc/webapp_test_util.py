@@ -188,6 +188,10 @@ class RequestHandlerTestBase(test_util.TestCase):
     self.handler.initialize(self.request, self.response)
 
 
+class SyncedWSGIServer(simple_server.WSGIServer):
+  pass
+
+
 class ServerThread(threading.Thread):
   """Thread responsible for managing wsgi server.
 
