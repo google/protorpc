@@ -25,6 +25,7 @@ Includes HTTP transport built over urllib2.
 
 import httplib
 import logging
+import os
 import sys
 import urllib2
 
@@ -43,6 +44,7 @@ __all__ = [
   'RpcStateError',
 
   'HttpTransport',
+  'LocalTransport',
   'Rpc',
   'Transport',
 ]
@@ -425,4 +427,71 @@ class HttpTransport(Transport):
 
     rpc._wait_impl = wait_impl
 
+    return rpc
+
+
+class LocalTransport(Transport):
+  """Local transport that sends messages directly to services.
+
+  Useful in tests or creating code that can work with either local or remote
+  services.  Using LocalTransport is preferrable to simply instantiating a
+  single instance of a service and reusing it.  The entire request process
+  involves instantiating a new instance of a service, initializing it with
+  request state and then invoking the remote method for every request.
+  """
+
+  def __init__(self, service_factory):
+    """Constructor.
+
+    Args:
+      service_factory: Service factory or class.
+    """
+    super(LocalTransport, self).__init__()
+    self.__service_class = getattr(service_factory,
+                                   'service_class',
+                                   service_factory)
+    self.__service_factory = service_factory
+
+  @property
+  def service_class(self):
+    return self.__service_class
+
+  @property
+  def service_factory(self):
+    return self.__service_factory
+
+  def _start_rpc(self, remote_info, request):
+    """Start a remote procedure call.
+
+    Args:
+      remote_info: RemoteInfo instance describing remote method.
+      request: Request message to send to service.
+
+    Returns:
+      An Rpc instance initialized with the request.
+    """
+    rpc = Rpc(request)
+    def wait_impl():
+      instance = self.__service_factory()
+      try:
+        initalize_request_state = instance.initialize_request_state
+      except AttributeError:
+        pass
+      else:
+        host = unicode(os.uname()[1])
+        initalize_request_state(remote.RequestState(remote_host=host,
+                                                    remote_address=u'127.0.0.1',
+                                                    server_host=host,
+                                                    server_port=-1))
+      try:
+        response = remote_info.method(instance, request)
+        assert isinstance(response, remote_info.response_type)
+      except remote.ApplicationError:
+        raise
+      except:
+        exc_type, exc_value, traceback = sys.exc_info()
+        message = 'Unexpected error %s: %s' % (exc_type.__name__, exc_value)
+        raise remote.ServerError, message, traceback
+      rpc.set_response(response)
+    rpc._wait_impl = wait_impl
     return rpc

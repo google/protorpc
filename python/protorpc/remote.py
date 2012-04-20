@@ -872,6 +872,8 @@ class Service(object):
 
   __metaclass__ = _ServiceClass
 
+  __request_state = None
+
   @classmethod
   def all_remote_methods(cls):
     """Get all remote methods for service class.

@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+import os
 import StringIO
 import types
 import unittest
@@ -34,6 +35,8 @@ from protorpc import transport
 from protorpc import webapp_test_util
 
 import mox
+
+package = 'transport_test'
 
 
 def reset_urlfetch():
@@ -451,6 +454,98 @@ class HttpTransportUrlfetchTest(test_util.TestCase):
     self.assertEquals('HTTP Error 500: Internal Server Error',
                       rpc.error_message)
     self.assertEquals(None, rpc.error_name)
+
+
+class SimpleRequest(messages.Message):
+
+  content = messages.StringField(1)
+
+
+class SimpleResponse(messages.Message):
+
+  content = messages.StringField(1)
+  factory_value = messages.StringField(2)
+  remote_host = messages.StringField(3)
+  remote_address = messages.StringField(4)
+  server_host = messages.StringField(5)
+  server_port = messages.IntegerField(6)
+
+
+class LocalService(remote.Service):
+
+  def __init__(self, factory_value='default'):
+    self.factory_value = factory_value
+
+  @remote.method(SimpleRequest, SimpleResponse)
+  def call_method(self, request):
+    return SimpleResponse(content=request.content,
+                          factory_value=self.factory_value,
+                          remote_host=self.request_state.remote_host,
+                          remote_address=self.request_state.remote_address,
+                          server_host=self.request_state.server_host,
+                          server_port=self.request_state.server_port)
+
+  @remote.method()
+  def raise_totally_unexpected(self, request):
+    raise TypeError('Kablam')
+
+  @remote.method()
+  def raise_unexpected(self, request):
+    raise remote.RequestError('Huh?')
+
+  @remote.method()
+  def raise_application_error(self, request):
+    raise remote.ApplicationError('App error', 10)
+
+
+class LocalTransportTest(test_util.TestCase):
+
+  def CreateService(self, factory_value='default'):
+    return 
+
+  def testBasicCallWithClass(self):
+    stub = LocalService.Stub(transport.LocalTransport(LocalService))
+    response = stub.call_method(content='Hello')
+    self.assertEquals(SimpleResponse(content='Hello',
+                                     factory_value='default',
+                                     remote_host=os.uname()[1],
+                                     remote_address='127.0.0.1',
+                                     server_host=os.uname()[1],
+                                     server_port=-1),
+                      response)
+
+  def testBasicCallWithFactory(self):
+    stub = LocalService.Stub(
+      transport.LocalTransport(LocalService.new_factory('assigned')))
+    response = stub.call_method(content='Hello')
+    self.assertEquals(SimpleResponse(content='Hello',
+                                     factory_value='assigned',
+                                     remote_host=os.uname()[1],
+                                     remote_address='127.0.0.1',
+                                     server_host=os.uname()[1],
+                                     server_port=-1),
+                      response)
+
+  def testTotallyUnexpectedError(self):
+    stub = LocalService.Stub(transport.LocalTransport(LocalService))
+    self.assertRaisesWithRegexpMatch(
+      remote.ServerError,
+      'Unexpected error TypeError: Kablam',
+      stub.raise_totally_unexpected)
+
+  def testUnexpectedError(self):
+    stub = LocalService.Stub(transport.LocalTransport(LocalService))
+    self.assertRaisesWithRegexpMatch(
+      remote.ServerError,
+      'Unexpected error RequestError: Huh?',
+      stub.raise_unexpected)
+
+  def testApplicationError(self):
+    stub = LocalService.Stub(transport.LocalTransport(LocalService))
+    self.assertRaisesWithRegexpMatch(
+      remote.ApplicationError,
+      'App error',
+      stub.raise_application_error)
 
 
 def main():

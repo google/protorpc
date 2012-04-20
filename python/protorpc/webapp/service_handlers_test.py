@@ -1101,7 +1101,7 @@ class URLEncodedRPCMapperTest(ProtocolMapperTestBase, RPCMapperTestBase):
 class ProtobufRPCMapperTest(ProtocolMapperTestBase, RPCMapperTestBase):
   """Test the protobuf encoded RPC mapper."""
 
-  content_type = 'application/x-google-protobuf'
+  content_type = 'application/octet-stream'
   protocol = protobuf
   mapper = service_handlers.ProtobufRPCMapper
 
