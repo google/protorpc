@@ -210,12 +210,19 @@ class ServerThread(threading.Thread):
       As per threading.Thread base class.
 
     State:
+      __condition: Condition used to lock access to thread state.
       __serving: Server is still expected to be serving.  When False server
         knows to shut itself down.
+      __started: Thread has been started.  Necessary to prevent requests
+        from coming to server before the WSGI server is ready to handle them.
+      __requests: Number of requests that server should handle before waiting
+        for additional notification.
     """
     self.server = server
-    self.server.socket.settimeout(None)
+    self.server.socket.settimeout(0.1)
+    self.__condition = threading.Condition()
     self.__serving = True
+    self.__started = False
 
     super(ServerThread, self).__init__(*args, **kwargs)
 
@@ -223,8 +230,21 @@ class ServerThread(threading.Thread):
     """Notify server that it must shutdown gracefully."""
     self.__serving = False
 
+  def wait_until_running(self):
+    """Wait until the server thread is known to be running.
+
+    This method should be called immediately after the threads "start" method
+    has been called.  Without waiting it is possible for the parent thread to
+    start notifying this thread about incoming requests before it is ready to
+    receive them.
+    """
+    while not self.__started:
+      time.sleep(0.1)
+
   def run(self):
     """Handle incoming requests until shutdown."""
+    self.__started = True
+
     while self.__serving:
       self.server.handle_request()
 
@@ -249,7 +269,7 @@ class TestService(remote.Service):
 
   @remote.method(test_util.NestedMessage, test_util.NestedMessage)
   def nested_message(self, request):
-    request.string_value = '+%s' % request.string_value
+    request.string_value = '+%s' % requset.string_value
     return request
 
   @remote.method()
@@ -329,6 +349,7 @@ class WebServerTestBase(test_util.TestCase):
     server = simple_server.make_server('localhost', port, validated_application)
     server = ServerThread(server)
     server.start()
+    server.wait_until_running()
     return server, application
 
   def make_service_url(self, path):

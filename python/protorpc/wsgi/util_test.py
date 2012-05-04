@@ -34,29 +34,12 @@ APP2 = wsgi_util.static_page('App2')
 NOT_FOUND = wsgi_util.error(httplib.NOT_FOUND)
 
 
-class WsgiTestBase(test_util.TestCase):
+class WsgiTestBase(webapp_test_util.WebServerTestBase):
 
   server_thread = None
 
-  def tearDown(self):
-    super(WsgiTestBase, self).tearDown()
-    self.StopServer()
-
-  def StopServer(self):
-    if self.server_thread:
-      self.server_thread.shutdown()
-      self.server_thread.join()
-
-  def StartServer(self, app):
-    self.validated = validate.validator(app)
-    self.port = test_util.pick_unused_port()
-    self.server = simple_server.make_server('localhost',
-                                            self.port,
-                                            self.validated)
-    self.StopServer()
-    self.server_thread = webapp_test_util.ServerThread(self.server)
-    self.server_thread.start()
-    self.server_thread.wait_until_running()
+  def CreateWsgiApplication(self):
+    return None
 
   def DoHttpRequest(self,
                     path='/',
@@ -83,7 +66,7 @@ class StaticPageBase(WsgiTestBase):
 
   def testDefault(self):
     default_page = wsgi_util.static_page()
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(200, status)
     self.assertEquals('OK', reason)
@@ -95,7 +78,7 @@ class StaticPageBase(WsgiTestBase):
 
   def testHasContent(self):
     default_page = wsgi_util.static_page('my content')
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(200, status)
     self.assertEquals('OK', reason)
@@ -107,7 +90,7 @@ class StaticPageBase(WsgiTestBase):
 
   def testHasContentType(self):
     default_page = wsgi_util.static_page(content_type='text/plain')
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(200, status)
     self.assertEquals('OK', reason)
@@ -119,7 +102,7 @@ class StaticPageBase(WsgiTestBase):
 
   def testHasStatus(self):
     default_page = wsgi_util.static_page(status='400 Not Good Request')
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(400, status)
     self.assertEquals('Not Good Request', reason)
@@ -131,7 +114,7 @@ class StaticPageBase(WsgiTestBase):
 
   def testHasStatusInt(self):
     default_page = wsgi_util.static_page(status=401)
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(401, status)
     self.assertEquals('Unauthorized', reason)
@@ -143,7 +126,7 @@ class StaticPageBase(WsgiTestBase):
 
   def testHasStatusUnknown(self):
     default_page = wsgi_util.static_page(status=909)
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(909, status)
     self.assertEquals('Unknown Error', reason)
@@ -155,7 +138,7 @@ class StaticPageBase(WsgiTestBase):
 
   def testHasStatusTuple(self):
     default_page = wsgi_util.static_page(status=(500, 'Bad Thing'))
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(500, status)
     self.assertEquals('Bad Thing', reason)
@@ -169,7 +152,7 @@ class StaticPageBase(WsgiTestBase):
     default_page = wsgi_util.static_page(headers=[('x', 'foo'),
                                                   ('a', 'bar'),
                                                   ('z', 'bin')])
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(200, status)
     self.assertEquals('OK', reason)
@@ -186,7 +169,7 @@ class StaticPageBase(WsgiTestBase):
     default_page = wsgi_util.static_page(headers={'x': 'foo',
                                                   'a': 'bar',
                                                   'z': 'bin'})
-    self.StartServer(default_page)
+    self.ResetServer(default_page)
     status, reason, content, headers = self.DoHttpRequest()
     self.assertEquals(200, status)
     self.assertEquals('OK', reason)
@@ -203,7 +186,7 @@ class StaticPageBase(WsgiTestBase):
 class FirstFoundTest(WsgiTestBase):
 
   def testEmptyConfiguration(self):
-    self.StartServer(wsgi_util.first_found([]))
+    self.ResetServer(wsgi_util.first_found([]))
     status, status_text, content, headers = self.DoHttpRequest('/')
     self.assertEquals(httplib.NOT_FOUND, status)
     self.assertEquals(httplib.responses[httplib.NOT_FOUND], status_text)
@@ -215,7 +198,7 @@ class FirstFoundTest(WsgiTestBase):
                       headers)
 
   def testOneApp(self):
-    self.StartServer(wsgi_util.first_found([APP1]))
+    self.ResetServer(wsgi_util.first_found([APP1]))
 
     status, status_text, content, headers = self.DoHttpRequest('/')
     self.assertEquals(httplib.OK, status)
@@ -227,7 +210,7 @@ class FirstFoundTest(WsgiTestBase):
                       headers)
 
   def testIterator(self):
-    self.StartServer(wsgi_util.first_found(iter([APP1])))
+    self.ResetServer(wsgi_util.first_found(iter([APP1])))
 
     status, status_text, content, headers = self.DoHttpRequest('/')
     self.assertEquals(httplib.OK, status)
@@ -249,7 +232,7 @@ class FirstFoundTest(WsgiTestBase):
                       headers)
 
   def testTwoApps(self):
-    self.StartServer(wsgi_util.first_found([APP1, APP2]))
+    self.ResetServer(wsgi_util.first_found([APP1, APP2]))
 
     status, status_text, content, headers = self.DoHttpRequest('/')
     self.assertEquals(httplib.OK, status)
@@ -261,7 +244,7 @@ class FirstFoundTest(WsgiTestBase):
                       headers)
 
   def testFirstNotFound(self):
-    self.StartServer(wsgi_util.first_found([NOT_FOUND, APP2]))
+    self.ResetServer(wsgi_util.first_found([NOT_FOUND, APP2]))
 
     status, status_text, content, headers = self.DoHttpRequest('/')
     self.assertEquals(httplib.OK, status)
@@ -274,13 +257,13 @@ class FirstFoundTest(WsgiTestBase):
 
   def testOnlyNotFound(self):
     def current_error(environ, start_response):
-      """The variable current_status is defined in loop after StartServer."""
+      """The variable current_status is defined in loop after ResetServer."""
       headers = [('content-type', 'text/plain')]
       status_line = '%03d Whatever' % current_status
       start_response(status_line, headers)
       return []
 
-    self.StartServer(wsgi_util.first_found([current_error, APP2]))
+    self.ResetServer(wsgi_util.first_found([current_error, APP2]))
 
     statuses_to_check = sorted(httplib.responses.iterkeys())
     # 100, 204 and 304 have slightly different expectations, so they are left
