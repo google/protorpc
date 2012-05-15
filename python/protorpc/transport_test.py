@@ -37,11 +37,6 @@ import mox
 package = 'transport_test'
 
 
-def setUp(self):
-  # Always have consistent starting transport module.
-  reset_urlfetch()
-
-
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
                           test_util.TestCase):
 
