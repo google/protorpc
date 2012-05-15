@@ -147,7 +147,7 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
                             remote.RpcState.METHOD_NOT_FOUND_ERROR,
                             'Unrecognized RPC method: %s' % method_name)
 
-    content_length = int(environ.get('CONTENT_LENGTH', '0'))
+    content_length = int(environ.get('CONTENT_LENGTH') or '0')
 
     remote_info = method.remote
     try:

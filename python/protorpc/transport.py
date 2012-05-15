@@ -26,19 +26,14 @@ Includes HTTP transport built over urllib2.
 import httplib
 import logging
 import os
+import socket
 import sys
-import urllib2
+import urlparse
 
 from . import messages
 from . import protobuf
 from . import remote
 from . import util
-
-try:
-  from google.appengine.api import urlfetch
-  from google.appengine.api import apiproxy_stub_map
-except ImportError:
-  pass
 
 __all__ = [
   'RpcStateError',
@@ -212,167 +207,11 @@ class Transport(object):
 class HttpTransport(Transport):
   """Transport for communicating with HTTP servers."""
 
-  class __HttpRequest(object):
-    """Base class for library-specific requests."""
-
-    def __init__(self, method_url, transport, encoded_request):
-      """Constructor.
-
-      Args:
-        method_url: The URL where the method is located.
-        transport: The Transport instance making the request.
-      """
-      self._method_url = method_url
-      self._transport = transport
-
-      self._start_request(encoded_request)
-
-    def _get_rpc_status(self, content_type, content):
-      """Get an RpcStats from content.
-
-      Args:
-        content_type: Content-type of the provided content.
-        content: Content of the http response.
-
-      Returns:
-        RpcStatus if found in content. If not, returns None.
-      """
-      protocol = self._transport.protocol
-      if content_type == protocol.CONTENT_TYPE:
-        try:
-          rpc_status = protocol.decode_message(remote.RpcStatus, content)
-        except Exception, decode_err:
-          logging.warning(
-            'An error occurred trying to parse status: %s\n%s',
-            str(decode_err), content)
-          return None
-        else:
-          return rpc_status
-
-    def _start_request(self):
-      raise NotImplementedError()
-
-    def get_response(self):
-      """Get the encoded response for the request.
-
-      If an error occurs on the server and the server sends an RpcStatus
-      as the response body, an RpcStatus will be returned as the second
-      element in the response tuple.
-
-      In cases where there is an error, but no RpcStatus is transmitted,
-      we raise a ServerError with the response content.
-
-      Returns:
-        Tuple (encoded_response, rpc_status):
-          encoded_response: Encoded message in protocols wire format.
-          rpc_status: RpcStatus if returned by server.
-
-      Raises:
-        NetworkError if transport has issues communicating with the network.
-        RequestError if transport receives an error constructing the
-          HttpRequest.
-        ServerError if the server responds with an http error code and does
-          not send an encoded RpcStatus as the response content.
-      """
-      raise NotImplementedError()
-
-
-  class __UrlfetchRequest(__HttpRequest):
-    """Request cycle for a remote call using urlfetch."""
-
-    __urlfetch_rpc = None
-
-    def _start_request(self, encoded_request):
-      """Initiate async call."""
-      self.__urlfetch_rpc = urlfetch.create_rpc()
-
-      headers = {
-        'Content-type': self._transport.protocol.CONTENT_TYPE
-      }
-
-      urlfetch.make_fetch_call(self.__urlfetch_rpc,
-                               self._method_url,
-                               payload=encoded_request,
-                               method='POST',
-                               headers=headers)
-
-    def get_response(self):
-      try:
-        http_response = self.__urlfetch_rpc.get_result()
-
-        if http_response.status_code >= 400:
-          status = self._get_rpc_status(
-            http_response.headers.get('content-type'),
-            http_response.content)
-
-          if status:
-            return http_response.content, status
-
-          error_message = httplib.responses.get(http_response.status_code,
-                                                'Unknown Error')
-          return (None,
-                  remote.RpcStatus(
-                    state=remote.RpcState.SERVER_ERROR,
-                    error_message='HTTP Error %d: %s' % (
-                      http_response.status_code, error_message)))
-
-      except urlfetch.DownloadError, err:
-        raise remote.NetworkError, (str(err), err)
-
-      except urlfetch.InvalidURLError, err:
-        raise remote.RequestError, 'Invalid URL, received: %s' % (
-          self.__urlfetch.request.url())
-
-      except urlfetch.ResponseTooLargeError:
-        raise remote.NetworkError(
-          'The response data exceeded the maximum allowed size.')
-
-      return http_response.content, None
-
-
-  class __UrllibRequest(__HttpRequest):
-    """Request cycle for a remote call using Urllib."""
-
-    def _start_request(self, encoded_request):
-      """Create the urllib2 request. """
-      http_request = urllib2.Request(self._method_url, encoded_request)
-      http_request.add_header('Content-type',
-                              self._transport.protocol.CONTENT_TYPE)
-
-      self.__http_request = http_request
-
-    def get_response(self):
-      try:
-        http_response = urllib2.urlopen(self.__http_request)
-      except urllib2.HTTPError, err:
-        if err.code >= 400:
-          status = self._get_rpc_status(err.hdrs.get('content-type'),
-                                        err.read())
-
-          if status:
-            return err.msg, status
-
-        # TODO: Map other types of errors to appropriate exceptions.
-        _, _, trace_back = sys.exc_info()
-        return None, remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
-                                      error_message='HTTP Error %s: %s' % (
-                                        err.code, err.msg))
-
-      except urllib2.URLError, err:
-        _, _, trace_back = sys.exc_info()
-        if isinstance(err, basestring):
-          error_message = err
-        else:
-          error_message = err.args[0]
-
-        return None, remote.RpcStatus(state=remote.RpcState.NETWORK_ERROR,
-                                      error_message='Network Error: %s' %
-                                      error_message)
-
-      return http_response.read(), None
-
   @util.positional(2)
-  def __init__(self, service_url, protocol=protobuf):
+  def __init__(self,
+               service_url,
+               protocol=protobuf,
+               connection_class=httplib.HTTPConnection):
     """Constructor.
 
     Args:
@@ -383,16 +222,67 @@ class HttpTransport(Transport):
     """
     super(HttpTransport, self).__init__(protocol=protocol)
     self.__service_url = service_url
+    self.__connection_class = connection_class
 
-    try:
-      has_urlfetch = urlfetch
-    except NameError:
-      has_urlfetch = False
+  def __get_rpc_status(self, response, content):
+    """Get RPC status from HTTP response.
 
-    if has_urlfetch and apiproxy_stub_map.apiproxy.GetStub('urlfetch'):
-      self.__request_type = self.__UrlfetchRequest
+    Args:
+      response: HTTPResponse object.
+      content: Content read from HTTP response.
+
+    Returns:
+      RpcStatus object parsed from response, else an RpcStatus with a generic
+      HTTP error.
+    """
+    # Status above 400 may have RpcStatus content.
+    if response.status >= 400:
+      content_type = response.getheader('content-type')
+      if content_type == self.protocol.CONTENT_TYPE:
+        try:
+          rpc_status = self.protocol.decode_message(remote.RpcStatus, content)
+        except Exception, decode_err:
+          logging.warning(
+            'An error occurred trying to parse status: %s\n%s',
+            str(decode_err), content)
+        else:
+          if rpc_status.is_initialized():
+            return rpc_status
+          else:
+            logging.warning(
+              'Body does not result in an initialized RpcStatus message:\n%s',
+              content)
+
+    # If no RpcStatus message present, attempt to forward any content.  If empty
+    # use standard error message.
+    if not content.strip():
+      content = httplib.responses.get(response.status, 'Unknown Error')
+    return remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
+                            error_message='HTTP Error %s: %s' % (
+                              response.status, content or 'Unknown Error'))
+
+  def __set_response(self, remote_info, connection, rpc):
+    """Set response on RPC.
+
+    Sets response or status from HTTP request.  Implements the wait method of
+    Rpc instance.
+
+    Args:
+      remote_info: Remote info for invoked RPC.
+      connection: HTTPConnection that is making request.
+      rpc: Rpc instance.
+    """
+    response = connection.getresponse()
+
+    content = response.read()
+
+    if response.status == httplib.OK:
+      response = self.protocol.decode_message(remote_info.response_type,
+                                              content)
+      rpc.set_response(response)
     else:
-      self.__request_type = self.__UrllibRequest
+      status = self.__get_rpc_status(response, content)
+      rpc.set_status(status)
 
   def _start_rpc(self, remote_info, request):
     """Start a remote procedure call.
@@ -407,27 +297,36 @@ class HttpTransport(Transport):
     method_url = '%s.%s' % (self.__service_url, remote_info.method.func_name)
     encoded_request = self.protocol.encode_message(request)
 
-    http_request = self.__request_type(method_url=method_url,
-                                       transport=self,
-                                       encoded_request=encoded_request)
+    url = urlparse.urlparse(method_url)
+    if url.scheme == 'https':
+      connection_type = httplib.HTTPSConnection
+    else:
+      connection_type = httplib.HTTPConnection
+    connection = connection_type(url.hostname, url.port)
+    try:
+      connection.request(
+        'POST',
+        url.path,
+        encoded_request,
+        headers={'Content-type': self.protocol.CONTENT_TYPE,
+                 'Content-length': len(encoded_request)})
 
-    rpc = Rpc(request)
+      rpc = Rpc(request)
 
-    def wait_impl():
-      """Implementation of _wait for an Rpc."""
+      wait_impl = lambda: self.__set_response(remote_info, connection, rpc)
+      rpc._wait_impl = wait_impl
 
-      encoded_response, status = http_request.get_response()
-
-      if status:
-        rpc.set_status(status)
-      else:
-        response = self.protocol.decode_message(remote_info.response_type,
-                                                encoded_response)
-        rpc.set_response(response)
-
-    rpc._wait_impl = wait_impl
-
-    return rpc
+      return rpc
+    except remote.RpcError:
+      # Pass through all ProtoRPC errors
+      raise
+    except socket.error, err:
+      raise remote.NetworkError('Socket error: %s %r' % (type(err).__name__,
+                                                         err.args),
+                                err)
+    except Exception, err:
+      raise remote.NetworkError('Error communicating with HTTP server',
+                                err)
 
 
 class LocalTransport(Transport):

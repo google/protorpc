@@ -15,16 +15,13 @@
 # limitations under the License.
 #
 
+import httplib
 import os
+import socket
 import StringIO
 import types
 import unittest
 import urllib2
-
-from google.appengine.api import apiproxy_stub_map
-from google.appengine.api import urlfetch
-from google.appengine.api import urlfetch_stub
-from google.appengine.ext import testbed
 
 from protorpc import messages
 from protorpc import protobuf
@@ -33,29 +30,11 @@ from protorpc import remote
 from protorpc import test_util
 from protorpc import transport
 from protorpc import webapp_test_util
+from protorpc.wsgi import util as wsgi_util
 
 import mox
 
 package = 'transport_test'
-
-
-def reset_urlfetch():
-  """Configure urlfetch library on transport module."""
-  transport.urlfetch = urlfetch
-  transport.apiproxy_stub_map = apiproxy_stub_map
-
-
-def clear_urlfetch():
-  """Clear urlfetch module from transport library."""
-  try:
-    del transport.urlfetch
-  except AttributeError:
-    pass
-
-  try:
-    del transport.apiproxy_stub_map
-  except AttributeError:
-    pass
 
 
 def setUp(self):
@@ -232,13 +211,20 @@ def my_method(self, request):
   self.fail('self.my_method should not be directly invoked.')
 
 
-class HttpTransportUrllibTest(test_util.TestCase):
+class FakeConnectionClass(object):
+
+  def __init__(self, mox):
+    self.request = mox.CreateMockAnything()
+    self.response = mox.CreateMockAnything()
+
+
+class HttpTransportTest(webapp_test_util.WebServerTestBase):
 
   def setUp(self):
-    super(HttpTransportUrllibTest, self).setUp()
+    # Do not need much parent construction functionality.
 
-    self.trans = transport.HttpTransport('http://myserver/myservice',
-                                         protocol=protojson)
+    self.schema = 'http'
+    self.server = None
 
     self.request = Message(value=u'The request value')
     self.encoded_request = protojson.encode_message(self.request)
@@ -246,214 +232,149 @@ class HttpTransportUrllibTest(test_util.TestCase):
     self.response = Message(value=u'The response value')
     self.encoded_response = protojson.encode_message(self.response)
 
-    self.mox = mox.Mox()
-    self.mox.StubOutWithMock(urllib2, 'urlopen')
-
-  def tearDown(self):
-    super(HttpTransportUrllibTest, self).tearDown()
-
-    self.mox.UnsetStubs()
-    self.mox.VerifyAll()
-
-  def VerifyRequest(self, urllib2_request):
-    self.assertEquals('http://myserver/myservice.my_method',
-                      urllib2_request.get_full_url())
-    self.assertEquals(self.encoded_request,
-                      urllib2_request.get_data())
-    self.assertEquals('application/json',
-                      urllib2_request.headers['Content-type'])
-
-    return True
-
   def testCallSucceeds(self):
-    urllib2.urlopen(mox.Func(self.VerifyRequest)).AndReturn(
-        StringIO.StringIO(self.encoded_response))
+    self.ResetServer(wsgi_util.static_page(self.encoded_response,
+                                           content_type='application/json'))
 
-    self.mox.ReplayAll()
-
-    rpc = self.trans.send_rpc(my_method.remote, self.request)
+    rpc = self.connection.send_rpc(my_method.remote, self.request)
     self.assertEquals(self.response, rpc.response)
 
-  def testHttpError(self):
-    urllib2.urlopen(mox.Func(self.VerifyRequest)).AndRaise(
-      urllib2.HTTPError('http://whatever',
-                        500,
-                        'a server error',
-                        {},
-                        StringIO.StringIO('does not matter')))
+  def testHttps(self):
+    self.schema = 'https'
+    self.ResetServer(wsgi_util.static_page(self.encoded_response,
+                                           content_type='application/json'))
 
-    self.mox.ReplayAll()
+    # Create a fake https connection function that really just calls http.
+    self.used_https = False
+    def https_connection(*args, **kwargs):
+      self.used_https = True
+      return httplib.HTTPConnection(*args, **kwargs)
 
-    rpc = self.trans.send_rpc(my_method.remote, self.request)
-    rpc.wait()
-    self.assertEquals(remote.RpcState.SERVER_ERROR, rpc.state)
-    self.assertEquals('HTTP Error 500: a server error',
-                      rpc.error_message)
-    self.assertEquals(None, rpc.error_name)
-
-  def testErrorCheckedOnResultAttribute(self):
-    urllib2.urlopen(mox.Func(self.VerifyRequest)).AndRaise(
-      urllib2.HTTPError('http://whatever',
-                        500,
-                        'a server error',
-                        {},
-                        StringIO.StringIO('does not matter')))
-
-    self.mox.ReplayAll()
-
-    rpc = self.trans.send_rpc(my_method.remote, self.request)
-    rpc.wait()
-    self.assertRaisesWithRegexpMatch(remote.ServerError,
-                                     'HTTP Error 500: a server error',
-                                     getattr, rpc, 'response')
-
-  def testErrorWithContent(self):
-    status = remote.RpcStatus(state=remote.RpcState.REQUEST_ERROR,
-                              error_message='an error')
-    urllib2.urlopen(mox.Func(self.VerifyRequest)).AndRaise(
-        urllib2.HTTPError('http://whatever',
-                          500,
-                          'An error occured',
-                          {'content-type': 'application/json'},
-                          StringIO.StringIO(protojson.encode_message(status))))
-
-    self.mox.ReplayAll()
-
-    rpc = self.trans.send_rpc(my_method.remote, self.request)
-    rpc.wait()
-    self.assertEquals(remote.RpcState.REQUEST_ERROR, rpc.state)
-    self.assertEquals('an error', rpc.error_message)
-    self.assertEquals(None, rpc.error_name)
-
-  def testUnparsableErrorContent(self):
-    urllib2.urlopen(mox.Func(self.VerifyRequest)).AndRaise(
-        urllib2.HTTPError('http://whatever',
-                          500,
-                          'An error occured',
-                          {'content-type': 'application/json'},
-                          StringIO.StringIO('a text message is here anyway')))
-
-    self.mox.ReplayAll()
-
-    rpc = self.trans.send_rpc(my_method.remote, self.request)
-    rpc.wait()
-    self.assertEquals(remote.RpcState.SERVER_ERROR, rpc.state)
-    self.assertEquals('HTTP Error 500: An error occured', rpc.error_message)
-    self.assertEquals(None, rpc.error_name)
-
-  def testURLError(self):
-    trans = transport.HttpTransport('http://myserver/myservice',
-                                    protocol=protojson)
-
-    urllib2.urlopen(mox.IsA(urllib2.Request)).AndRaise(
-      urllib2.URLError('a bad connection'))
-
-    self.mox.ReplayAll()
-
-    request = Message(value=u'The request value')
-    rpc = trans.send_rpc(my_method.remote, request)
-    rpc.wait()
-
-    self.assertEquals(remote.RpcState.NETWORK_ERROR, rpc.state)
-    self.assertEquals('Network Error: a bad connection', rpc.error_message)
-    self.assertEquals(None, rpc.error_name)
-
-
-class NoModuleHttpTransportUrllibTest(HttpTransportUrllibTest):
-
-  def setUp(self):
-    super(NoModuleHttpTransportUrllibTest, self).setUp()
-    clear_urlfetch()
-
-  def tearDown(self):
-    super(NoModuleHttpTransportUrllibTest, self).tearDown()
-    reset_urlfetch()
-
-
-class URLFetchResponse(object):
-
-  def __init__(self, content, status_code, headers):
-    self.content = content
-    self.status_code = status_code
-    self.headers = headers
-
-
-class HttpTransportUrlfetchTest(test_util.TestCase):
-
-  def setUp(self):
-    super(HttpTransportUrlfetchTest, self).setUp()
-
-    # Need to initialize the urlfetch stub so that urlfetch detection works
-    # properly.
-    self.testbed = testbed.Testbed()
-    self.testbed.activate()
-    self.testbed.init_urlfetch_stub()
-
-    transport.urlfetch = urlfetch
-    transport.apiproxy_stub_map = apiproxy_stub_map
-
-    self.trans = transport.HttpTransport('http://myserver/myservice',
-                                         protocol=protojson)
-
-    self.request = Message(value=u'The request value')
-    self.encoded_request = protojson.encode_message(self.request)
-
-    self.response = Message(value=u'The response value')
-    self.encoded_response = protojson.encode_message(self.response)
-
-    self.mox = mox.Mox()
-    self.mox.StubOutWithMock(urlfetch, 'create_rpc')
-    self.mox.StubOutWithMock(urlfetch, 'make_fetch_call')
-
-    self.urlfetch_rpc = self.mox.CreateMockAnything()
-
-  def tearDown(self):
-    super(HttpTransportUrlfetchTest, self).tearDown()
-
-    self.testbed.deactivate()
-
-    self.mox.UnsetStubs()
-    self.mox.VerifyAll()
-
-  def ExpectRequest(self,
-                    response_content=None,
-                    response_code=200,
-                    response_headers=None):
-    urlfetch.create_rpc().AndReturn(self.urlfetch_rpc)
-    urlfetch.make_fetch_call(self.urlfetch_rpc,
-                             'http://myserver/myservice.my_method',
-                             payload=self.encoded_request,
-                             method='POST',
-                             headers={'Content-type': 'application/json'})
-    if response_content is None:
-      response_content = self.encoded_response
-    if response_headers is None:
-      response_headers = {'content-type': 'application/json'}
-    self.urlfetch_response = URLFetchResponse(response_content,
-                                              response_code,
-                                              response_headers)
-    self.urlfetch_rpc.get_result().AndReturn(self.urlfetch_response)
-
-  def testCallSucceeds(self):
-    self.ExpectRequest()
-
-    self.mox.ReplayAll()
-
-    rpc = self.trans.send_rpc(my_method.remote, self.request)
+    original_https_connection = httplib.HTTPSConnection
+    httplib.HTTPSConnection = https_connection
+    try:
+      rpc = self.connection.send_rpc(my_method.remote, self.request)
+    finally:
+      httplib.HTTPSConnection = original_https_connection
     self.assertEquals(self.response, rpc.response)
+    self.assertTrue(self.used_https)
 
-  def testCallFails(self):
-    self.ExpectRequest('an error', 500, {'content-type': 'text/plain'})
+  def testHttpSocketError(self):
+    self.ResetServer(wsgi_util.static_page(self.encoded_response,
+                                           content_type='application/json'))
 
-    self.mox.ReplayAll()
+    bad_transport = transport.HttpTransport('http://localhost:-1/blar')
+    try:
+      bad_transport.send_rpc(my_method.remote, self.request)
+    except remote.NetworkError, err:
+      self.assertTrue(str(err).startswith('Socket error: gaierror (8, '))
+      self.assertEquals(socket.gaierror, type(err.cause))
+      self.assertEquals(8, err.cause.args[0])
+    else:
+      self.fail('Expected error')
 
-    rpc = self.trans.send_rpc(my_method.remote, self.request)
-    rpc.wait()
+  def testHttpRequestError(self):
+    self.ResetServer(wsgi_util.static_page(self.encoded_response,
+                                           content_type='application/json'))
 
-    self.assertEquals(remote.RpcState.SERVER_ERROR, rpc.state)
-    self.assertEquals('HTTP Error 500: Internal Server Error',
-                      rpc.error_message)
-    self.assertEquals(None, rpc.error_name)
+    def request_error(*args, **kwargs):
+      raise TypeError('Generic Error')
+    original_request = httplib.HTTPConnection.request
+    httplib.HTTPConnection.request = request_error
+    try:
+      try:
+        self.connection.send_rpc(my_method.remote, self.request)
+      except remote.NetworkError, err:
+        self.assertEquals('Error communicating with HTTP server', str(err))
+        self.assertEquals(TypeError, type(err.cause))
+        self.assertEquals('Generic Error', str(err.cause))
+      else:
+        self.fail('Expected error')
+    finally:
+      httplib.HTTPConnection.request = original_request
+
+  def testHandleGenericServiceError(self):
+    self.ResetServer(wsgi_util.error(httplib.INTERNAL_SERVER_ERROR,
+                                     'arbitrary error',
+                                     content_type='text/plain'))
+
+    rpc = self.connection.send_rpc(my_method.remote, self.request)
+    try:
+      rpc.response
+    except remote.ServerError, err:
+      self.assertEquals('HTTP Error 500: arbitrary error', str(err).strip())
+    else:
+      self.fail('Expected ServerError')
+
+  def testHandleGenericServiceErrorNoMessage(self):
+    self.ResetServer(wsgi_util.error(httplib.NOT_IMPLEMENTED,
+                                     ' ',
+                                     content_type='text/plain'))
+
+    rpc = self.connection.send_rpc(my_method.remote, self.request)
+    try:
+      rpc.response
+    except remote.ServerError, err:
+      self.assertEquals('HTTP Error 501: Not Implemented', str(err).strip())
+    else:
+      self.fail('Expected ServerError')
+
+  def testHandleStatusContent(self):
+    self.ResetServer(wsgi_util.static_page('{"state": "REQUEST_ERROR",'
+                                           ' "error_message": "a request error"'
+                                           '}',
+                                           status=httplib.BAD_REQUEST,
+                                           content_type='application/json'))
+
+    rpc = self.connection.send_rpc(my_method.remote, self.request)
+    try:
+      rpc.response
+    except remote.RequestError, err:
+      self.assertEquals('a request error', str(err))
+    else:
+      self.fail('Expected RequestError')
+
+  def testHandleApplicationError(self):
+    self.ResetServer(wsgi_util.static_page('{"state": "APPLICATION_ERROR",'
+                                           ' "error_message": "an app error",'
+                                           ' "error_name": "MY_ERROR_NAME"}',
+                                           status=httplib.BAD_REQUEST,
+                                           content_type='application/json'))
+
+    rpc = self.connection.send_rpc(my_method.remote, self.request)
+    try:
+      rpc.response
+    except remote.ApplicationError, err:
+      self.assertEquals('an app error', str(err))
+      self.assertEquals('MY_ERROR_NAME', err.error_name)
+    else:
+      self.fail('Expected RequestError')
+
+  def testHandleUnparsableErrorContent(self):
+    self.ResetServer(wsgi_util.static_page('oops',
+                                           status=httplib.BAD_REQUEST,
+                                           content_type='application/json'))
+
+    rpc = self.connection.send_rpc(my_method.remote, self.request)
+    try:
+      rpc.response
+    except remote.ServerError, err:
+      self.assertEquals('HTTP Error 400: oops', str(err))
+    else:
+      self.fail('Expected ServerError')
+
+  def testHandleEmptyBadRpcStatus(self):
+    self.ResetServer(wsgi_util.static_page('{"error_message": "x"}',
+                                           status=httplib.BAD_REQUEST,
+                                           content_type='application/json'))
+
+    rpc = self.connection.send_rpc(my_method.remote, self.request)
+    try:
+      rpc.response
+    except remote.ServerError, err:
+      self.assertEquals('HTTP Error 400: {"error_message": "x"}', str(err))
+    else:
+      self.fail('Expected ServerError')
 
 
 class SimpleRequest(messages.Message):

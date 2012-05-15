@@ -38,7 +38,6 @@ from . import transport
 from .webapp import service_handlers
 
 from google.appengine.ext import webapp
-from google.appengine.ext import testbed
 
 
 class TestService(remote.Service):
@@ -279,23 +278,11 @@ class AlternateService(remote.Service):
 
 class WebServerTestBase(test_util.TestCase):
 
-  USE_URLFETCH = False
   SERVICE_PATH = '/my/service'
 
   def setUp(self):
-
-    self.testbed = testbed.Testbed()
-    self.testbed.activate()
-    self.testbed.init_urlfetch_stub()
-
-    if self.USE_URLFETCH:
-      if transport.urlfetch is None:
-        raise AssertionError('App Engine SDK is not in pythonpath')
-    else:
-      self._original_urlfetch = transport.urlfetch
-      transport.urlfetch = None
-
     self.server = None
+    self.schema = 'http'
     self.ResetServer()
 
     self.bad_path_connection = self.CreateTransport(self.service_url + '_x')
@@ -303,12 +290,16 @@ class WebServerTestBase(test_util.TestCase):
 
   def tearDown(self):
     self.server.shutdown()
-    self.testbed.deactivate()
-    
-    if not self.USE_URLFETCH:
-      transport.urlfetch = self._original_urlfetch
 
   def ResetServer(self, application=None):
+    """Reset web server.
+
+    Shuts down existing server if necessary and starts a new one.
+
+    Args:
+      application: Optional WSGI function.  If none provided will use
+        tests CreateWsgiApplication method.
+    """
     if self.server:
       self.server.shutdown()
 
@@ -322,7 +313,18 @@ class WebServerTestBase(test_util.TestCase):
     return transport.HttpTransport(service_url, protocol=protojson)
 
   def StartWebServer(self, port, application=None):
-    """Start web server."""
+    """Start web server.
+
+    Args:
+      port: Port to start application on.
+      application: Optional WSGI function.  If none provided will use
+        tests CreateWsgiApplication method.
+
+    Returns:
+      A tuple (server, application):
+        server: An instance of ServerThread.
+        application: Application that web server responds with.
+    """
     if not application:
       application = self.CreateWsgiApplication()
     validated_application = validate.validator(application)
@@ -332,7 +334,8 @@ class WebServerTestBase(test_util.TestCase):
     return server, application
 
   def make_service_url(self, path):
-    return 'http://localhost:%d%s' % (self.port, path)
+    """Make service URL using current schema and port."""
+    return '%s://localhost:%d%s' % (self.schema, self.port, path)
 
   @property
   def service_url(self):
