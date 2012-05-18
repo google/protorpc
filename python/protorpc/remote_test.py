@@ -888,6 +888,28 @@ class ProtocolsTest(test_util.TestCase):
     protojson_protocol = protocols.lookup_by_name('protojson')
     self.assertEquals(protojson, protojson_protocol.protocol)
 
+  def testGetDefaultProtocols(self):
+    protocols = remote.Protocols.get_default()
+    self.assertEquals(('protobuf', 'protojson'), protocols.names)
+
+    protobuf_protocol = protocols.lookup_by_name('protobuf')
+    self.assertEquals(protobuf, protobuf_protocol.protocol)
+
+    protojson_protocol = protocols.lookup_by_name('protojson')
+    self.assertEquals(protojson, protojson_protocol.protocol)
+
+    self.assertTrue(protocols is remote.Protocols.get_default())
+
+  def testSetDefaultProtocols(self):
+    protocols = remote.Protocols()
+    remote.Protocols.set_default(protocols)
+    self.assertTrue(protocols is remote.Protocols.get_default())
+
+  def testSetDefaultWithoutProtocols(self):
+    self.assertRaises(TypeError, remote.Protocols.set_default, None)
+    self.assertRaises(TypeError, remote.Protocols.set_default, 'hi protocols')
+    self.assertRaises(TypeError, remote.Protocols.set_default, {})
+
 
 def main():
   unittest.main()

@@ -70,9 +70,6 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
     protocols: remote.Protocols instance that configures supported protocols
       on server.
   """
-  if protocols is None:
-    protocols = remote.Protocols.new_default()
-
   service_class = getattr(service_factory, 'service_class', service_factory)
   remote_methods = service_class.all_remote_methods()
   path_matcher = re.compile(_REQUEST_PATH_PATTERN % service_path)
@@ -111,8 +108,9 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
         content_type='text/plain; charset=utf-8')
       return error_handler(environ, start_response)
 
+    local_protocols = protocols or remote.Protocols.get_default()
     try:
-      protocol = protocols.lookup_by_content_type(content_type)
+      protocol = local_protocols.lookup_by_content_type(content_type)
     except KeyError:
       return _HTTP_UNSUPPORTED_MEDIA_TYPE(environ,start_response)
 

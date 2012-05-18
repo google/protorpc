@@ -154,16 +154,25 @@ class Transport(object):
     """Constructor.
 
     Args:
-      protocol: The protocol implementation.  Must implement encode_message and
-        decode_message.  Can also be an instance of remote.ProtocolConfig.
+      protocol: If string, will look up a protocol from the default Protocols
+        instance by name.  Can also be an instance of remote.ProtocolConfig.
+        If neither, it must be an object that implements a protocol interface
+        by implementing encode_message, decode_message and set CONTENT_TYPE.
+        For example, the modules protobuf and protojson can be used directly.
     """
-    self.__protocol = protocol
+    if isinstance(protocol, basestring):
+      protocols = remote.Protocols.get_default()
+      try:
+        protocol = protocols.lookup_by_name(protocol)
+      except KeyError:
+        protocol = protocols.lookup_by_content_type(protocol)
     if isinstance(protocol, remote.ProtocolConfig):
       self.__protocol = protocol.protocol
       self.__protocol_config = protocol
     else:
       self.__protocol = protocol
-      self.__protocol_config = remote.ProtocolConfig(protocol, 'default')
+      self.__protocol_config = remote.ProtocolConfig(
+        protocol, 'default', default_content_type=protocol.CONTENT_TYPE)
 
   @property
   def protocol(self):
@@ -238,7 +247,7 @@ class HttpTransport(Transport):
     # Status above 400 may have RpcStatus content.
     if response.status >= 400:
       content_type = response.getheader('content-type')
-      if content_type == self.protocol.CONTENT_TYPE:
+      if content_type == self.protocol_config.default_content_type:
         try:
           rpc_status = self.protocol.decode_message(remote.RpcStatus, content)
         except Exception, decode_err:
@@ -308,7 +317,7 @@ class HttpTransport(Transport):
         'POST',
         url.path,
         encoded_request,
-        headers={'Content-type': self.protocol.CONTENT_TYPE,
+        headers={'Content-type': self.protocol_config.default_content_type,
                  'Content-length': len(encoded_request)})
 
       rpc = Rpc(request)

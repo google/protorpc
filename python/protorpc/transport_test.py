@@ -157,6 +157,9 @@ class RpcTest(test_util.TestCase):
 
 class TransportTest(test_util.TestCase):
 
+  def setUp(self):
+    remote.Protocols.set_default(remote.Protocols.new_default())
+
   def do_test(self, protocol, trans):
     request = Message()
     request.value = u'request'
@@ -199,6 +202,12 @@ class TransportTest(test_util.TestCase):
     trans = transport.Transport(protocol=protocol_config)
     self.do_test(protojson, trans)
     self.assertTrue(trans.protocol_config is protocol_config)
+
+  def testProtocolByName(self):
+    remote.Protocols.get_default().add_protocol(
+      protojson, 'png', 'image/png', ())
+    trans = transport.Transport(protocol='png')
+    self.do_test(protojson, trans)
 
 
 @remote.method(Message, Message)
@@ -370,6 +379,21 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
       self.assertEquals('HTTP Error 400: {"error_message": "x"}', str(err))
     else:
       self.fail('Expected ServerError')
+
+  def testUseProtocolConfigContentType(self):
+    expected_content_type = 'image/png'
+    def expect_content_type(environ, start_response):
+      self.assertEquals(expected_content_type, environ['CONTENT_TYPE'])
+      app = wsgi_util.static_page('', content_type=environ['CONTENT_TYPE'])
+      return app(environ, start_response)
+
+    self.ResetServer(expect_content_type)
+
+    protocol_config = remote.ProtocolConfig(protojson, 'json', 'image/png')
+    self.connection = self.CreateTransport(self.service_url, protocol_config)
+
+    rpc = self.connection.send_rpc(my_method.remote, self.request)
+    self.assertEquals(Message(), rpc.response)
 
 
 class SimpleRequest(messages.Message):

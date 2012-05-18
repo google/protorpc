@@ -308,9 +308,9 @@ class WebServerTestBase(test_util.TestCase):
 
     self.connection = self.CreateTransport(self.service_url)
 
-  def CreateTransport(self, service_url):
+  def CreateTransport(self, service_url, protocol=protojson):
     """Create a new transportation object."""
-    return transport.HttpTransport(service_url, protocol=protojson)
+    return transport.HttpTransport(service_url, protocol=protocol)
 
   def StartWebServer(self, port, application=None):
     """Start web server.

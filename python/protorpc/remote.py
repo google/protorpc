@@ -101,11 +101,14 @@ make an asynchronous call, do:
   response = rpc.get_response()
 """
 
+from __future__ import with_statement
+
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import logging
 import os
 import sys
+import threading
 from wsgiref import headers as wsgi_headers
 
 from . import message_types
@@ -1131,6 +1134,9 @@ class Protocols(object):
     content_types: Sorted list of supported content-types.
   """
 
+  __default_protocols = None
+  __lock = threading.Lock()
+
   def __init__(self):
     """Constructor."""
     self.__by_name = {}
@@ -1211,3 +1217,35 @@ class Protocols(object):
     protocols.add_protocol(protobuf, 'protobuf')
     protocols.add_protocol(protojson, 'protojson')
     return protocols
+
+  @classmethod
+  def get_default(cls):
+    """Get the global default Protocols instance.
+
+    Returns:
+      Current global default Protocols instance.
+    """
+    default_protocols = cls.__default_protocols
+    if default_protocols is None:
+      with cls.__lock:
+        default_protocols = cls.__default_protocols
+        if default_protocols is None:
+          default_protocols = cls.new_default()
+          cls.__default_protocols = default_protocols
+    return default_protocols
+
+  @classmethod
+  def set_default(cls, protocols):
+    """Set the global default Protocols instance.
+
+    Args:
+      protocols: A Protocols instance.
+
+    Raises:
+      TypeError if protocols is not an instance of Protocols.
+    """
+    if not isinstance(protocols, Protocols):
+      raise TypeError(
+        'Expected value of type "Protocols", found %r' % protocols)
+    with cls.__lock:
+      cls.__default_protocols = protocols

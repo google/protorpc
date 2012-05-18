@@ -68,6 +68,27 @@ class ServiceMappingTest(end2end_test.EndToEndTest):
 
     self.stub.optional_message(string_value='alternate-protocol')
 
+  def testAlwaysUseDefaults(self):
+    original_protocols = remote.Protocols.get_default()
+    try:
+      new_protocols = remote.Protocols()
+      new_protocols.add_protocol(protojson, 'altproto', 'image/png')
+
+      self.connection = transport.HttpTransport(
+        self.service_url, protocol=new_protocols.lookup_by_name('altproto'))
+      self.stub = webapp_test_util.TestService.Stub(self.connection)
+
+      self.assertRaisesWithRegexpMatch(
+        remote.ServerError,
+        'HTTP Error 415: Unsupported Media Type',
+        self.stub.optional_message, string_value='alternate-protocol')
+
+      remote.Protocols.set_default(new_protocols)
+
+      self.stub.optional_message(string_value='alternate-protocol')
+    finally:
+      remote.Protocols.set_default(original_protocols)
+
 
 class ProtoServiceMappingsTest(ServiceMappingTest):
 
