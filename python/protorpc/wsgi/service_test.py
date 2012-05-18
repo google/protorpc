@@ -40,6 +40,7 @@ class ServiceMappingTest(end2end_test.EndToEndTest):
 
   def setUp(self):
     self.protocols = None
+    remote.Protocols.set_default(remote.Protocols.new_default())
     super(ServiceMappingTest, self).setUp()
 
   def CreateServices(self):
@@ -60,6 +61,10 @@ class ServiceMappingTest(end2end_test.EndToEndTest):
   def testAlternateProtocols(self):
     self.protocols = remote.Protocols()
     self.protocols.add_protocol(protojson, 'altproto', 'image/png')
+
+    global_protocols = remote.Protocols()
+    global_protocols.add_protocol(protojson, 'server-side-name', 'image/png')
+    remote.Protocols.set_default(global_protocols)
     self.ResetServer()
 
     self.connection = transport.HttpTransport(
@@ -69,25 +74,21 @@ class ServiceMappingTest(end2end_test.EndToEndTest):
     self.stub.optional_message(string_value='alternate-protocol')
 
   def testAlwaysUseDefaults(self):
-    original_protocols = remote.Protocols.get_default()
-    try:
-      new_protocols = remote.Protocols()
-      new_protocols.add_protocol(protojson, 'altproto', 'image/png')
+    new_protocols = remote.Protocols()
+    new_protocols.add_protocol(protojson, 'altproto', 'image/png')
 
-      self.connection = transport.HttpTransport(
-        self.service_url, protocol=new_protocols.lookup_by_name('altproto'))
-      self.stub = webapp_test_util.TestService.Stub(self.connection)
+    self.connection = transport.HttpTransport(
+      self.service_url, protocol=new_protocols.lookup_by_name('altproto'))
+    self.stub = webapp_test_util.TestService.Stub(self.connection)
 
-      self.assertRaisesWithRegexpMatch(
-        remote.ServerError,
-        'HTTP Error 415: Unsupported Media Type',
-        self.stub.optional_message, string_value='alternate-protocol')
+    self.assertRaisesWithRegexpMatch(
+      remote.ServerError,
+      'HTTP Error 415: Unsupported Media Type',
+      self.stub.optional_message, string_value='alternate-protocol')
 
-      remote.Protocols.set_default(new_protocols)
+    remote.Protocols.set_default(new_protocols)
 
-      self.stub.optional_message(string_value='alternate-protocol')
-    finally:
-      remote.Protocols.set_default(original_protocols)
+    self.stub.optional_message(string_value='alternate-protocol')
 
 
 class ProtoServiceMappingsTest(ServiceMappingTest):

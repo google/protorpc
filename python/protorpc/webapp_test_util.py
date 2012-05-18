@@ -213,7 +213,12 @@ class ServerThread(threading.Thread):
         knows to shut itself down.
     """
     self.server = server
+    # This timeout is for the socket when a connection is made.
     self.server.socket.settimeout(None)
+    # This timeout is for when waiting for a connection.  The allows
+    # server.handle_request() to listen for a short time, then timeout,
+    # allowing the server to check for shutdown.
+    self.server.timeout = 0.05
     self.__serving = True
 
     super(ServerThread, self).__init__(*args, **kwargs)
