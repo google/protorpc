@@ -271,9 +271,9 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
     try:
       bad_transport.send_rpc(my_method.remote, self.request)
     except remote.NetworkError, err:
-      self.assertTrue(str(err).startswith('Socket error: gaierror (8, '))
+      self.assertTrue(str(err).startswith('Socket error: gaierror ('))
       self.assertEquals(socket.gaierror, type(err.cause))
-      self.assertEquals(8, err.cause.args[0])
+      self.assertEquals(8, abs(err.cause.args[0]))  # Sign is sys depednent.
     else:
       self.fail('Expected error')
 
