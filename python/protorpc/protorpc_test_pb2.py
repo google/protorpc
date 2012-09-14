@@ -7,10 +7,11 @@ from google.protobuf import descriptor_pb2
 # @@protoc_insertion_point(imports)
 
 
+
 DESCRIPTOR = descriptor.FileDescriptor(
-  name='protorpc/protorpc_test.proto',
+  name='protorpc_test.proto',
   package='protorpc',
-  serialized_pb='\n\x1cprotorpc/protorpc_test.proto\x12\x08protorpc\" \n\rNestedMessage\x12\x0f\n\x07\x61_value\x18\x01 \x02(\t\"m\n\x10HasNestedMessage\x12\'\n\x06nested\x18\x01 \x01(\x0b\x32\x17.protorpc.NestedMessage\x12\x30\n\x0frepeated_nested\x18\x02 \x03(\x0b\x32\x17.protorpc.NestedMessage\"(\n\nHasDefault\x12\x1a\n\x07\x61_value\x18\x01 \x01(\t:\ta default\"\x97\x02\n\x0fOptionalMessage\x12\x14\n\x0c\x64ouble_value\x18\x01 \x01(\x01\x12\x13\n\x0b\x66loat_value\x18\x02 \x01(\x02\x12\x13\n\x0bint64_value\x18\x03 \x01(\x03\x12\x14\n\x0cuint64_value\x18\x04 \x01(\x04\x12\x13\n\x0bint32_value\x18\x05 \x01(\x05\x12\x12\n\nbool_value\x18\x06 \x01(\x08\x12\x14\n\x0cstring_value\x18\x07 \x01(\t\x12\x13\n\x0b\x62ytes_value\x18\x08 \x01(\x0c\x12\x38\n\nenum_value\x18\n \x01(\x0e\x32$.protorpc.OptionalMessage.SimpleEnum\" \n\nSimpleEnum\x12\x08\n\x04VAL1\x10\x01\x12\x08\n\x04VAL2\x10\x02\"\x97\x02\n\x0fRepeatedMessage\x12\x14\n\x0c\x64ouble_value\x18\x01 \x03(\x01\x12\x13\n\x0b\x66loat_value\x18\x02 \x03(\x02\x12\x13\n\x0bint64_value\x18\x03 \x03(\x03\x12\x14\n\x0cuint64_value\x18\x04 \x03(\x04\x12\x13\n\x0bint32_value\x18\x05 \x03(\x05\x12\x12\n\nbool_value\x18\x06 \x03(\x08\x12\x14\n\x0cstring_value\x18\x07 \x03(\t\x12\x13\n\x0b\x62ytes_value\x18\x08 \x03(\x0c\x12\x38\n\nenum_value\x18\n \x03(\x0e\x32$.protorpc.RepeatedMessage.SimpleEnum\" \n\nSimpleEnum\x12\x08\n\x04VAL1\x10\x01\x12\x08\n\x04VAL2\x10\x02\"y\n\x18HasOptionalNestedMessage\x12)\n\x06nested\x18\x01 \x01(\x0b\x32\x19.protorpc.OptionalMessage\x12\x32\n\x0frepeated_nested\x18\x02 \x03(\x0b\x32\x19.protorpc.OptionalMessage')
+  serialized_pb='\n\x13protorpc_test.proto\x12\x08protorpc\" \n\rNestedMessage\x12\x0f\n\x07\x61_value\x18\x01 \x02(\t\"m\n\x10HasNestedMessage\x12\'\n\x06nested\x18\x01 \x01(\x0b\x32\x17.protorpc.NestedMessage\x12\x30\n\x0frepeated_nested\x18\x02 \x03(\x0b\x32\x17.protorpc.NestedMessage\"(\n\nHasDefault\x12\x1a\n\x07\x61_value\x18\x01 \x01(\t:\ta default\"\x97\x02\n\x0fOptionalMessage\x12\x14\n\x0c\x64ouble_value\x18\x01 \x01(\x01\x12\x13\n\x0b\x66loat_value\x18\x02 \x01(\x02\x12\x13\n\x0bint64_value\x18\x03 \x01(\x03\x12\x14\n\x0cuint64_value\x18\x04 \x01(\x04\x12\x13\n\x0bint32_value\x18\x05 \x01(\x05\x12\x12\n\nbool_value\x18\x06 \x01(\x08\x12\x14\n\x0cstring_value\x18\x07 \x01(\t\x12\x13\n\x0b\x62ytes_value\x18\x08 \x01(\x0c\x12\x38\n\nenum_value\x18\n \x01(\x0e\x32$.protorpc.OptionalMessage.SimpleEnum\" \n\nSimpleEnum\x12\x08\n\x04VAL1\x10\x01\x12\x08\n\x04VAL2\x10\x02\"\x97\x02\n\x0fRepeatedMessage\x12\x14\n\x0c\x64ouble_value\x18\x01 \x03(\x01\x12\x13\n\x0b\x66loat_value\x18\x02 \x03(\x02\x12\x13\n\x0bint64_value\x18\x03 \x03(\x03\x12\x14\n\x0cuint64_value\x18\x04 \x03(\x04\x12\x13\n\x0bint32_value\x18\x05 \x03(\x05\x12\x12\n\nbool_value\x18\x06 \x03(\x08\x12\x14\n\x0cstring_value\x18\x07 \x03(\t\x12\x13\n\x0b\x62ytes_value\x18\x08 \x03(\x0c\x12\x38\n\nenum_value\x18\n \x03(\x0e\x32$.protorpc.RepeatedMessage.SimpleEnum\" \n\nSimpleEnum\x12\x08\n\x04VAL1\x10\x01\x12\x08\n\x04VAL2\x10\x02\"y\n\x18HasOptionalNestedMessage\x12)\n\x06nested\x18\x01 \x01(\x0b\x32\x19.protorpc.OptionalMessage\x12\x32\n\x0frepeated_nested\x18\x02 \x03(\x0b\x32\x19.protorpc.OptionalMessage')
 
 
 
@@ -31,8 +32,8 @@ _OPTIONALMESSAGE_SIMPLEENUM = descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=477,
-  serialized_end=509,
+  serialized_start=468,
+  serialized_end=500,
 )
 
 _REPEATEDMESSAGE_SIMPLEENUM = descriptor.EnumDescriptor(
@@ -52,8 +53,8 @@ _REPEATEDMESSAGE_SIMPLEENUM = descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=477,
-  serialized_end=509,
+  serialized_start=468,
+  serialized_end=500,
 )
 
 
@@ -80,8 +81,8 @@ _NESTEDMESSAGE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=42,
-  serialized_end=74,
+  serialized_start=33,
+  serialized_end=65,
 )
 
 
@@ -115,8 +116,8 @@ _HASNESTEDMESSAGE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=76,
-  serialized_end=185,
+  serialized_start=67,
+  serialized_end=176,
 )
 
 
@@ -143,8 +144,8 @@ _HASDEFAULT = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=187,
-  serialized_end=227,
+  serialized_start=178,
+  serialized_end=218,
 )
 
 
@@ -228,8 +229,8 @@ _OPTIONALMESSAGE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=230,
-  serialized_end=509,
+  serialized_start=221,
+  serialized_end=500,
 )
 
 
@@ -313,8 +314,8 @@ _REPEATEDMESSAGE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=512,
-  serialized_end=791,
+  serialized_start=503,
+  serialized_end=782,
 )
 
 
@@ -348,10 +349,9 @@ _HASOPTIONALNESTEDMESSAGE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=793,
-  serialized_end=914,
+  serialized_start=784,
+  serialized_end=905,
 )
-
 
 _HASNESTEDMESSAGE.fields_by_name['nested'].message_type = _NESTEDMESSAGE
 _HASNESTEDMESSAGE.fields_by_name['repeated_nested'].message_type = _NESTEDMESSAGE
@@ -361,6 +361,12 @@ _REPEATEDMESSAGE.fields_by_name['enum_value'].enum_type = _REPEATEDMESSAGE_SIMPL
 _REPEATEDMESSAGE_SIMPLEENUM.containing_type = _REPEATEDMESSAGE;
 _HASOPTIONALNESTEDMESSAGE.fields_by_name['nested'].message_type = _OPTIONALMESSAGE
 _HASOPTIONALNESTEDMESSAGE.fields_by_name['repeated_nested'].message_type = _OPTIONALMESSAGE
+DESCRIPTOR.message_types_by_name['NestedMessage'] = _NESTEDMESSAGE
+DESCRIPTOR.message_types_by_name['HasNestedMessage'] = _HASNESTEDMESSAGE
+DESCRIPTOR.message_types_by_name['HasDefault'] = _HASDEFAULT
+DESCRIPTOR.message_types_by_name['OptionalMessage'] = _OPTIONALMESSAGE
+DESCRIPTOR.message_types_by_name['RepeatedMessage'] = _REPEATEDMESSAGE
+DESCRIPTOR.message_types_by_name['HasOptionalNestedMessage'] = _HASOPTIONALNESTEDMESSAGE
 
 class NestedMessage(message.Message):
   __metaclass__ = reflection.GeneratedProtocolMessageType
