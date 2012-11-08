@@ -163,17 +163,16 @@ class ProtoServiceMappingsTest(ServiceMappingTest):
       registry_path='/registry'))
     registry_client = self.GetRegistryStub('/registry')
     services = registry_client.services()
-    self.assertEquals(
-      registry.ServicesResponse(
-        services=[
-          registry.ServiceMapping(
+    self.assertTrue(isinstance(services, registry.ServicesResponse))
+    self.assertIterEqual(
+        [registry.ServiceMapping(
             name='/my/other_service',
             definition='protorpc.webapp_test_util.TestService'),
-          registry.ServiceMapping(
-            name='/my/service',
-            definition='protorpc.webapp_test_util.TestService'),
-          ]),
-      services)
+         registry.ServiceMapping(
+             name='/my/service',
+             definition='protorpc.webapp_test_util.TestService'),
+        ],
+        services.services)
 
   def testDuplicateRegistryEntry(self):
     self.assertRaisesWithRegexpMatch(

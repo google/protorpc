@@ -187,13 +187,15 @@ class AcceptItemTest(test_util.TestCase):
     self.assertTrue(item.match('tExt/pLain'))
 
   def testStr(self):
-    self.assertEquals('*/*', str(util.AcceptItem('*/*', 1)))
-    self.assertEquals('text/*', str(util.AcceptItem('text/*', 1)))
-    self.assertEquals('text/plain', str(util.AcceptItem('text/plain', 1)))
-    self.assertEquals('text/plain; q=0.2',
-                      str(util.AcceptItem('text/plain; q=0.2', 1)))
-    self.assertEquals('text/plain; q=0.2; level=1',
-                      str(util.AcceptItem('text/plain; level=1; q=0.2', 1)))
+    self.assertHeaderSame('*/*', str(util.AcceptItem('*/*', 1)))
+    self.assertHeaderSame('text/*', str(util.AcceptItem('text/*', 1)))
+    self.assertHeaderSame('text/plain',
+                          str(util.AcceptItem('text/plain', 1)))
+    self.assertHeaderSame('text/plain; q=0.2',
+                          str(util.AcceptItem('text/plain; q=0.2', 1)))
+    self.assertHeaderSame(
+        'text/plain; q=0.2; level=1',
+        str(util.AcceptItem('text/plain; level=1; q=0.2', 1)))
 
   def testRepr(self):
     self.assertEquals("AcceptItem('*/*', 1)", repr(util.AcceptItem('*/*', 1)))

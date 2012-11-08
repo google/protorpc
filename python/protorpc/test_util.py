@@ -29,6 +29,7 @@ conform.
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import cgi
 import inspect
 import os
 import re
@@ -69,6 +70,53 @@ class TestCase(unittest.TestCase):
       match = bool(re.match(regexp, str(err)))
       self.assertTrue(match, 'Expected match "%s", found "%s"' % (regexp,
                                                                   err))
+
+  def assertHeaderSame(self, header1, header2):
+    """Check that two HTTP headers are the same.
+
+    Args:
+      header1: Header value string 1.
+      header2: header value string 2.
+    """
+    value1, params1 = cgi.parse_header(header1)
+    value2, params2 = cgi.parse_header(header2)
+    self.assertEqual(value1, value2)
+    self.assertEqual(params1, params2)
+
+  def assertIterEqual(self, iter1, iter2):
+    """Check that two iterators or iterables are equal independent of order.
+
+    Similar to Python 2.7 assertItemsEqual.  Named differently in order to
+    avoid potential conflict.
+
+    Args:
+      iter1: An iterator or iterable.
+      iter2: An iterator or iterable.
+    """
+    list1 = list(iter1)
+    list2 = list(iter2)
+
+    unmatched1 = list()
+
+    while list1:
+      item1 = list1[0]
+      del list1[0]
+      for index in range(len(list2)):
+        if item1 == list2[index]:
+          del list2[index]
+          break
+      else:
+        unmatched1.append(item1)
+
+    error_message = []
+    for item in unmatched1:
+      error_message.append(
+          '  Item from iter1 not found in iter2: %r' % item)
+    for item in list2:
+      error_message.append(
+          '  Item from iter2 not found in iter1: %r' % item)
+    if error_message:
+      self.fail('Collections not equivalent:\n' + '\n'.join(error_message))
 
 
 class ModuleInterfaceTest(object):

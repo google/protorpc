@@ -74,10 +74,7 @@ class RegistryServiceTest(test_util.TestCase):
     service2_mapping.name = 'my-service2'
     service2_mapping.definition = '%s.MyService2' % module_name
 
-    mappings.sort(key=lambda mapping: mapping.name)
-
-    self.assertEquals(mappings[0], service1_mapping)
-    self.assertEquals(mappings[1], service2_mapping)
+    self.assertIterEqual(mappings, [service1_mapping, service2_mapping])
 
   def testServices(self):
     response = self.registry_service.services(message_types.VoidMessage())
@@ -90,10 +87,7 @@ class RegistryServiceTest(test_util.TestCase):
     response = self.registry_service.get_file_set(request)
 
     expected_file_set = descriptor.describe_file_set(self.modules.values())
-    expected_file_set.files.sort(key=lambda f: f.package)
-    response.file_set.files.sort(key=lambda f: f.package)
-    self.assertEquals(expected_file_set.files,
-                      response.file_set.files)
+    self.assertIterEqual(expected_file_set.files, response.file_set.files)
 
   def testGetFileSet_None(self):
     request = registry.GetFileSetRequest()
@@ -109,10 +103,7 @@ class RegistryServiceTest(test_util.TestCase):
 
     # Will suck in and describe the test_util module.
     expected_file_set = descriptor.describe_file_set(self.modules.values())
-    expected_file_set.files.sort(key=lambda f: f.package)
-    response.file_set.files.sort(key=lambda f: f.package)
-    self.assertEquals(expected_file_set.files,
-                      response.file_set.files)
+    self.assertIterEqual(expected_file_set.files, response.file_set.files)
 
   def testGetFileSet_DoNotReferenceOtherModules(self):
     request = registry.GetFileSetRequest()
@@ -121,10 +112,7 @@ class RegistryServiceTest(test_util.TestCase):
 
     # Service does not reference test_util, so will only describe this module.
     expected_file_set = descriptor.describe_file_set([self.modules[__name__]])
-    expected_file_set.files.sort(key=lambda f: f.package)
-    response.file_set.files.sort(key=lambda f: f.package)
-    self.assertEquals(expected_file_set.files,
-                      response.file_set.files)
+    self.assertIterEqual(expected_file_set.files, response.file_set.files)
 
 
 def main():
