@@ -799,10 +799,14 @@ class ProtocolConfigTest(test_util.TestCase):
 
   def testEncodeMessage(self):
     config = remote.ProtocolConfig(protojson, 'proto2')
-    self.assertEquals('{"state": "SERVER_ERROR", "error_message": "bad error"}',
-                      config.encode_message(
-                        remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
-                                         error_message="bad error")))
+    encoded_message = config.encode_message(
+        remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
+                         error_message="bad error"))
+
+    # Convert back to a dictionar from JSON.
+    dict_message = protojson.json.loads(encoded_message)
+    self.assertEquals({"state": "SERVER_ERROR", "error_message": "bad error"},
+                      dict_message)
 
   def testDecodeMessage(self):
     config = remote.ProtocolConfig(protojson, 'proto2')
