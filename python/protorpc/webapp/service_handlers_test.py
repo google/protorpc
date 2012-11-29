@@ -1306,16 +1306,14 @@ class TestRunServices(test_util.TestCase):
                               registry.ServicesResponse)
 
     self.assertEquals('Status: 200 OK', status)
-    self.assertEquals(registry.ServicesResponse(
-      services=[
+    self.assertIterEqual([
         registry.ServiceMapping(
-          name='/protorpc',
-          definition='protorpc.registry.RegistryService'),
+            name='/protorpc',
+            definition='protorpc.registry.RegistryService'),
         registry.ServiceMapping(
-          name='/my_service',
-          definition='test_package.GetCalled'),
-        ]),
-      response)
+            name='/my_service',
+            definition='test_package.GetCalled'),
+        ], response.services)
 
   def testRunServicesWithOutRegistry(self):
     request = Request1(string_field='request value')

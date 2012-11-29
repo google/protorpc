@@ -108,18 +108,15 @@ class ProtoServiceMappingsTest(ServiceMappingTest):
 
   def testRegistry(self):
     registry_client = self.GetRegistryStub()
-    services = registry_client.services()
-    self.assertEquals(
-      registry.ServicesResponse(
-        services=[
-          registry.ServiceMapping(
+    response = registry_client.services()
+    self.assertIterEqual([
+        registry.ServiceMapping(
             name='/my/other_service',
             definition='protorpc.webapp_test_util.TestService'),
-          registry.ServiceMapping(
+        registry.ServiceMapping(
             name='/my/service',
             definition='protorpc.webapp_test_util.TestService'),
-          ]),
-      services)
+        ], response.services)
 
   def testRegistryDictionary(self):
     self.ResetServer(service.service_mappings(
@@ -128,18 +125,15 @@ class ProtoServiceMappingsTest(ServiceMappingTest):
            webapp_test_util.TestService.new_factory('initialized'),
       }))
     registry_client = self.GetRegistryStub()
-    services = registry_client.services()
-    self.assertEquals(
-      registry.ServicesResponse(
-        services=[
-          registry.ServiceMapping(
+    response = registry_client.services()
+    self.assertIterEqual([
+        registry.ServiceMapping(
             name='/my/other_service',
             definition='protorpc.webapp_test_util.TestService'),
-          registry.ServiceMapping(
+        registry.ServiceMapping(
             name='/my/service',
             definition='protorpc.webapp_test_util.TestService'),
-          ]),
-      services)
+        ], response.services)
 
   def testNoRegistry(self):
     self.ResetServer(service.service_mappings(
