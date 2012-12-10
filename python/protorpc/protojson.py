@@ -185,7 +185,10 @@ def decode_message(message_type, encoded_message):
       valid_value = []
       for item in value:
         if isinstance(field, messages.EnumField):
-          item = field.type(item)
+          try:
+            item = field.type(item)
+          except TypeError:
+            raise messages.DecodeError('Invalid enum value "%s"' % value[0])
         elif isinstance(field, messages.BytesField):
           item = base64.b64decode(item)
         elif isinstance(field, messages.MessageField):

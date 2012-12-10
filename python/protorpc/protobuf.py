@@ -300,7 +300,10 @@ def decode_message(message_type, encoded_message):
 
       # Special case Enum and Message types.
       if isinstance(field, messages.EnumField):
-        value = field.type(value)
+        try:
+          value = field.type(value)
+        except TypeError:
+          raise messages.DecodeError('Invalid enum value %s' % value)
       elif isinstance(field, messages.MessageField):
         nested_message = decode_message(field.type, value)
         value = nested_message

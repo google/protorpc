@@ -418,6 +418,11 @@ class ProtoConformanceTestBase(object):
       <HasOptionalNestedMessage
         nested: <OptionalMessage>
         >
+
+    encoded_invalid_enum:
+      <OptionalMessage
+        enum_value: (invalid value for serialization type)
+        >
   """
 
   encoded_empty_message = ''
@@ -564,6 +569,13 @@ class ProtoConformanceTestBase(object):
 
   def testContentType(self):
     self.assertTrue(isinstance(self.PROTOLIB.CONTENT_TYPE, str))
+
+  def testDecodeInvalidEnumType(self):
+    self.assertRaisesWithRegexpMatch(messages.DecodeError,
+                                     'Invalid enum value ',
+                                     self.PROTOLIB.decode_message,
+                                     OptionalMessage,
+                                     self.encoded_invalid_enum)
 
 
 def do_with(context, function, *args, **kwargs):

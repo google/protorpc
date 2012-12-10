@@ -148,6 +148,12 @@ class EncodeMessageTest(test_util.TestCase,
     proto.string_value = u'Latin'
     return proto.SerializeToString()
 
+  @property
+  def encoded_invalid_enum(self):
+    proto = protorpc_test_pb2.OptionalMessage()
+    proto.enum_value = 1000
+    return proto.SerializeToString()
+
   def testDecodeWrongWireFormat(self):
     """Test what happens when wrong wire format found in protobuf."""
     class ExpectedProto(messages.Message):

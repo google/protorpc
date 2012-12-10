@@ -432,7 +432,10 @@ class URLEncodedRequestBuilder(object):
     elif isinstance(field, messages.BooleanField):
       converted_value = value.lower() == 'true' and True or False
     else:
-      converted_value = field.type(value)
+      try:
+        converted_value = field.type(value)
+      except TypeError:
+        raise messages.DecodeError('Invalid enum value "%s"' % value)
 
     if field.repeated:
       value_list = getattr(parent, field.name, None)
