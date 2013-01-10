@@ -520,6 +520,14 @@ def encode_message(message, prefix=''):
 
   build_message(message, prefix)
 
+  # Also add any unrecognized values from the decoded string.
+  for key in message.all_unrecognized_fields():
+    values, _ = message.get_unrecognized_field_info(key)
+    if not isinstance(values, (list, tuple)):
+      values = (values,)
+    for value in values:
+      parameters.append((key, value))
+
   return urllib.urlencode(parameters)
 
 
@@ -538,6 +546,9 @@ def decode_message(message_type, encoded_message, **kwargs):
   builder = URLEncodedRequestBuilder(message, **kwargs)
   arguments = cgi.parse_qs(encoded_message, keep_blank_values=True)
   for argument, values in sorted(arguments.iteritems()):
-    builder.add_parameter(argument, values)
+    added = builder.add_parameter(argument, values)
+    # Save off any unknown values, so they're still accessible.
+    if not added:
+      message.set_unrecognized_field(argument, values, messages.Variant.STRING)
   message.check_initialized()
   return message

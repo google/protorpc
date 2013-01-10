@@ -333,27 +333,6 @@ class ProtourlencodeConformanceTest(test_util.TestCase,
                                                              encoded_message,
                                                              prefix='prefix-'))
 
-  def testProtourlencodeUnrecognizedField(self):
-    """Test that unrecognized fields are saved and can be accessed."""
-
-    class MyMessage(messages.Message):
-      number = messages.IntegerField(1)
-
-    decoded = protourlencode.decode_message(MyMessage,
-                                            self.unexpected_tag_message)
-    self.assertEquals(1, len(decoded.all_unrecognized_fields()))
-    self.assertEquals('unexpected', decoded.all_unrecognized_fields()[0])
-    # Unknown values set to a list of however many values had that name.
-    self.assertEquals((['whatever'], messages.Variant.STRING),
-                      decoded.get_unrecognized_field_info('unexpected'))
-
-    repeated_unknown = urllib.urlencode([('repeated', 400),
-                                         ('repeated', 'test'),
-                                         ('repeated', '123.456')])
-    decoded2 = protourlencode.decode_message(MyMessage, repeated_unknown)
-    self.assertEquals((['400', 'test', '123.456'], messages.Variant.STRING),
-                      decoded2.get_unrecognized_field_info('repeated'))
-
 
 if __name__ == '__main__':
   unittest.main()

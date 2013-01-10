@@ -74,6 +74,7 @@ __all__ = ['MAX_ENUM_VALUE',
 
            'Error',
            'DecodeError',
+           'EncodeError',
            'EnumDefinitionError',
            'FieldDefinitionError',
            'InvalidVariantError',
@@ -125,6 +126,10 @@ class DefinitionNotFoundError(Error):
 
 class DecodeError(Error):
   """Error found decoding message from encoded form."""
+
+
+class EncodeError(Error):
+  """Error found when encoding message."""
 
 
 class ValidationError(Error):
@@ -727,6 +732,7 @@ class Message(object):
     """
     # Tag being an essential implementation detail must be private.
     self.__tags = {}
+    self.__unrecognized_fields = {}
 
     assigned = set()
     for name, value in kwargs.iteritems():
@@ -851,6 +857,43 @@ class Message(object):
             message_type.__name__, name))
     self.__tags.pop(field.number, None)
 
+  def all_unrecognized_fields(self):
+    """Get the names of all unrecognized fields in this message."""
+    return self.__unrecognized_fields.keys()
+
+  def get_unrecognized_field_info(self, key, value_default=None,
+                                  variant_default=None):
+    """Get the value and variant of an unknown field in this message.
+
+    Args:
+      key: The name or number of the field to retrieve.
+      value_default: Value to be returned if the key isn't found.
+      variant_default: Value to be returned as variant if the key isn't
+        found.
+
+    Returns:
+      (value, variant), where value and variant are whatever was passed
+      to set_unrecognized_field.
+    """
+    value, variant = self.__unrecognized_fields.get(key, (value_default,
+                                                          variant_default))
+    return value, variant
+
+  def set_unrecognized_field(self, key, value, variant):
+    """Set an unrecognized field, used when decoding a message.
+
+    Args:
+      key: The name or number used to refer to this unknown value.
+      value: The value of the field.
+      variant: Type information needed to interpret the value or re-encode it.
+
+    Raises:
+      TypeError: If the variant is not an instance of messages.Variant.
+    """
+    if not isinstance(variant, Variant):
+      raise TypeError('Variant type %s is not valid.' % variant)
+    self.__unrecognized_fields[key] = value, variant
+
   def __setattr__(self, name, value):
     """Change set behavior for messages.
 
@@ -924,6 +967,8 @@ class Message(object):
       message2.attr1 = 'default value'
 
       message1 != message2
+
+    Does not compare unknown values.
 
     Args:
       other: Other message to compare with.

@@ -172,12 +172,21 @@ _VARIANT_TO_ENCODER_MAP = {
 }
 
 
-# Basic wire format decoders.  Used for skipping unknown values.
+# Basic wire format decoders.  Used for reading unknown values.
 _WIRE_TYPE_TO_DECODER_MAP = {
-  _Encoder.NUMERIC: _Decoder.getVarInt32,
+  _Encoder.NUMERIC: _Decoder.getVarInt64,
   _Encoder.DOUBLE: _Decoder.getDouble,
   _Encoder.STRING: _Decoder.getPrefixedString,
   _Encoder.FLOAT: _Decoder.getFloat,
+}
+
+
+# Map wire type to variant.  Used to find a variant for unknown values.
+_WIRE_TYPE_TO_VARIANT_MAP = {
+  _Encoder.NUMERIC: messages.Variant.INT64,
+  _Encoder.DOUBLE: messages.Variant.DOUBLE,
+  _Encoder.STRING: messages.Variant.STRING,
+  _Encoder.FLOAT: messages.Variant.FLOAT,
 }
 
 
@@ -223,22 +232,39 @@ def encode_message(message):
   message.check_initialized()
   encoder = _Encoder()
 
-  for field in sorted(message.all_fields(), key=lambda field: field.number):
-    value = message.get_assigned_value(field.name)
-    if value is not None:
-      # Encode tag.
-      tag = ((field.number << _WIRE_TYPE_BITS) |
-             _VARIANT_TO_WIRE_TYPE[field.variant])
+  # Get all fields, from the known fields we parsed and the unknown fields
+  # we saved.  Note which ones were known, so we can process them differently.
+  all_fields = [(field.number, field) for field in message.all_fields()]
+  all_fields.extend((key, None)
+                    for key in message.all_unrecognized_fields()
+                    if isinstance(key, (int, long)))
+  all_fields.sort()
+  for field_num, field in all_fields:
+    if field:
+      # Known field.
+      value = message.get_assigned_value(field.name)
+      if value is None:
+        continue
+      variant = field.variant
+      repeated = field.repeated
+    else:
+      # Unrecognized field.
+      value, variant = message.get_unrecognized_field_info(field_num)
+      if not isinstance(variant, messages.Variant):
+        continue
+      repeated = isinstance(value, (list, tuple))
 
-      # Write value to wire.
-      if field.repeated:
-        values = value
-      else:
-        values = [value]
-      for next in values:
-        encoder.putVarInt32(tag)
-        field_encoder = _VARIANT_TO_ENCODER_MAP[field.variant]
-        field_encoder(encoder, next)
+    tag = ((field_num << _WIRE_TYPE_BITS) | _VARIANT_TO_WIRE_TYPE[variant])
+
+    # Write value to wire.
+    if repeated:
+      values = value
+    else:
+      values = [value]
+    for next in values:
+      encoder.putVarInt32(tag)
+      field_encoder = _VARIANT_TO_ENCODER_MAP[variant]
+      field_encoder(encoder, next)
 
   return encoder.buffer().tostring()
 
@@ -280,7 +306,7 @@ def decode_message(message_type, encoded_message):
       try:
         field = message.field_by_number(tag)
       except KeyError:
-        # Unexpected tags are ok, just ignored unless below 0.
+        # Unexpected tags are ok.
         field = None
         wire_type_decoder = found_wire_type_decoder
       else:
@@ -294,8 +320,14 @@ def decode_message(message_type, encoded_message):
 
       value = wire_type_decoder(decoder)
 
-      # Skip additional processing if unknown field.
+      # Save unknown fields and skip additional processing.
       if not field:
+        # When saving this, save it under the tag number (which should
+        # be unique), and set the variant and value so we know how to
+        # interpret the value later.
+        variant = _WIRE_TYPE_TO_VARIANT_MAP.get(wire_type)
+        if variant:
+          message.set_unrecognized_field(tag, value, variant)
         continue
 
       # Special case Enum and Message types.

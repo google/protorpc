@@ -533,12 +533,15 @@ class ProtoConformanceTestBase(object):
                                      required)
 
   def testUnexpectedField(self):
-    """Test ignoring unexpected fields."""
+    """Test decoding and encoding unexpected fields."""
     loaded_message = self.PROTOLIB.decode_message(OptionalMessage,
                                                   self.unexpected_tag_message)
+    # Message should be equal to an empty message, since unknown values aren't
+    # included in equality.
     self.assertEquals(OptionalMessage(), loaded_message)
-    # TODO(rafek): Support remembered unexpected values.
-    self.assertEquals(self.encoded_empty_message,
+    # Verify that the encoded message matches the source, including the
+    # unknown value.
+    self.assertEquals(self.unexpected_tag_message,
                       self.PROTOLIB.encode_message(loaded_message))
 
   def testDoNotSendDefault(self):

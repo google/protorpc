@@ -114,6 +114,11 @@ class _MessageJSONEncoder(json.JSONEncoder):
             else:
               item = base64.b64encode(item)
           result[field.name] = item
+      # Handle unrecognized fields, so they're included when a message is
+      # decoded then encoded.
+      for unknown_key in value.all_unrecognized_fields():
+        unrecognized_field, _ = value.get_unrecognized_field_info(unknown_key)
+        result[unknown_key] = unrecognized_field
       return result
     else:
       return super(_MessageJSONEncoder, self).default(value)
@@ -155,6 +160,39 @@ def decode_message(message_type, encoded_message):
 
   dictionary = json.loads(encoded_message)
 
+  def find_variant(value):
+    """Find the messages.Variant type that describes this value.
+
+    Args:
+      value: The value whose variant type is being determined.
+
+    Returns:
+      The messages.Variant value that best describes value's type, or None if
+      it's a type we don't know how to handle.
+    """
+    if isinstance(value, (int, long)):
+      return messages.Variant.INT64
+    elif isinstance(value, float):
+      return messages.Variant.DOUBLE
+    elif isinstance(value, basestring):
+      return messages.Variant.STRING
+    elif isinstance(value, (list, tuple)):
+      # Find the most specific variant that covers all elements.
+      variant_priority = [None, messages.Variant.INT64, messages.Variant.DOUBLE,
+                          messages.Variant.STRING]
+      chosen_priority = 0
+      for v in value:
+        variant = find_variant(v)
+        try:
+          priority = variant_priority.index(variant)
+        except IndexError:
+          priority = -1
+        if priority > chosen_priority:
+          chosen_priority = priority
+      return variant_priority[chosen_priority]
+    # Unrecognized type.
+    return None
+
   def decode_dictionary(message_type, dictionary):
     """Merge dictionary in to message.
 
@@ -172,7 +210,12 @@ def decode_message(message_type, encoded_message):
       try:
         field = message.field_by_name(key)
       except KeyError:
-        # TODO(rafek): Support saving unknown values.
+        # Save unknown values.
+        variant = find_variant(value)
+        if variant:
+          message.set_unrecognized_field(key, value, variant)
+        else:
+          logging.warning('No variant found for unrecognized field: %s', key)
         continue
 
       # Normalize values in to a list.

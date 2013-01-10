@@ -208,30 +208,6 @@ class EncodeMessageTest(test_util.TestCase,
                        test_util.OptionalMessage,
                        truncated_message)
 
-  def testProtobufUnrecognizedField(self):
-    """Test that unrecognized fields are saved and can be accessed."""
-    decoded = protobuf.decode_message(test_util.OptionalMessage,
-                                      self.unexpected_tag_message)
-    self.assertEquals(1, len(decoded.all_unrecognized_fields()))
-    self.assertEquals(15, decoded.all_unrecognized_fields()[0])
-    self.assertEquals((5, messages.Variant.INT64),
-                      decoded.get_unrecognized_field_info(15))
-
-  def testUnrecognizedFieldWrongFormat(self):
-    """Test that unrecognized fields in the wrong format are skipped."""
-
-    class SimpleMessage(messages.Message):
-      value = messages.IntegerField(1)
-
-    message = SimpleMessage(value=3)
-    message.set_unrecognized_field('from_json', 'test', messages.Variant.STRING)
-
-    encoded = protobuf.encode_message(message)
-    expected = (
-        chr((1 << protobuf._WIRE_TYPE_BITS) | protobuf._Encoder.NUMERIC) +
-        chr(3))
-    self.assertEquals(encoded, expected)
-
 
 def main():
   unittest.main()
