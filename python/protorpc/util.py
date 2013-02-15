@@ -68,10 +68,10 @@ def pad_string(string):
 
 
 def positional(max_positional_args):
-  """A decorator to declare that only the first N arguments my be positional.
+  """A decorator to declare that only the first N arguments may be positional.
 
-  This decorator makes it easy to support Python 3 style key-word only
-  parameters.  For example, in Python 3 it is possible to write:
+  This decorator makes it easy to support Python 3 style keyword-only
+  parameters. For example, in Python 3 it is possible to write:
 
     def fn(pos1, *, kwonly1=None, kwonly1=None):
       ...
@@ -115,6 +115,21 @@ def positional(max_positional_args):
         def my_method(cls, pos1, kwonly1=None):
           ...
 
+    One can omit the argument to 'positional' altogether, and then no
+    arguments with default values may be passed positionally. This
+    would be equivalent to placing a '*' before the first argument
+    with a default value in Python 3. If there are no arguments with
+    default values, and no argument is given to 'positional', an error
+    is raised.
+
+      @positional
+      def fn(arg1, arg2, required_kw1=None, required_kw2=0):
+        ...
+
+      fn(1, 3, 5)  # Raises exception.
+      fn(1, 3)  # Ok.
+      fn(1, 3, required_kw1=5)  # Ok.
+
   Args:
     max_positional_arguments: Maximum number of positional arguments.  All
       parameters after the this index must be keyword only.
@@ -124,7 +139,9 @@ def positional(max_positional_args):
     being used as positional parameters.
 
   Raises:
-    TypeError if a key-word only argument is provided as a positional parameter.
+    TypeError if a keyword-only argument is provided as a positional parameter.
+    ValueError if no maximum number of arguments is provided and the function
+      has no arguments with default values.
   """
   def positional_decorator(wrapped):
     def positional_wrapper(*args, **kwargs):
@@ -143,6 +160,10 @@ def positional(max_positional_args):
     return positional_decorator
   else:
     args, _, _, defaults = inspect.getargspec(max_positional_args)
+    if defaults is None:
+      raise ValueError(
+          'Functions with no keyword arguments must specify '
+          'max_positional_args')
     return positional(len(args) - len(defaults))(max_positional_args)
 
 
