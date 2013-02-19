@@ -24,6 +24,7 @@ import logging
 import unittest
 import urllib
 
+from protorpc import message_types
 from protorpc import messages
 from protorpc import protourlencode
 from protorpc import test_util
@@ -353,6 +354,14 @@ class ProtourlencodeConformanceTest(test_util.TestCase,
     decoded2 = protourlencode.decode_message(MyMessage, repeated_unknown)
     self.assertEquals((['400', 'test', '123.456'], messages.Variant.STRING),
                       decoded2.get_unrecognized_field_info('repeated'))
+
+  def testDecodeInvalidDateTime(self):
+
+    class MyMessage(messages.Message):
+      a_datetime = message_types.DateTimeField(1)
+
+    self.assertRaises(messages.DecodeError, protourlencode.decode_message,
+                      MyMessage, 'a_datetime=invalid')
 
 
 if __name__ == '__main__':

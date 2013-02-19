@@ -31,7 +31,9 @@ import cStringIO
 import base64
 import logging
 
+from . import message_types
 from . import messages
+from . import util
 
 __all__ = [
     'ALTERNATIVE_CONTENT_TYPES',
@@ -113,6 +115,12 @@ class _MessageJSONEncoder(json.JSONEncoder):
               item = [base64.b64encode(i) for i in item]
             else:
               item = base64.b64encode(item)
+          elif isinstance(field, message_types.DateTimeField):
+            # DateTimeField stores its data as a RFC 3339 compliant string.
+            if field.repeated:
+              item = [i.isoformat() for i in item]
+            else:
+              item = item.isoformat()
           result[field.name] = item
       # Handle unrecognized fields, so they're included when a message is
       # decoded then encoded.
@@ -233,7 +241,15 @@ def decode_message(message_type, encoded_message):
           except TypeError:
             raise messages.DecodeError('Invalid enum value "%s"' % value[0])
         elif isinstance(field, messages.BytesField):
-          item = base64.b64decode(item)
+          try:
+            item = base64.b64decode(item)
+          except TypeError, err:
+            raise messages.DecodeError('Base64 decoding error: %s' % err)
+        elif isinstance(field, message_types.DateTimeField):
+          try:
+            item = util.decode_datetime(item)
+          except ValueError, err:
+            raise messages.DecodeError(err)
         elif isinstance(field, messages.MessageField):
           item = decode_dictionary(field.type, item)
         elif (isinstance(field, messages.FloatField) and

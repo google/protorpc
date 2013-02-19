@@ -92,6 +92,7 @@ import cgi
 import re
 import urllib
 
+from . import message_types
 from . import messages
 from . import util
 
@@ -422,6 +423,11 @@ class URLEncodedRequestBuilder(object):
 
     if isinstance(field, messages.IntegerField):
       converted_value = int(value)
+    elif isinstance(field, message_types.DateTimeField):
+      try:
+        converted_value = util.decode_datetime(value)
+      except ValueError, e:
+        raise messages.DecodeError(e)
     elif isinstance(field, messages.MessageField):
       # Just make sure it's instantiated.  Assignment to field or
       # appending to list is done in __get_or_create_path.
@@ -502,7 +508,10 @@ def encode_message(message, prefix=''):
         else:
           field_name = prefix + field.name
 
-        if isinstance(field, messages.MessageField):
+        if isinstance(field, message_types.DateTimeField):
+          # DateTimeField stores its data as a RFC 3339 compliant string.
+          parameters.append((field_name, item.isoformat()))
+        elif isinstance(field, messages.MessageField):
           # Message fields must be recursed in to in order to construct
           # their component parameter values.
           if not build_message(item, field_name + '.'):

@@ -196,6 +196,16 @@ class FormatPythonFileTest(test_util.TestCase):
 
     self.DoMessageTest([field])
 
+  def testDateTimeField(self):
+    field = descriptor.FieldDescriptor()
+    field.name = 'timestamp'
+    field.number = 1
+    field.label = descriptor.FieldDescriptor.Label.OPTIONAL
+    field.variant = descriptor.FieldDescriptor.Variant.MESSAGE
+    field.type_name = 'protorpc.message_types.DateTimeMessage'
+
+    self.DoMessageTest([field])
+
   def testNonDefaultVariant(self):
     field = descriptor.FieldDescriptor()
     field.name = 'integer_field'
@@ -349,4 +359,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-

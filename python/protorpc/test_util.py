@@ -30,6 +30,7 @@ conform.
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cgi
+import datetime
 import inspect
 import os
 import re
@@ -37,7 +38,9 @@ import socket
 import types
 import unittest
 
+from . import message_types
 from . import messages
+from . import util
 
 # Unicode of the word "Russian" in cyrillic.
 RUSSIAN = u'\u0440\u0443\u0441\u0441\u043a\u0438\u0439'
@@ -579,6 +582,31 @@ class ProtoConformanceTestBase(object):
                                      self.PROTOLIB.decode_message,
                                      OptionalMessage,
                                      self.encoded_invalid_enum)
+
+  def testDateTimeNoTimeZone(self):
+    """Test that DateTimeFields are encoded/decoded correctly."""
+
+    class MyMessage(messages.Message):
+      value = message_types.DateTimeField(1)
+
+    value = datetime.datetime(2013, 1, 3, 11, 36, 30, 123000)
+    message = MyMessage(value=value)
+    decoded = self.PROTOLIB.decode_message(
+        MyMessage, self.PROTOLIB.encode_message(message))
+    self.assertEquals(decoded.value, value)
+
+  def testDateTimeWithTimeZone(self):
+    """Test DateTimeFields with time zones."""
+
+    class MyMessage(messages.Message):
+      value = message_types.DateTimeField(1)
+
+    value = datetime.datetime(2013, 1, 3, 11, 36, 30, 123000,
+                              util.TimeZoneOffset(8 * 60))
+    message = MyMessage(value=value)
+    decoded = self.PROTOLIB.decode_message(
+        MyMessage, self.PROTOLIB.encode_message(message))
+    self.assertEquals(decoded.value, value)
 
 
 def do_with(context, function, *args, **kwargs):

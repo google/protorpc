@@ -23,6 +23,7 @@ import new
 import unittest
 
 from protorpc import descriptor
+from protorpc import message_types
 from protorpc import messages
 from protorpc import registry
 from protorpc import remote
@@ -180,6 +181,21 @@ class DescribeFieldTest(test_util.TestCase):
     expected.label = descriptor.FieldDescriptor.Label.OPTIONAL
     expected.variant = messages.MessageField.DEFAULT_VARIANT
     expected.type_name = ('protorpc.descriptor.FieldDescriptor')
+
+    described = descriptor.describe_field(field)
+    described.check_initialized()
+    self.assertEquals(expected, described)
+
+  def testDateTimeField(self):
+    field = message_types.DateTimeField(20)
+    field.name = 'a_timestamp'
+
+    expected = descriptor.FieldDescriptor()
+    expected.name = 'a_timestamp'
+    expected.number = 20
+    expected.label = descriptor.FieldDescriptor.Label.OPTIONAL
+    expected.variant = messages.MessageField.DEFAULT_VARIANT
+    expected.type_name = ('protorpc.message_types.DateTimeMessage')
 
     described = descriptor.describe_field(field)
     described.check_initialized()

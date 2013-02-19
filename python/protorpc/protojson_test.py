@@ -21,9 +21,11 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import __builtin__
 import base64
+import datetime
 import sys
 import unittest
 
+from protorpc import message_types
 from protorpc import messages
 from protorpc import protojson
 from protorpc import test_util
@@ -52,6 +54,8 @@ class MyMessage(messages.Message):
   a_nested = messages.MessageField(Nested, 7)
   a_repeated = messages.IntegerField(8, repeated=True)
   a_repeated_float = messages.FloatField(9, repeated=True)
+  a_datetime = message_types.DateTimeField(10)
+  a_repeated_datetime = message_types.DateTimeField(11, repeated=True)
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
@@ -253,6 +257,53 @@ class ProtojsonTest(test_util.TestCase,
       self.assertEquals('unknown_val', decoded.all_unrecognized_fields()[0])
       _, decoded_variant = decoded.get_unrecognized_field_info('unknown_val')
       self.assertEquals(expected_variant, decoded_variant)
+
+  def testDecodeDateTime(self):
+    for datetime_string, datetime_vals in (
+        ('2012-09-30T15:31:50.262', (2012, 9, 30, 15, 31, 50, 262000)),
+        ('2012-09-30T15:31:50', (2012, 9, 30, 15, 31, 50, 0))):
+      message = protojson.decode_message(
+          MyMessage, '{"a_datetime": "%s"}' % datetime_string)
+      expected_message = MyMessage(
+          a_datetime=datetime.datetime(*datetime_vals))
+
+      self.assertEquals(expected_message, message)
+
+  def testDecodeInvalidDateTime(self):
+    self.assertRaises(messages.DecodeError, protojson.decode_message,
+                      MyMessage, '{"a_datetime": "invalid"}')
+
+  def testEncodeDateTime(self):
+    for datetime_string, datetime_vals in (
+        ('2012-09-30T15:31:50.262000', (2012, 9, 30, 15, 31, 50, 262000)),
+        ('2012-09-30T15:31:50.262123', (2012, 9, 30, 15, 31, 50, 262123)),
+        ('2012-09-30T15:31:50', (2012, 9, 30, 15, 31, 50, 0))):
+      decoded_message = protojson.encode_message(
+          MyMessage(a_datetime=datetime.datetime(*datetime_vals)))
+      expected_decoding = '{"a_datetime": "%s"}' % datetime_string
+      self.CompareEncoded(expected_decoding, decoded_message)
+
+  def testDecodeRepeatedDateTime(self):
+    message = protojson.decode_message(
+        MyMessage,
+        '{"a_repeated_datetime": ["2012-09-30T15:31:50.262", '
+        '"2010-01-21T09:52:00", "2000-01-01T01:00:59.999999"]}')
+    expected_message = MyMessage(
+        a_repeated_datetime=[
+            datetime.datetime(2012, 9, 30, 15, 31, 50, 262000),
+            datetime.datetime(2010, 1, 21, 9, 52),
+            datetime.datetime(2000, 1, 1, 1, 0, 59, 999999)])
+
+    self.assertEquals(expected_message, message)
+
+  def testDecodeBadBase64BytesField(self):
+    """Test decoding improperly encoded base64 bytes value."""
+    self.assertRaisesWithRegexpMatch(
+        messages.DecodeError,
+        'Base64 decoding error: Incorrect padding',
+        protojson.decode_message,
+        test_util.OptionalMessage,
+        '{"bytes_value": "abcdefghijklmnopq"}')
 
 
 class InvalidJsonModule(object):

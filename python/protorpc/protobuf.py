@@ -34,8 +34,11 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import array
 import cStringIO
+import datetime
 
+from . import message_types
 from . import messages
+from . import util
 # TODO(rafek): Do something about this dependency maybe.
 from google.net.proto import ProtocolBuffer
 
@@ -263,6 +266,8 @@ def encode_message(message):
       values = [value]
     for next in values:
       encoder.putVarInt32(tag)
+      if isinstance(field, messages.MessageField):
+        next = field.value_to_message(next)
       field_encoder = _VARIANT_TO_ENCODER_MAP[variant]
       field_encoder(encoder, next)
 
@@ -337,8 +342,8 @@ def decode_message(message_type, encoded_message):
         except TypeError:
           raise messages.DecodeError('Invalid enum value %s' % value)
       elif isinstance(field, messages.MessageField):
-        nested_message = decode_message(field.type, value)
-        value = nested_message
+        value = decode_message(field.message_type, value)
+        value = field.value_from_message(value)
 
       # Merge value in to message.
       if field.repeated:

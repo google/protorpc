@@ -26,6 +26,7 @@ import unittest
 
 from protorpc import definition
 from protorpc import descriptor
+from protorpc import message_types
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import remote
@@ -167,6 +168,27 @@ class DefineFieldTest(test_util.TestCase):
                                      'Could not find definition for '
                                      'something.yet.to.be.Defined',
                                      getattr, field, 'type')
+
+  def testDefineField_DateTime(self):
+    """Test defining a date time field."""
+    field_descriptor = descriptor.FieldDescriptor()
+
+    field_descriptor.name = 'a_timestamp'
+    field_descriptor.number = 1
+    field_descriptor.variant = descriptor.FieldDescriptor.Variant.MESSAGE
+    field_descriptor.type_name = 'protorpc.message_types.DateTimeMessage'
+    field_descriptor.label = descriptor.FieldDescriptor.Label.REPEATED
+
+    field = definition.define_field(field_descriptor)
+
+    # Name will not be set from the original descriptor.
+    self.assertFalse(hasattr(field, 'name'))
+
+    self.assertTrue(isinstance(field, message_types.DateTimeField))
+    self.assertEquals(1, field.number)
+    self.assertEquals(descriptor.FieldDescriptor.Variant.MESSAGE, field.variant)
+    self.assertFalse(field.required)
+    self.assertTrue(field.repeated)
 
   def testDefineField_Enum(self):
     """Test defining an enum field."""

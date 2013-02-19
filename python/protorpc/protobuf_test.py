@@ -19,12 +19,23 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import datetime
 import unittest
 
+from protorpc import message_types
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import protorpc_test_pb2
 from protorpc import test_util
+from protorpc import util
+
+# TODO: Add DateTimeFields to protorpc_test.proto when definition.py
+# supports date time fields.
+class HasDateTimeMessage(messages.Message):
+  value = message_types.DateTimeField(1)
+
+class NestedDateTimeMessage(messages.Message):
+  value = messages.MessageField(message_types.DateTimeMessage, 1)
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
@@ -209,7 +220,7 @@ class EncodeMessageTest(test_util.TestCase,
                        truncated_message)
 
   def testProtobufUnrecognizedField(self):
-    """Test that unrecognized fields are saved and can be accessed."""
+    """Test that unrecognized fields are serialized and can be accessed."""
     decoded = protobuf.decode_message(test_util.OptionalMessage,
                                       self.unexpected_tag_message)
     self.assertEquals(1, len(decoded.all_unrecognized_fields()))
@@ -231,6 +242,49 @@ class EncodeMessageTest(test_util.TestCase,
         chr((1 << protobuf._WIRE_TYPE_BITS) | protobuf._Encoder.NUMERIC) +
         chr(3))
     self.assertEquals(encoded, expected)
+
+  def testProtobufDecodeDateTimeMessage(self):
+    """Test what happens when decoding a DateTimeMessage."""
+
+    nested = NestedDateTimeMessage()
+    nested.value = message_types.DateTimeMessage(milliseconds=2500)
+    value = protobuf.decode_message(HasDateTimeMessage,
+                                    protobuf.encode_message(nested)).value
+    self.assertEqual(datetime.datetime(1970, 1, 1, 0, 0, 2, 500000), value)
+
+  def testProtobufDecodeDateTimeMessageWithTimeZone(self):
+    """Test what happens when decoding a DateTimeMessage with a time zone."""
+    nested = NestedDateTimeMessage()
+    nested.value = message_types.DateTimeMessage(milliseconds=12345678,
+                                                 time_zone_offset=60)
+    value = protobuf.decode_message(HasDateTimeMessage,
+                                    protobuf.encode_message(nested)).value
+    self.assertEqual(datetime.datetime(1970, 1, 1, 3, 25, 45, 678000,
+                                       tzinfo=util.TimeZoneOffset(60)),
+                     value)
+
+  def testProtobufEncodeDateTimeMessage(self):
+    """Test what happens when encoding a DateTimeField."""
+    mine = HasDateTimeMessage(value=datetime.datetime(1970, 1, 1))
+    nested = NestedDateTimeMessage()
+    nested.value = message_types.DateTimeMessage(milliseconds=0)
+
+    my_encoded = protobuf.encode_message(mine)
+    encoded = protobuf.encode_message(nested)
+    self.assertEquals(my_encoded, encoded)
+
+  def testProtobufEncodeDateTimeMessageWithTimeZone(self):
+    """Test what happens when encoding a DateTimeField with a time zone."""
+    for tz_offset in (30, -30, 8 * 60, 0):
+      mine = HasDateTimeMessage(value=datetime.datetime(
+          1970, 1, 1, tzinfo=util.TimeZoneOffset(tz_offset)))
+      nested = NestedDateTimeMessage()
+      nested.value = message_types.DateTimeMessage(
+          milliseconds=0, time_zone_offset=tz_offset)
+
+      my_encoded = protobuf.encode_message(mine)
+      encoded = protobuf.encode_message(nested)
+      self.assertEquals(my_encoded, encoded)
 
 
 def main():

@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-"""Tests for protorpc.message."""
+"""Tests for protorpc.messages."""
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -27,9 +27,10 @@ import sys
 import types
 import unittest
 
-from protorpc import test_util
 from protorpc import descriptor
+from protorpc import message_types
 from protorpc import messages
+from protorpc import test_util
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
@@ -529,10 +530,11 @@ class FieldTest(test_util.TestCase):
   def testInvalidVariant(self):
     """Test field with invalid variants."""
     def action(field_class):
-      self.assertRaises(messages.InvalidVariantError,
-                        field_class,
-                        1,
-                        variant=messages.Variant.ENUM)
+      if field_class is not message_types.DateTimeField:
+        self.assertRaises(messages.InvalidVariantError,
+                          field_class,
+                          1,
+                          variant=messages.Variant.ENUM)
     self.ActionOnAllFieldClasses(action)
 
   def testDefaultVariant(self):
@@ -896,6 +898,67 @@ class FieldTest(test_util.TestCase):
     self.assertRaises(messages.ValidationError,
                       field.validate,
                       AnotherMessage())
+
+  def testMessageFieldMessageType(self):
+    """Test message_type property."""
+    class MyMessage(messages.Message):
+      pass
+
+    class HasMessage(messages.Message):
+      field = messages.MessageField(MyMessage, 1)
+
+    self.assertEqual(HasMessage.field.type, HasMessage.field.message_type)
+
+  def testMessageFieldValueFromMessage(self):
+    class MyMessage(messages.Message):
+      pass
+
+    class HasMessage(messages.Message):
+      field = messages.MessageField(MyMessage, 1)
+
+    instance = MyMessage()
+
+    self.assertIs(instance, HasMessage.field.value_from_message(instance))
+
+  def testMessageFieldValueFromMessageWrongType(self):
+    class MyMessage(messages.Message):
+      pass
+
+    class HasMessage(messages.Message):
+      field = messages.MessageField(MyMessage, 1)
+
+    self.assertRaisesWithRegexpMatch(
+        messages.DecodeError,
+        'Expected type MyMessage, got int: 10',
+        HasMessage.field.value_from_message, 10)
+
+  def testMessageFieldValueToMessage(self):
+    class MyMessage(messages.Message):
+      pass
+
+    class HasMessage(messages.Message):
+      field = messages.MessageField(MyMessage, 1)
+
+    instance = MyMessage()
+
+    self.assertIs(instance, HasMessage.field.value_to_message(instance))
+
+  def testMessageFieldValueToMessageWrongType(self):
+    class MyMessage(messages.Message):
+      pass
+
+    class MyOtherMessage(messages.Message):
+      pass
+
+    class HasMessage(messages.Message):
+      field = messages.MessageField(MyMessage, 1)
+
+    instance = MyOtherMessage()
+
+    self.assertRaisesWithRegexpMatch(
+        messages.EncodeError,
+        'Expected type MyMessage, got MyOtherMessage: <MyOtherMessage>',
+        HasMessage.field.value_to_message, instance)
 
   def testIntegerField_AllowLong(self):
     """Test that the integer field allows for longs."""
