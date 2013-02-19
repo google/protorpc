@@ -165,6 +165,20 @@ class StaticPageBase(WsgiTestBase):
                       },
                       headers)
 
+  def testHeadersUnicodeSafe(self):
+    default_page = wsgi_util.static_page(headers=[('x', u'foo')])
+    self.ResetServer(default_page)
+    status, reason, content, headers = self.DoHttpRequest()
+    self.assertEquals(200, status)
+    self.assertEquals('OK', reason)
+    self.assertEquals('', content)
+    self.assertEquals({'content-length': '0',
+                       'content-type': 'text/html; charset=utf-8',
+                       'x': 'foo',
+                      },
+                      headers)
+    self.assertTrue(isinstance(headers['x'], str))
+
   def testHasHeadersDict(self):
     default_page = wsgi_util.static_page(headers={'x': 'foo',
                                                   'a': 'bar',
