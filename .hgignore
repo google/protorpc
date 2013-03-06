@@ -3,5 +3,6 @@ syntax: glob
 *~
 *.py[co]
 *.py[co]-*
+*.orig
 build/*
 dist/*
