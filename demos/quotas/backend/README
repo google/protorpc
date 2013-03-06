@@ -1,4 +1,4 @@
-Quota service demo
+Quota Service
 =============
 
 It is possible to set up a quota service in your own application by following
@@ -15,4 +15,4 @@ these steps:
       The format of the quotas.js file is a JSON encoded ProtoRPC message
       as defined by quotas.service.QuotaConfig of this demo.
 
-TODO: Defined an easy to use client library. 
+TODO: Define an easy to use client library.
