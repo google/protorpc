@@ -17,6 +17,7 @@
 
 """Tests for protorpc.generate_proto_test."""
 
+
 import os
 import shutil
 import cStringIO
