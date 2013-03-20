@@ -38,6 +38,7 @@ from . import util
 __all__ = [
     'ALTERNATIVE_CONTENT_TYPES',
     'CONTENT_TYPE',
+    'MessageJSONEncoder',
     'encode_message',
     'decode_message',
 ]
@@ -62,7 +63,7 @@ def _load_json_module():
   It does a basic check to guess if a loaded version of json is compatible.
 
   Returns:
-    Comptable json module.
+    Compatible json module.
 
   Raises:
     ImportError if there are no json modules or the loaded json module is
@@ -89,7 +90,7 @@ def _load_json_module():
 json = _load_json_module()
 
 
-class _MessageJSONEncoder(json.JSONEncoder):
+class MessageJSONEncoder(json.JSONEncoder):
   """Message JSON encoder class.
 
   Extension of JSONEncoder that can build JSON from a message object.
@@ -129,7 +130,17 @@ class _MessageJSONEncoder(json.JSONEncoder):
         result[unknown_key] = unrecognized_field
       return result
     else:
-      return super(_MessageJSONEncoder, self).default(value)
+      return super(MessageJSONEncoder, self).default(value)
+
+
+class _MessageJSONEncoder(MessageJSONEncoder):
+
+  def __init__(self, *args, **kwds):
+    """DEPRECATED: please use MessageJSONEncoder instead."""
+    logging.warning(
+        '_MessageJSONEncoder has been renamed to MessageJSONEncoder, '
+        'please update any references')
+    super(_MessageJSONEncoder, self).__init__(*args, **kwds)
 
 
 def encode_message(message):
@@ -146,7 +157,7 @@ def encode_message(message):
   """
   message.check_initialized()
 
-  return json.dumps(message, cls=_MessageJSONEncoder)
+  return json.dumps(message, cls=MessageJSONEncoder)
 
 
 def decode_message(message_type, encoded_message):
