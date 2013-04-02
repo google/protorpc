@@ -78,6 +78,16 @@ class IndentWriterTest(test_util.TestCase):
                       'end 1\n',
                       self.out.getvalue())
 
+  def testBlankLine(self):
+    self.indent_writer << ''
+    self.indent_writer.begin_indent()
+    self.indent_writer << ''
+    self.assertEquals('\n\n', self.out.getvalue())
+
+  def testNoneInvalid(self):
+    with self.assertRaises(TypeError):
+      self.indent_writer << None
+
   def testAltIndentation(self):
     self.indent_writer = generate.IndentWriter(self.out, indent_space=3)
     self.indent_writer << 'indent 0'
