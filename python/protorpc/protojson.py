@@ -262,7 +262,7 @@ def decode_message(message_type, encoded_message):
           except ValueError, err:
             raise messages.DecodeError(err)
         elif isinstance(field, messages.MessageField):
-          item = decode_dictionary(field.type, item)
+          item = decode_dictionary(field.message_type, item)
         elif (isinstance(field, messages.FloatField) and
               isinstance(item, (int, long, basestring))):
           try:

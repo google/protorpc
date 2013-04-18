@@ -174,8 +174,8 @@ class RegistryService(remote.Service):
 
       for field in message_type.all_fields():
         if isinstance(field, messages.MessageField):
-          if field.type not in seen:
-            get_dependencies(field.type, seen)
+          if field.message_type not in seen:
+            get_dependencies(field.message_type, seen)
         elif isinstance(field, messages.EnumField):
           seen.add(field.type)
 
