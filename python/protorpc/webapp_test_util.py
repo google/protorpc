@@ -292,9 +292,11 @@ class WebServerTestBase(test_util.TestCase):
 
     self.bad_path_connection = self.CreateTransport(self.service_url + '_x')
     self.bad_path_stub = TestService.Stub(self.bad_path_connection)
+    super(WebServerTestBase, self).setUp()
 
   def tearDown(self):
     self.server.shutdown()
+    super(WebServerTestBase, self).tearDown()
 
   def ResetServer(self, application=None):
     """Reset web server.
