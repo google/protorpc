@@ -230,7 +230,7 @@ class ProtojsonTest(test_util.TestCase,
     message = protojson.decode_message(test_util.OptionalMessage, ' ')
     self.assertEquals(test_util.OptionalMessage(), message)
 
-  def testProtojsonUnrecognizedField(self):
+  def testProtojsonUnrecognizedFieldName(self):
     """Test that unrecognized fields are saved and can be accessed."""
     decoded = protojson.decode_message(MyMessage,
                                        ('{"an_integer": 1, "unknown_val": 2}'))
@@ -239,6 +239,24 @@ class ProtojsonTest(test_util.TestCase,
     self.assertEquals('unknown_val', decoded.all_unrecognized_fields()[0])
     self.assertEquals((2, messages.Variant.INT64),
                       decoded.get_unrecognized_field_info('unknown_val'))
+
+  def testProtojsonUnrecognizedFieldNumber(self):
+    """Test that unrecognized fields are saved and can be accessed."""
+    decoded = protojson.decode_message(
+        MyMessage,
+        '{"an_integer": 1, "1001": "unknown", "-123": "negative", '
+        '"456_mixed": 2}')
+    self.assertEquals(decoded.an_integer, 1)
+    self.assertEquals(3, len(decoded.all_unrecognized_fields()))
+    self.assertIn(1001, decoded.all_unrecognized_fields())
+    self.assertEquals(('unknown', messages.Variant.STRING),
+                      decoded.get_unrecognized_field_info(1001))
+    self.assertIn('-123', decoded.all_unrecognized_fields())
+    self.assertEquals(('negative', messages.Variant.STRING),
+                      decoded.get_unrecognized_field_info('-123'))
+    self.assertIn('456_mixed', decoded.all_unrecognized_fields())
+    self.assertEquals((2, messages.Variant.INT64),
+                      decoded.get_unrecognized_field_info('456_mixed'))
 
   def testUnrecognizedFieldVariants(self):
     """Test that unrecognized fields are mapped to the right variants."""

@@ -232,6 +232,8 @@ def decode_message(message_type, encoded_message):
         # Save unknown values.
         variant = find_variant(value)
         if variant:
+          if key.isdigit():
+            key = int(key)
           message.set_unrecognized_field(key, value, variant)
         else:
           logging.warning('No variant found for unrecognized field: %s', key)
