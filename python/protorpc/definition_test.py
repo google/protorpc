@@ -216,6 +216,122 @@ class DefineFieldTest(test_util.TestCase):
                                      'something.yet.to.be.Defined',
                                      getattr, field, 'type')
 
+  def testDefineField_Default_Bool(self):
+    """Test defining a default value for a bool."""
+    field_descriptor = descriptor.FieldDescriptor()
+
+    field_descriptor.name = 'a_field'
+    field_descriptor.number = 1
+    field_descriptor.variant = descriptor.FieldDescriptor.Variant.BOOL
+    field_descriptor.default_value = u'true'
+
+    field = definition.define_field(field_descriptor)
+
+    # Name will not be set from the original descriptor.
+    self.assertFalse(hasattr(field, 'name'))
+
+    self.assertTrue(isinstance(field, messages.BooleanField))
+    self.assertEquals(1, field.number)
+    self.assertEquals(descriptor.FieldDescriptor.Variant.BOOL, field.variant)
+    self.assertFalse(field.required)
+    self.assertFalse(field.repeated)
+    self.assertEqual(field.default, True)
+
+    field_descriptor.default_value = u'false'
+
+    field = definition.define_field(field_descriptor)
+
+    self.assertEqual(field.default, False)
+
+  def testDefineField_Default_Float(self):
+    """Test defining a default value for a float."""
+    field_descriptor = descriptor.FieldDescriptor()
+
+    field_descriptor.name = 'a_field'
+    field_descriptor.number = 1
+    field_descriptor.variant = descriptor.FieldDescriptor.Variant.FLOAT
+    field_descriptor.default_value = u'34.567'
+
+    field = definition.define_field(field_descriptor)
+
+    # Name will not be set from the original descriptor.
+    self.assertFalse(hasattr(field, 'name'))
+
+    self.assertTrue(isinstance(field, messages.FloatField))
+    self.assertEquals(1, field.number)
+    self.assertEquals(descriptor.FieldDescriptor.Variant.FLOAT, field.variant)
+    self.assertFalse(field.required)
+    self.assertFalse(field.repeated)
+    self.assertEqual(field.default, 34.567)
+
+  def testDefineField_Default_Int(self):
+    """Test defining a default value for an int."""
+    field_descriptor = descriptor.FieldDescriptor()
+
+    field_descriptor.name = 'a_field'
+    field_descriptor.number = 1
+    field_descriptor.variant = descriptor.FieldDescriptor.Variant.INT64
+    field_descriptor.default_value = u'34'
+
+    field = definition.define_field(field_descriptor)
+
+    # Name will not be set from the original descriptor.
+    self.assertFalse(hasattr(field, 'name'))
+
+    self.assertTrue(isinstance(field, messages.IntegerField))
+    self.assertEquals(1, field.number)
+    self.assertEquals(descriptor.FieldDescriptor.Variant.INT64, field.variant)
+    self.assertFalse(field.required)
+    self.assertFalse(field.repeated)
+    self.assertEqual(field.default, 34)
+
+  def testDefineField_Default_Str(self):
+    """Test defining a default value for a str."""
+    field_descriptor = descriptor.FieldDescriptor()
+
+    field_descriptor.name = 'a_field'
+    field_descriptor.number = 1
+    field_descriptor.variant = descriptor.FieldDescriptor.Variant.STRING
+    field_descriptor.default_value = u'Test'
+
+    field = definition.define_field(field_descriptor)
+
+    # Name will not be set from the original descriptor.
+    self.assertFalse(hasattr(field, 'name'))
+
+    self.assertTrue(isinstance(field, messages.StringField))
+    self.assertEquals(1, field.number)
+    self.assertEquals(descriptor.FieldDescriptor.Variant.STRING, field.variant)
+    self.assertFalse(field.required)
+    self.assertFalse(field.repeated)
+    self.assertEqual(field.default, u'Test')
+
+  def testDefineField_Default_Invalid(self):
+    """Test defining a default value that is not valid."""
+    field_descriptor = descriptor.FieldDescriptor()
+
+    field_descriptor.name = 'a_field'
+    field_descriptor.number = 1
+    field_descriptor.variant = descriptor.FieldDescriptor.Variant.INT64
+    field_descriptor.default_value = u'Test'
+
+    # Verify that the string is passed to the Constructor.
+    mock = mox.Mox()
+    mock.StubOutWithMock(messages.IntegerField, '__init__')
+    messages.IntegerField.__init__(
+        default=u'Test',
+        number=1,
+        variant=messages.Variant.INT64
+        ).AndRaise(messages.InvalidDefaultError)
+
+    mock.ReplayAll()
+    with self.assertRaises(messages.InvalidDefaultError):
+      _ = definition.define_field(field_descriptor)
+    mock.VerifyAll()
+
+    mock.ResetAll()
+    mock.UnsetStubs()
+
 
 class DefineMessageTest(test_util.TestCase):
   """Test for define_message."""
