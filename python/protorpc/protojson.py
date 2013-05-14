@@ -189,7 +189,9 @@ def decode_message(message_type, encoded_message):
       The messages.Variant value that best describes value's type, or None if
       it's a type we don't know how to handle.
     """
-    if isinstance(value, (int, long)):
+    if isinstance(value, bool):
+      return messages.Variant.BOOL
+    elif isinstance(value, (int, long)):
       return messages.Variant.INT64
     elif isinstance(value, float):
       return messages.Variant.DOUBLE

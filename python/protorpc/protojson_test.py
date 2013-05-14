@@ -269,7 +269,8 @@ class ProtojsonTest(test_util.TestCase,
         ('{"an_integer": 1, "unknown_val": [1, 2.0, 3]}',
          messages.Variant.DOUBLE),
         ('{"an_integer": 1, "unknown_val": [1, "foo", 3]}',
-         messages.Variant.STRING)):
+         messages.Variant.STRING),
+        ('{"an_integer": 1, "unknown_val": true}', messages.Variant.BOOL)):
       decoded = protojson.decode_message(MyMessage, encoded)
       self.assertEquals(decoded.an_integer, 1)
       self.assertEquals(1, len(decoded.all_unrecognized_fields()))
