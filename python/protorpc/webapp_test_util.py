@@ -25,8 +25,6 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cStringIO
 import threading
-import time
-import unittest
 import urllib2
 from wsgiref import simple_server
 from wsgiref import validate
@@ -36,8 +34,7 @@ from . import remote
 from . import test_util
 from . import transport
 from .webapp import service_handlers
-
-from google.appengine.ext import webapp
+from .webapp.google_imports import webapp
 
 
 class TestService(remote.Service):

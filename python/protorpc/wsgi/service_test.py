@@ -20,11 +20,8 @@
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
-import logging
 import unittest
-from wsgiref import util as wsgi_util
 
-from google.appengine.ext import webapp
 
 from protorpc import end2end_test
 from protorpc import protojson

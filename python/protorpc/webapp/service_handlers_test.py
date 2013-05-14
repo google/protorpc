@@ -22,15 +22,12 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cgi
 import cStringIO
-import logging
 import os
 import re
 import sys
 import unittest
 import urllib
-from wsgiref import headers
 
-from google.appengine.ext import webapp
 from protorpc import messages
 from protorpc import protobuf
 from protorpc import protojson
@@ -43,6 +40,7 @@ from protorpc import util
 from protorpc import webapp_test_util
 from protorpc.webapp import forms
 from protorpc.webapp import service_handlers
+from protorpc.webapp.google_imports import webapp
 
 import mox
 

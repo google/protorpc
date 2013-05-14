@@ -19,10 +19,7 @@
 import httplib
 import os
 import socket
-import StringIO
-import types
 import unittest
-import urllib2
 
 from protorpc import messages
 from protorpc import protobuf

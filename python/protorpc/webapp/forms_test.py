@@ -23,12 +23,10 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 import os
 import unittest
 
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import template
-
 from protorpc import test_util
 from protorpc import webapp_test_util
 from protorpc.webapp import forms
+from protorpc.webapp.google_imports import template
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,

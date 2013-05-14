@@ -32,7 +32,6 @@ A configured registry is itself a remote service and should reference itself.
 """
 
 import sys
-import weakref
 
 from . import descriptor
 from . import messages
