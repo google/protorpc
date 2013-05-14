@@ -162,9 +162,12 @@ class EncodeMessageTest(test_util.TestCase,
 
   @property
   def encoded_invalid_enum(self):
-    proto = protorpc_test_pb2.OptionalMessage()
-    proto.enum_value = 1000
-    return proto.SerializeToString()
+    encoder = protobuf._Encoder()
+    field_num = test_util.OptionalMessage.enum_value.number
+    tag = (field_num << protobuf._WIRE_TYPE_BITS) | encoder.NUMERIC
+    encoder.putVarInt32(tag)
+    encoder.putVarInt32(1000)
+    return encoder.buffer().tostring()
 
   def testDecodeWrongWireFormat(self):
     """Test what happens when wrong wire format found in protobuf."""
