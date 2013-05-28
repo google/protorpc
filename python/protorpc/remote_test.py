@@ -891,7 +891,7 @@ class ProtocolsTest(test_util.TestCase):
     self.assertEquals(protobuf, protobuf_protocol.protocol)
 
     protojson_protocol = protocols.lookup_by_name('protojson')
-    self.assertEquals(protojson.Protojson.get_default(),
+    self.assertEquals(protojson.ProtoJson.get_default(),
                       protojson_protocol.protocol)
 
   def testGetDefaultProtocols(self):
@@ -902,7 +902,7 @@ class ProtocolsTest(test_util.TestCase):
     self.assertEquals(protobuf, protobuf_protocol.protocol)
 
     protojson_protocol = protocols.lookup_by_name('protojson')
-    self.assertEquals(protojson.Protojson.get_default(),
+    self.assertEquals(protojson.ProtoJson.get_default(),
                       protojson_protocol.protocol)
 
     self.assertTrue(protocols is remote.Protocols.get_default())
