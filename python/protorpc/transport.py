@@ -314,7 +314,7 @@ class HttpTransport(Transport):
       connection_type = httplib.HTTPConnection
     connection = connection_type(url.hostname, url.port)
     try:
-      self._set_http_request(connection, url.path, encoded_request)
+      self._send_http_request(connection, url.path, encoded_request)
       rpc = Rpc(request)
     except remote.RpcError:
       # Pass through all ProtoRPC errors
