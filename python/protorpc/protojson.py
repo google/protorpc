@@ -225,7 +225,10 @@ def decode_message(message_type, encoded_message):
     message = message_type()
     for key, value in dictionary.iteritems():
       if value is None:
-        message.reset(key)
+        try:
+          message.reset(key)
+        except AttributeError:
+          pass  # This is an unrecognized field, skip it.
         continue
 
       try:

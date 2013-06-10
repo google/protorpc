@@ -258,6 +258,14 @@ class ProtojsonTest(test_util.TestCase,
     self.assertEquals((2, messages.Variant.INT64),
                       decoded.get_unrecognized_field_info('456_mixed'))
 
+  def testProtojsonUnrecognizedNull(self):
+    """Test that unrecognized fields that are None are skipped."""
+    decoded = protojson.decode_message(
+        MyMessage,
+        '{"an_integer": 1, "unrecognized_null": null}')
+    self.assertEquals(decoded.an_integer, 1)
+    self.assertEquals(decoded.all_unrecognized_fields(), [])
+
   def testUnrecognizedFieldVariants(self):
     """Test that unrecognized fields are mapped to the right variants."""
     for encoded, expected_variant in (
