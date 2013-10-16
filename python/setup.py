@@ -24,7 +24,9 @@ import setuptools
 
 # Configure the required packages and scripts to install, depending on
 # Python version and OS.
-REQUIRED_PACKAGES = []
+REQUIRED_PACKAGES = [
+    'ez_setup==0.9',
+    ]
 CONSOLE_SCRIPTS = [
     'gen_protorpc = gen_protorpc:main',
     ]
@@ -33,7 +35,7 @@ py_version = platform.python_version()
 if py_version < '2.6':
   REQUIRED_PACKAGES.append('simplejson')
 
-_PROTORPC_VERSION = '0.9'
+_PROTORPC_VERSION = '0.9.1'
 
 setuptools.setup(
     name='protorpc',
