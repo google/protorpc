@@ -34,6 +34,19 @@ from protorpc import test_util
 import simplejson
 
 
+class CustomField(messages.MessageField):
+  """Custom MessageField class."""
+
+  type = int
+  message_type = message_types.VoidMessage
+
+  def __init__(self, number, **kwargs):
+    super(CustomField, self).__init__(self.message_type, number, **kwargs)
+
+  def value_to_message(self, value):
+    return self.message_type()
+
+
 class MyMessage(messages.Message):
   """Test message containing various types."""
 
@@ -57,6 +70,8 @@ class MyMessage(messages.Message):
   a_repeated_float = messages.FloatField(9, repeated=True)
   a_datetime = message_types.DateTimeField(10)
   a_repeated_datetime = message_types.DateTimeField(11, repeated=True)
+  a_custom = CustomField(12)
+  a_repeated_custom = CustomField(13, repeated=True)
 
 
 class ModuleInterfaceTest(test_util.ModuleInterfaceTest,
@@ -323,6 +338,23 @@ class ProtojsonTest(test_util.TestCase,
             datetime.datetime(2000, 1, 1, 1, 0, 59, 999999)])
 
     self.assertEquals(expected_message, message)
+
+  def testDecodeCustom(self):
+    message = protojson.decode_message(MyMessage, '{"a_custom": 1}')
+    self.assertEquals(MyMessage(a_custom=1), message)
+
+  def testDecodeInvalidCustom(self):
+    self.assertRaises(messages.ValidationError, protojson.decode_message,
+                      MyMessage, '{"a_custom": "invalid"}')
+
+  def testEncodeCustom(self):
+    decoded_message = protojson.encode_message(MyMessage(a_custom=1))
+    self.CompareEncoded('{"a_custom": 1}', decoded_message)
+
+  def testDecodeRepeatedCustom(self):
+    message = protojson.decode_message(
+        MyMessage, '{"a_repeated_custom": [1, 2, 3]}')
+    self.assertEquals(MyMessage(a_repeated_custom=[1, 2, 3]), message)
 
   def testDecodeBadBase64BytesField(self):
     """Test decoding improperly encoded base64 bytes value."""
