@@ -467,6 +467,15 @@ class Enum(object):
   def __repr__(self):
     return '%s(%s, %d)' % (type(self).__name__, self.name, self.number)
 
+  def __reduce__(self):
+    """Enable pickling.
+
+    Returns:
+      A 2-tuple containing the class and __new__ args to be used for restoring
+      a pickled instance.
+    """
+    return self.__class__, (self.number,)
+
   def __cmp__(self, other):
     """Order is by number."""
     if isinstance(other, type(self)):
@@ -1020,6 +1029,40 @@ class FieldList(list):
     self.__field = field_instance
     self.__field.validate(sequence)
     list.__init__(self, sequence)
+
+  def __getstate__(self):
+    """Enable pickling.
+
+    The assigned field instance can't be pickled if it belongs to a Message
+    definition (message_definition uses a weakref), so the Message class and
+    field number are returned in that case.
+
+    Returns:
+      A 3-tuple containing:
+        - The field instance, or None if it belongs to a Message class.
+        - The Message class that the field instance belongs to, or None.
+        - The field instance number of the Message class it belongs to, or None.
+    """
+    message_class = self.__field.message_definition()
+    if message_class is None:
+      return self.__field, None, None
+    else:
+      return None, message_class, self.__field.number
+
+  def __setstate__(self, state):
+    """Enable unpickling.
+
+    Args:
+      state: A 3-tuple containing:
+        - The field instance, or None if it belongs to a Message class.
+        - The Message class that the field instance belongs to, or None.
+        - The field instance number of the Message class it belongs to, or None.
+    """
+    field_instance, message_class, number = state
+    if field_instance is None:
+      self.__field = message_class.field_by_number(number)
+    else:
+      self.__field = field_instance
 
   @property
   def field(self):

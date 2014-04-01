@@ -20,6 +20,7 @@
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
+import pickle
 import imp
 import inspect
 import new
@@ -333,6 +334,15 @@ class EnumTest(test_util.TestCase):
 
     self.assertNotEquals(1, Enum2.VAL1)
 
+  def testPickle(self):
+    """Testing pickling and unpickling of Enum instances."""
+    colors = list(Color)
+    unpickled = pickle.loads(pickle.dumps(colors))
+    self.assertEquals(colors, unpickled)
+    # Unpickling shouldn't create new enum instances.
+    for i, color in enumerate(colors):
+      self.assertIs(color, unpickled[i])
+
 
 class FieldListTest(test_util.TestCase):
 
@@ -467,6 +477,15 @@ class FieldListTest(test_util.TestCase):
       re.escape("Expected type (<type 'int'>, <type 'long'>) "
                 "for IntegerField, found 10 (type <type 'str'>)"),
       insert)
+
+  def testPickle(self):
+    """Testing pickling and unpickling of disconnected FieldList instances."""
+    field_list = messages.FieldList(self.integer_field, [1, 2, 3, 4, 5])
+    unpickled = pickle.loads(pickle.dumps(field_list))
+    self.assertEquals(field_list, unpickled)
+    self.assertIsInstance(unpickled.field, messages.IntegerField)
+    self.assertEquals(1, unpickled.field.number)
+    self.assertTrue(unpickled.field.repeated)
 
 
 class FieldTest(test_util.TestCase):
@@ -1742,6 +1761,38 @@ class MessageTest(test_util.TestCase):
     message.set_unrecognized_field('typetest2', '', messages.Variant.STRING)
     self.assertEquals(('', messages.Variant.STRING),
                       message.get_unrecognized_field_info('typetest2'))
+
+  def testPickle(self):
+    """Testing pickling and unpickling of Message instances."""
+    global MyEnum
+    global AnotherMessage
+    global MyMessage
+
+    class MyEnum(messages.Enum):
+      val1 = 1
+      val2 = 2
+
+    class AnotherMessage(messages.Message):
+      string = messages.StringField(1, repeated=True)
+
+    class MyMessage(messages.Message):
+      field1 = messages.IntegerField(1)
+      field2 = messages.EnumField(MyEnum, 2)
+      field3 = messages.MessageField(AnotherMessage, 3)
+
+    message = MyMessage(field1=1, field2=MyEnum.val2,
+                        field3=AnotherMessage(string=['a', 'b', 'c']))
+    message.set_unrecognized_field('exists', 'value', messages.Variant.STRING)
+    message.set_unrecognized_field('repeated', ['list', 0, ('test',)],
+                                   messages.Variant.STRING)
+    unpickled = pickle.loads(pickle.dumps(message))
+    self.assertEquals(message, unpickled)
+    self.assertIs(AnotherMessage.string, unpickled.field3.string.field)
+    self.assertIn('exists', message.all_unrecognized_fields())
+    self.assertEquals(('value', messages.Variant.STRING),
+                      message.get_unrecognized_field_info('exists'))
+    self.assertEquals((['list', 0, ('test',)], messages.Variant.STRING),
+                      message.get_unrecognized_field_info('repeated'))
 
 
 class FindDefinitionTest(test_util.TestCase):
