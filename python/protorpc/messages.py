@@ -866,7 +866,10 @@ class Message(object):
       if name not in message_type.__by_name:
         raise AttributeError('Message %s has no field %s' % (
             message_type.__name__, name))
-    self.__tags.pop(field.number, None)
+    if field.repeated:
+      self.__tags[field.number] = FieldList(field, [])
+    else:
+      self.__tags.pop(field.number, None)
 
   def all_unrecognized_fields(self):
     """Get the names of all unrecognized fields in this message."""

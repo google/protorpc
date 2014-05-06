@@ -1379,6 +1379,7 @@ class MessageTest(test_util.TestCase):
     """Test resetting a field value."""
     class SomeMessage(messages.Message):
       a_value = messages.StringField(1, default=u'a default')
+      repeated = messages.IntegerField(2, repeated=True)
 
     message = SomeMessage()
 
@@ -1392,6 +1393,14 @@ class MessageTest(test_util.TestCase):
     self.assertEquals(u'a new value', message.a_value)
     message.reset('a_value')
     self.assertEquals(u'a default', message.a_value)
+
+    message.repeated = [1, 2, 3]
+    self.assertEquals([1, 2, 3], message.repeated)
+    saved = message.repeated
+    message.reset('repeated')
+    self.assertEquals([], message.repeated)
+    self.assertIsInstance(message.repeated, messages.FieldList)
+    self.assertEquals([1, 2, 3], saved)
 
   def testAllowNestedEnums(self):
     """Test allowing nested enums in a message definition."""
