@@ -202,12 +202,49 @@ class ProtojsonTest(test_util.TestCase,
 
     self.assertEquals(expected_message, message)
 
+  def testNumericEnumerationNegativeTest(self):
+    """Test with an invalid number for the enum value."""
+    self.assertRaisesRegexp(
+        messages.DecodeError,
+        'Invalid enum value "89"',
+        protojson.decode_message,
+        MyMessage,
+        '{"an_enum": 89}')
+
+  def testAlphaEnumeration(self):
+    """Test that alpha enum values work."""
+    message = protojson.decode_message(MyMessage, '{"an_enum": "RED"}')
+
+    expected_message = MyMessage()
+    expected_message.an_enum = MyMessage.Color.RED
+
+    self.assertEquals(expected_message, message)
+
+  def testAlphaEnumerationNegativeTest(self):
+    """The alpha enum value is invalid."""
+    self.assertRaisesRegexp(
+        messages.DecodeError,
+        'Invalid enum value "IAMINVALID"',
+        protojson.decode_message,
+        MyMessage,
+        '{"an_enum": "IAMINVALID"}')
+
+  def testEnumerationNegativeTestWithEmptyString(self):
+    """The enum value is an empty string."""
+    self.assertRaisesRegexp(
+        messages.DecodeError,
+        'Invalid enum value ""',
+        protojson.decode_message,
+        MyMessage,
+        '{"an_enum": ""}')
+
   def testNullValues(self):
     """Test that null values overwrite existing values."""
     self.assertEquals(MyMessage(),
                       protojson.decode_message(MyMessage,
                                                ('{"an_integer": null,'
-                                                ' "a_nested": null'
+                                                ' "a_nested": null,'
+                                                ' "an_enum": null'
                                                 '}')))
 
   def testEmptyList(self):
@@ -389,6 +426,11 @@ class CustomProtoJsonTest(test_util.TestCase):
     self.assertEqual(
         MyMessage(a_string='{decoded}xyz'),
         self.protojson.decode_message(MyMessage, '{"a_string": "xyz"}'))
+
+  def testDecodeEmptyMessage(self):
+    self.assertEqual(
+        MyMessage(a_string='{decoded}'),
+        self.protojson.decode_message(MyMessage, '{"a_string": ""}'))
 
   def testDefault(self):
     self.assertTrue(protojson.ProtoJson.get_default(),

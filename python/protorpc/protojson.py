@@ -299,7 +299,7 @@ class ProtoJson(object):
       try:
         return field.type(value)
       except TypeError:
-        raise messages.DecodeError('Invalid enum value "%s"' % value[0])
+        raise messages.DecodeError('Invalid enum value "%s"' % (value or ''))
 
     elif isinstance(field, messages.BytesField):
       try:
