@@ -21,7 +21,6 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import new
 import sys
-import urllib2
 
 from . import descriptor
 from . import message_types
