@@ -18,15 +18,16 @@
 
 import platform
 
-from ez_setup import use_setuptools
-use_setuptools()
-import setuptools
+try:
+  import setuptools
+except ImportError:
+  from ez_setup import use_setuptools
+  use_setuptools()
+  import setuptools
 
 # Configure the required packages and scripts to install, depending on
 # Python version and OS.
-REQUIRED_PACKAGES = [
-    'ez_setup==0.9',
-    ]
+REQUIRED_PACKAGES = []
 CONSOLE_SCRIPTS = [
     'gen_protorpc = gen_protorpc:main',
     ]
