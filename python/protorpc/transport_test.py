@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-
+import errno
 import httplib
 import os
 import socket
@@ -269,9 +269,8 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
     try:
       bad_transport.send_rpc(my_method.remote, self.request)
     except remote.NetworkError, err:
-      self.assertTrue(str(err).startswith('Socket error: gaierror ('))
-      self.assertEquals(socket.gaierror, type(err.cause))
-      self.assertEquals(8, abs(err.cause.args[0]))  # Sign is sys depednent.
+      self.assertTrue(str(err).startswith('Socket error: error ('))
+      self.assertEquals(errno.ECONNREFUSED, err.cause.errno)
     else:
       self.fail('Expected error')
 
@@ -439,7 +438,7 @@ class LocalService(remote.Service):
 class LocalTransportTest(test_util.TestCase):
 
   def CreateService(self, factory_value='default'):
-    return 
+    return
 
   def testBasicCallWithClass(self):
     stub = LocalService.Stub(transport.LocalTransport(LocalService))
