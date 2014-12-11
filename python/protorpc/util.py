@@ -405,7 +405,7 @@ class TimeZoneOffset(datetime.tzinfo):
     """
     super(TimeZoneOffset, self).__init__()
     if isinstance(offset, datetime.timedelta):
-      offset = offset.total_seconds()
+      offset = offset.total_seconds() / 60
     self.__offset = offset
 
   def utcoffset(self, dt):

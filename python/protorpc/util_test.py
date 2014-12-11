@@ -376,7 +376,7 @@ class DateTimeTests(test_util.TestCase):
     """Test that delta works with TimeZoneOffset."""
     time_zone = util.TimeZoneOffset(datetime.timedelta(minutes=3))
     epoch = time_zone.utcoffset(datetime.datetime.utcfromtimestamp(0))
-    self.assertEqual(10800, epoch.total_seconds())
+    self.assertEqual(180, epoch.total_seconds())
 
 
 def main():
