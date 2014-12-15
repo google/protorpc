@@ -300,13 +300,13 @@ class ProtojsonTest(test_util.TestCase,
         '"456_mixed": 2}')
     self.assertEquals(decoded.an_integer, 1)
     self.assertEquals(3, len(decoded.all_unrecognized_fields()))
-    self.assertIn(1001, decoded.all_unrecognized_fields())
+    self.assertTrue(1001 in decoded.all_unrecognized_fields())
     self.assertEquals(('unknown', messages.Variant.STRING),
                       decoded.get_unrecognized_field_info(1001))
-    self.assertIn('-123', decoded.all_unrecognized_fields())
+    self.assertTrue('-123' in decoded.all_unrecognized_fields())
     self.assertEquals(('negative', messages.Variant.STRING),
                       decoded.get_unrecognized_field_info('-123'))
-    self.assertIn('456_mixed', decoded.all_unrecognized_fields())
+    self.assertTrue('456_mixed' in decoded.all_unrecognized_fields())
     self.assertEquals((2, messages.Variant.INT64),
                       decoded.get_unrecognized_field_info('456_mixed'))
 

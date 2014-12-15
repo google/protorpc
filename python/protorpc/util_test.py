@@ -110,11 +110,10 @@ class UtilTest(test_util.TestCase):
   def testDefaultDecorationNoKwdsFails(self):
     def fn(a):
       return a
-    with self.assertRaisesRegexp(
+    self.assertRaisesRegexp(
         ValueError,
-        'Functions with no keyword arguments must specify '
-        'max_positional_args'):
-      util.positional(fn)
+        'Functions with no keyword arguments must specify max_positional_args',
+        util.positional, fn)
 
 
 class AcceptItemTest(test_util.TestCase):

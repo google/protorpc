@@ -325,8 +325,8 @@ class DefineFieldTest(test_util.TestCase):
         ).AndRaise(messages.InvalidDefaultError)
 
     mock.ReplayAll()
-    with self.assertRaises(messages.InvalidDefaultError):
-      _ = definition.define_field(field_descriptor)
+    self.assertRaises(messages.InvalidDefaultError,
+                      definition.define_field, field_descriptor)
     mock.VerifyAll()
 
     mock.ResetAll()

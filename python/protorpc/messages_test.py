@@ -341,7 +341,7 @@ class EnumTest(test_util.TestCase):
     self.assertEquals(colors, unpickled)
     # Unpickling shouldn't create new enum instances.
     for i, color in enumerate(colors):
-      self.assertIs(color, unpickled[i])
+      self.assertTrue(color is unpickled[i])
 
 
 class FieldListTest(test_util.TestCase):
@@ -938,7 +938,7 @@ class FieldTest(test_util.TestCase):
 
     instance = MyMessage()
 
-    self.assertIs(instance, HasMessage.field.value_from_message(instance))
+    self.assertTrue(instance is HasMessage.field.value_from_message(instance))
 
   def testMessageFieldValueFromMessageWrongType(self):
     class MyMessage(messages.Message):
@@ -961,7 +961,7 @@ class FieldTest(test_util.TestCase):
 
     instance = MyMessage()
 
-    self.assertIs(instance, HasMessage.field.value_to_message(instance))
+    self.assertTrue(instance is HasMessage.field.value_to_message(instance))
 
   def testMessageFieldValueToMessageWrongType(self):
     class MyMessage(messages.Message):
@@ -1745,7 +1745,7 @@ class MessageTest(test_util.TestCase):
 
     message.set_unrecognized_field('exists', 9.5, messages.Variant.DOUBLE)
     self.assertEquals(1, len(message.all_unrecognized_fields()))
-    self.assertIn('exists', message.all_unrecognized_fields())
+    self.assertTrue('exists' in message.all_unrecognized_fields())
     self.assertEquals((9.5, messages.Variant.DOUBLE),
                       message.get_unrecognized_field_info('exists'))
     self.assertEquals((9.5, messages.Variant.DOUBLE),
@@ -1756,8 +1756,8 @@ class MessageTest(test_util.TestCase):
 
     message.set_unrecognized_field('another', 'value', messages.Variant.STRING)
     self.assertEquals(2, len(message.all_unrecognized_fields()))
-    self.assertIn('exists', message.all_unrecognized_fields())
-    self.assertIn('another', message.all_unrecognized_fields())
+    self.assertTrue('exists' in message.all_unrecognized_fields())
+    self.assertTrue('another' in message.all_unrecognized_fields())
     self.assertEquals((9.5, messages.Variant.DOUBLE),
                       message.get_unrecognized_field_info('exists'))
     self.assertEquals(('value', messages.Variant.STRING),
@@ -1796,8 +1796,8 @@ class MessageTest(test_util.TestCase):
                                    messages.Variant.STRING)
     unpickled = pickle.loads(pickle.dumps(message))
     self.assertEquals(message, unpickled)
-    self.assertIs(AnotherMessage.string, unpickled.field3.string.field)
-    self.assertIn('exists', message.all_unrecognized_fields())
+    self.assertTrue(AnotherMessage.string is unpickled.field3.string.field)
+    self.assertTrue('exists' in message.all_unrecognized_fields())
     self.assertEquals(('value', messages.Variant.STRING),
                       message.get_unrecognized_field_info('exists'))
     self.assertEquals((['list', 0, ('test',)], messages.Variant.STRING),

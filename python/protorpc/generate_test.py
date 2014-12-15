@@ -19,6 +19,7 @@
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import operator
 
 import cStringIO
 import sys
@@ -53,7 +54,7 @@ class IndentWriterTest(test_util.TestCase):
     def mock_write_line(line):
       self.run_count += 1
       self.assertEquals('same as calling write_line', line)
-    
+
     self.indent_writer.write_line = mock_write_line
     self.indent_writer << 'same as calling write_line'
     self.assertEquals(1, self.run_count)
@@ -85,8 +86,8 @@ class IndentWriterTest(test_util.TestCase):
     self.assertEquals('\n\n', self.out.getvalue())
 
   def testNoneInvalid(self):
-    with self.assertRaises(TypeError):
-      self.indent_writer << None
+    self.assertRaises(
+      TypeError, operator.lshift, self.indent_writer, None)
 
   def testAltIndentation(self):
     self.indent_writer = generate.IndentWriter(self.out, indent_space=3)
