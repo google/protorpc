@@ -100,7 +100,7 @@ class DateTimeField(messages.MessageField):
       time_zone_offset = 0
       local_epoch = datetime.datetime.utcfromtimestamp(0)
     else:
-      time_zone_offset = value.tzinfo.utcoffset(value).total_seconds()
+      time_zone_offset = util.total_seconds(value.tzinfo.utcoffset(value))
       # Determine Jan 1, 1970 local time.
       local_epoch = datetime.datetime.fromtimestamp(-time_zone_offset,
                                                      tz=value.tzinfo)
@@ -109,11 +109,11 @@ class DateTimeField(messages.MessageField):
     # Create and fill in the DateTimeMessage, including time zone if
     # one was specified.
     message = DateTimeMessage()
-    message.milliseconds = int(delta.total_seconds() * 1000)
+    message.milliseconds = int(util.total_seconds(delta) * 1000)
     if value.tzinfo is not None:
       utc_offset = value.tzinfo.utcoffset(value)
       if utc_offset is not None:
         message.time_zone_offset = int(
-            value.tzinfo.utcoffset(value).total_seconds() / 60)
+            util.total_seconds(value.tzinfo.utcoffset(value)) / 60)
 
     return message

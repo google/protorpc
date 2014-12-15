@@ -41,6 +41,7 @@ __all__ = ['AcceptItem',
            'positional',
            'PROTORPC_PROJECT_URL',
            'TimeZoneOffset',
+           'total_seconds',
 ]
 
 
@@ -393,6 +394,13 @@ def get_package_for_module(module):
     return unicode(module.__name__)
 
 
+def total_seconds(offset):
+  """Backport of offset.total_seconds() from python 2.7+."""
+  seconds = offset.days * 24 * 60 * 60 + offset.seconds
+  microseconds = seconds * 10**6 + offset.microseconds
+  return microseconds / (10**6 * 1.0)
+
+
 class TimeZoneOffset(datetime.tzinfo):
   """Time zone information as encoded/decoded for DateTimeFields."""
 
@@ -405,7 +413,7 @@ class TimeZoneOffset(datetime.tzinfo):
     """
     super(TimeZoneOffset, self).__init__()
     if isinstance(offset, datetime.timedelta):
-      offset = offset.total_seconds() / 60
+      offset = total_seconds(offset) / 60
     self.__offset = offset
 
   def utcoffset(self, dt):
