@@ -18,12 +18,7 @@
 
 import platform
 
-try:
-  import setuptools
-except ImportError:
-  from ez_setup import use_setuptools
-  use_setuptools()
-  import setuptools
+from setuptools import setup
 
 # Configure the required packages and scripts to install, depending on
 # Python version and OS.
@@ -37,8 +32,11 @@ if py_version < '2.6':
   REQUIRED_PACKAGES.append('simplejson')
 
 _PROTORPC_VERSION = '0.9.1'
+packages = [
+    'protorpc',
+]
 
-setuptools.setup(
+setup(
     name='protorpc',
     version=_PROTORPC_VERSION,
     description='Google Protocol RPC',
@@ -46,7 +44,7 @@ setuptools.setup(
     author='Google Inc.',
     author_email='rafek@google.com',
     # Contained modules and scripts.
-    packages=setuptools.find_packages(),
+    packages=packages,
     entry_points={
         'console_scripts': CONSOLE_SCRIPTS,
         },
