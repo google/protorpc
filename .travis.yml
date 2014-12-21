@@ -5,8 +5,8 @@ env:
   - TOX_ENV=py26
   - TOX_ENV=py27
   - TOX_ENV=pypy
- install:
-   - pip install tox
- script: cd python && tox -e $TOX_ENV
- notifications:
-   email: false
+install:
+  - pip install tox
+script: cd python && tox -e $TOX_ENV
+notifications:
+  email: false
