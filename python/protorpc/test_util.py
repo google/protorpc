@@ -36,7 +36,7 @@ import os
 import re
 import socket
 import types
-import unittest
+import unittest2 as unittest
 
 from . import message_types
 from . import messages
