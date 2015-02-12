@@ -31,7 +31,7 @@ py_version = platform.python_version()
 if py_version < '2.6':
   REQUIRED_PACKAGES.append('simplejson')
 
-_PROTORPC_VERSION = '0.9.1'
+_PROTORPC_VERSION = '0.9.2a1'
 packages = [
     'protorpc',
 ]
