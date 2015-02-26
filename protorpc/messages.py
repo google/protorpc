@@ -1112,7 +1112,10 @@ class FieldList(list):
 
   def __setitem__(self, index, value):
     """Validate item assignment to list."""
-    self.__field.validate_element(value)
+    if isinstance(index, slice):
+        self.__field.validate(value)
+    else:
+        self.__field.validate_element(value)
     list.__setitem__(self, index, value)
 
   def append(self, value):

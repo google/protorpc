@@ -408,14 +408,9 @@ class FieldListTest(test_util.TestCase):
     def setslice():
       field_list[1:3] = ['10', '20']
 
-    if six.PY2:
-      msg_re = re.escape("Expected type %r "
-                         "for IntegerField, found 10 (type %r)"
+    msg_re = re.escape("Expected type %r "
+                       "for IntegerField, found 10 (type %r)"
                              % (six.integer_types, str))
-    else:
-      msg_re = re.escape("Expected type %r "
-                         "for IntegerField, found ['10', '20'] (type %r)"
-                             % (six.integer_types, list))
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
       msg_re,
