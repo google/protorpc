@@ -262,7 +262,7 @@ class EnumTest(test_util.TestCase):
       self.assertEquals('Enum1', Enum1.definition_name())
       self.assertEquals(None, Enum1.outer_definition_name())
       self.assertEquals(None, Enum1.definition_package())
-      self.assertEquals(unicode, type(Enum1.definition_name()))
+      self.assertEquals(six.text_type, type(Enum1.definition_name()))
     finally:
       sys.modules = original_modules
 
