@@ -23,7 +23,6 @@ Info entities.  Artists and Albums are represented.
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
-import base64
 import re
 
 from google.appengine.ext import db
