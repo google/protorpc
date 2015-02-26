@@ -29,6 +29,7 @@ import six
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import base64
+import binascii
 import logging
 
 from . import message_types
@@ -304,7 +305,7 @@ class ProtoJson(object):
     elif isinstance(field, messages.BytesField):
       try:
         return base64.b64decode(value)
-      except TypeError as err:
+      except (binascii.Error, TypeError) as err:
         raise messages.DecodeError('Base64 decoding error: %s' % err)
 
     elif isinstance(field, message_types.DateTimeField):
