@@ -121,7 +121,8 @@ class EnumTest(test_util.TestCase):
     self.assertEquals(Color.RED, Color('RED'))
     self.assertEquals(Color.RED, Color(u'RED'))
     self.assertEquals(Color.RED, Color(20))
-    self.assertEquals(Color.RED, Color(20L))
+    if six.PY2:
+        self.assertEquals(Color.RED, Color(long(20)))
     self.assertEquals(Color.RED, Color(Color.RED))
     self.assertRaises(TypeError, Color, 'Not exists')
     self.assertRaises(TypeError, Color, 'Red')
@@ -983,7 +984,8 @@ class FieldTest(test_util.TestCase):
 
   def testIntegerField_AllowLong(self):
     """Test that the integer field allows for longs."""
-    messages.IntegerField(10, default=long(10))
+    if six.PY2:
+        messages.IntegerField(10, default=long(10))
 
   def testMessageFieldValidate_Initialized(self):
     """Test validation on message field."""
