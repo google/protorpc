@@ -39,6 +39,8 @@ import socket
 import types
 import unittest2 as unittest
 
+import six
+
 from . import message_types
 from . import messages
 from . import util
@@ -47,7 +49,7 @@ from . import util
 RUSSIAN = u'\u0440\u0443\u0441\u0441\u043a\u0438\u0439'
 
 # All characters binary value interspersed with nulls.
-BINARY = ''.join(chr(value) + '\0' for value in range(256))
+BINARY = b''.join(six.int2byte(value) + b'\0' for value in range(256))
 
 
 class TestCase(unittest.TestCase):
