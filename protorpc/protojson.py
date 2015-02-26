@@ -108,6 +108,9 @@ class MessageJSONEncoder(json.JSONEncoder):
     if isinstance(value, messages.Enum):
       return str(value)
 
+    if six.PY3 and isinstance(value, bytes):
+      return value.decode('utf8')
+
     if isinstance(value, messages.Message):
       result = {}
       for field in value.all_fields():

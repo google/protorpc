@@ -377,7 +377,7 @@ class ProtoConformanceTestBase(object):
         int32_value: 1020
         bool_value: true
         string_value: u"a string\u044f"
-        bytes_value: "a bytes\xff\xfe"
+        bytes_value: b"a bytes\xff\xfe"
         enum_value: OptionalMessage.SimpleEnum.VAL2
         >
 
@@ -390,7 +390,7 @@ class ProtoConformanceTestBase(object):
         int32_value: [1020, 718]
         bool_value: [true, false]
         string_value: [u"a string\u044f", u"another string"]
-        bytes_value: ["a bytes\xff\xfe", "another bytes"]
+        bytes_value: [b"a bytes\xff\xfe", b"another bytes"]
         enum_value: [OptionalMessage.SimpleEnum.VAL2,
                      OptionalMessage.SimpleEnum.VAL 1]
         >
@@ -478,7 +478,7 @@ class ProtoConformanceTestBase(object):
     message.int32_value = 1020
     message.bool_value = True
     message.string_value = u'a string\u044f'
-    message.bytes_value = 'a bytes\xff\xfe'
+    message.bytes_value = b'a bytes\xff\xfe'
     message.enum_value = OptionalMessage.SimpleEnum.VAL2
 
     self.EncodeDecode(self.encoded_full, message)
@@ -493,7 +493,7 @@ class ProtoConformanceTestBase(object):
     message.int32_value = [1020, 718]
     message.bool_value = [True, False]
     message.string_value = [u'a string\u044f', u'another string']
-    message.bytes_value = ['a bytes\xff\xfe', 'another bytes']
+    message.bytes_value = [b'a bytes\xff\xfe', b'another bytes']
     message.enum_value = [RepeatedMessage.SimpleEnum.VAL2,
                           RepeatedMessage.SimpleEnum.VAL1]
 

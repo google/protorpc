@@ -1411,7 +1411,7 @@ class BytesField(Field):
 
   DEFAULT_VARIANT = Variant.BYTES
 
-  type = str
+  type = bytes
 
 
 class StringField(Field):

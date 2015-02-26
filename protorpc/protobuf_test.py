@@ -79,7 +79,7 @@ class EncodeMessageTest(test_util.TestCase,
     proto.int32_value = 1020
     proto.bool_value = True
     proto.string_value = u'a string\u044f'
-    proto.bytes_value = 'a bytes\xff\xfe'
+    proto.bytes_value = b'a bytes\xff\xfe'
     proto.enum_value = protorpc_test_pb2.OptionalMessage.VAL2
 
     return proto.SerializeToString()
@@ -101,8 +101,8 @@ class EncodeMessageTest(test_util.TestCase,
     proto.bool_value.append(False)
     proto.string_value.append(u'a string\u044f')
     proto.string_value.append(u'another string')
-    proto.bytes_value.append('a bytes\xff\xfe')
-    proto.bytes_value.append('another bytes')
+    proto.bytes_value.append(b'a bytes\xff\xfe')
+    proto.bytes_value.append(b'another bytes')
     proto.enum_value.append(protorpc_test_pb2.RepeatedMessage.VAL2)
     proto.enum_value.append(protorpc_test_pb2.RepeatedMessage.VAL1)
 
