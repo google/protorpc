@@ -20,8 +20,8 @@ import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
-import new
 import sys
+import types
 
 from . import descriptor
 from . import message_types
@@ -76,7 +76,7 @@ def _get_or_define_module(full_name, modules):
   """
   module = modules.get(full_name)
   if not module:
-    module = new.module(full_name)
+    module = types.ModuleType(full_name)
     modules[full_name] = module
 
     split_name = full_name.rsplit('.', 1)
@@ -215,7 +215,7 @@ def define_file(file_descriptor, module=None):
     module.
   """
   if module is None:
-    module = new.module(file_descriptor.package)
+    module = types.ModuleType(file_descriptor.package)
 
   for enum_descriptor in file_descriptor.enum_types or []:
     enum_class = define_enum(enum_descriptor, module.__name__)

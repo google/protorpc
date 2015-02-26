@@ -22,9 +22,9 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
 import datetime
-import new
 import random
 import sys
+import types
 import unittest
 
 from protorpc import test_util
@@ -279,7 +279,7 @@ class GetPackageForModuleTest(test_util.TestCase):
   def CreateModule(self, name, file_name=None):
     if file_name is None:
       file_name = '%s.py' % name
-    module = new.module(name)
+    module = types.ModuleType(name)
     sys.modules[name] = module
     return module
 

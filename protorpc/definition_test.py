@@ -20,9 +20,9 @@
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
-import new
 import StringIO
 import sys
+import types
 import unittest
 
 from protorpc import definition
@@ -413,7 +413,7 @@ class DefineServiceTest(test_util.TestCase):
 
   def setUp(self):
     """Set up mock and request classes."""
-    self.module = new.module('stocks')
+    self.module = types.ModuleType('stocks')
 
     class GetQuoteRequest(messages.Message):
       __module__ = 'stocks'
@@ -503,7 +503,7 @@ class ModuleTest(test_util.TestCase):
     """Test updating module with additional definitions."""
     file_descriptor = self.MakeFileDescriptor('my.package')
 
-    module = new.module('override')
+    module = types.ModuleType('override')
     self.assertEquals(module, definition.define_file(file_descriptor, module))
 
     self.assertEquals('override', module.MyEnum.__module__)
@@ -524,7 +524,7 @@ class ModuleTest(test_util.TestCase):
 
   def testImportFile_InToExisting(self):
     """Test importing FileDescriptor in to existing module."""
-    module = new.module('standalone')
+    module = types.ModuleType('standalone')
     modules = {'standalone': module}
     file_descriptor = self.MakeFileDescriptor('standalone')
     definition.import_file(file_descriptor, modules=modules)
@@ -572,8 +572,8 @@ class ModuleTest(test_util.TestCase):
                       self.MakeFileDescriptor(u'root.nested.nested'),
                      ]
 
-    root = new.module('root')
-    nested = new.module('root.nested')
+    root = types.ModuleType('root')
+    nested = types.ModuleType('root.nested')
     root.nested = nested
     modules = {
         'root': root,
@@ -628,8 +628,8 @@ class ModuleTest(test_util.TestCase):
                       descriptor.describe_file(descriptor),
     ]
 
-    root = new.module('root')
-    nested = new.module('root.nested')
+    root = types.ModuleType('root')
+    nested = types.ModuleType('root.nested')
     root.nested = nested
     modules = {
         'root': root,

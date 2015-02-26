@@ -22,9 +22,6 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
 import pickle
-import imp
-import inspect
-import new
 import re
 import sys
 import types
@@ -1832,7 +1829,7 @@ class FindDefinitionTest(test_util.TestCase):
     for node in name_path:
       full_path.append(node)
       full_name = '.'.join(full_path)
-      self.modules.setdefault(full_name, new.module(full_name))
+      self.modules.setdefault(full_name, types.ModuleType(full_name))
     return self.modules[name]
 
   def DefineMessage(self, module, name, children={}, add_to_module=True):
@@ -1864,7 +1861,7 @@ class FindDefinitionTest(test_util.TestCase):
     children['__module__'] = module
 
     # Instantiate and possibly add to module.
-    message_class = new.classobj(name, (messages.Message,), dict(children))
+    message_class = type(name, (messages.Message,), dict(children))
     if add_to_module:
       setattr(module_instance, name, message_class)
     return message_class
