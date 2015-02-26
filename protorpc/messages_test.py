@@ -381,8 +381,9 @@ class FieldListTest(test_util.TestCase):
   def testConstructor_InvalidValues(self):
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 1 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 1 (type %r)"
+               % (six.integer_types, str)),
       messages.FieldList, self.integer_field, ["1", "2", "3"])
 
   def testConstructor_Scalars(self):
@@ -393,7 +394,7 @@ class FieldListTest(test_util.TestCase):
 
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      "IntegerField is repeated. Found: <(list|sequence)iterator object",
+      "IntegerField is repeated. Found: <(list[_]?|sequence)iterator object",
       messages.FieldList, self.integer_field, iter([1, 2, 3]))
 
   def testSetSlice(self):
@@ -406,10 +407,18 @@ class FieldListTest(test_util.TestCase):
 
     def setslice():
       field_list[1:3] = ['10', '20']
+
+    if six.PY2:
+      msg_re = re.escape("Expected type %r "
+                         "for IntegerField, found 10 (type %r)"
+                             % (six.integer_types, str))
+    else:
+      msg_re = re.escape("Expected type %r "
+                         "for IntegerField, found ['10', '20'] (type %r)"
+                             % (six.integer_types, list))
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      msg_re,
       setslice)
 
   def testSetItem(self):
@@ -424,8 +433,9 @@ class FieldListTest(test_util.TestCase):
       field_list[0] = '10'
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 10 (type %r)"
+               % (six.integer_types, str)),
       setitem)
 
   def testAppend(self):
@@ -441,8 +451,9 @@ class FieldListTest(test_util.TestCase):
       field_list.append('10')
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 10 (type %r)"
+               % (six.integer_types, str)),
       append)
 
   def testExtend(self):
@@ -457,8 +468,9 @@ class FieldListTest(test_util.TestCase):
       field_list.extend(['10'])
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 10 (type %r)"
+               % (six.integer_types, str)),
       extend)
 
   def testInsert(self):
@@ -473,8 +485,9 @@ class FieldListTest(test_util.TestCase):
       field_list.insert(1, '10')
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 10 (type %r)"
+               % (six.integer_types, str)),
       insert)
 
   def testPickle(self):
