@@ -16,7 +16,6 @@
 #
 
 """Tests for protorpc.descriptor."""
-import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
