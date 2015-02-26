@@ -1219,11 +1219,11 @@ class Field(object):
           name = self.name
         except AttributeError:
           # For when raising error before name initialization.
-          raise InvalidDefaultError('Invalid default value for %s: %s: %s' %
+          raise InvalidDefaultError('Invalid default value for %s: %r: %s' %
                                     (self.__class__.__name__, default, err))
         else:
           raise InvalidDefaultError('Invalid default value for field %s: '
-                                    '%s: %s' % (name, default, err))
+                                    '%r: %s' % (name, default, err))
 
     self.__default = default
     self.__initialized = True
@@ -1469,19 +1469,19 @@ class StringField(Field):
       ValidationError if a str value is not 7-bit ascii.
     """
     # If value is str is it considered valid.  Satisfies "required=True".
-    if isinstance(value, str):
+    if isinstance(value, bytes):
       try:
-        six.text_type(value)
+        six.text_type(value, 'ascii')
       except UnicodeDecodeError as err:
         try:
           name = self.name
         except AttributeError:
           validation_error = ValidationError(
-            'Field encountered non-ASCII string %s: %s' % (value,
+            'Field encountered non-ASCII string %r: %s' % (value,
                                                            err))
         else:
           validation_error = ValidationError(
-            'Field %s encountered non-ASCII string %s: %s' % (self.name,
+            'Field %s encountered non-ASCII string %r: %s' % (self.name,
                                                               value,
                                                               err))
           validation_error.field_name = self.name

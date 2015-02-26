@@ -598,9 +598,11 @@ class FieldTest(test_util.TestCase):
     """Test binary values in string field."""
     self.assertRaisesWithRegexpMatch(
       messages.InvalidDefaultError,
-      'Invalid default value for StringField: \211: '
-      'Field encountered non-ASCII string \211:',
-      messages.StringField, 1, default='\x89')
+      r"Invalid default value for StringField:.*: "
+      r"Field encountered non-ASCII string .*: "
+      r"'ascii' codec can't decode byte 0x89 in position 0: "
+      r"ordinal not in range",
+      messages.StringField, 1, default=b'\x89')
 
   def testDefaultFields_InvalidSingle(self):
     """Test default field is correct type (invalid single)."""
@@ -1555,8 +1557,9 @@ class MessageTest(test_util.TestCase):
     my_message.integer_value = 42
     my_message.string_value = u'A string'
 
-    self.assertEquals("<MyMessage\n integer_value: 42\n"
-                      " string_value: u'A string'>", repr(my_message))
+    pat = re.compile(r"<MyMessage\n integer_value: 42\n"
+                      " string_value: [u]?'A string'>")
+    self.assertTrue(pat.match(repr(my_message)) is not None)
 
   def testValidation(self):
     """Test validation of message values."""
