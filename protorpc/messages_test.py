@@ -1337,7 +1337,7 @@ class MessageTest(test_util.TestCase):
     fields = list(ComplexMessage.all_fields())
 
     # Order does not matter, so sort now.
-    fields = sorted(fields, lambda f1, f2: cmp(f1.name, f2.name))
+    fields = sorted(fields, key=lambda f: f.name)
 
     self.assertEquals(3, len(fields))
     self.assertEquals('a3', fields[0].name)
