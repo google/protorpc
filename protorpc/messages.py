@@ -477,6 +477,46 @@ class Enum(six.with_metaclass(_EnumClass, object)):
       return cmp(self.number, other.number)
     return NotImplemented
 
+  def __lt__(self, other):
+    """Order is by number."""
+    if isinstance(other, type(self)):
+      return self.number < other.number
+    return NotImplemented
+
+  def __le__(self, other):
+    """Order is by number."""
+    if isinstance(other, type(self)):
+      return self.number <= other.number
+    return NotImplemented
+
+  def __eq__(self, other):
+    """Order is by number."""
+    if isinstance(other, type(self)):
+      return self.number == other.number
+    return NotImplemented
+
+  def __ne__(self, other):
+    """Order is by number."""
+    if isinstance(other, type(self)):
+      return self.number != other.number
+    return NotImplemented
+
+  def __ge__(self, other):
+    """Order is by number."""
+    if isinstance(other, type(self)):
+      return self.number >= other.number
+    return NotImplemented
+
+  def __gt__(self, other):
+    """Order is by number."""
+    if isinstance(other, type(self)):
+      return self.number > other.number
+    return NotImplemented
+
+  def __hash__(self):
+    """Hash by number."""
+    return hash(self.number)
+
   @classmethod
   def to_dict(cls):
     """Make dictionary version of enumerated class.
