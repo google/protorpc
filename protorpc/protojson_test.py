@@ -21,6 +21,7 @@ __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
 import datetime
+import imp
 import sys
 import unittest
 
@@ -499,7 +500,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
         sys.modules.pop(name, None)
     reset_module('simplejson', self.simplejson)
     reset_module('json', self.json)
-    reload(protojson)
+    imp.reload(protojson)
 
   def testLoadProtojsonWithValidJsonModule(self):
     """Test loading protojson module with a valid json dependency."""
@@ -507,7 +508,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
 
     # This will cause protojson to reload with the default json module
     # instead of simplejson.
-    reload(protojson)
+    imp.reload(protojson)
     self.assertEquals('json', protojson.json.name)
 
   def testLoadProtojsonWithSimplejsonModule(self):
@@ -516,7 +517,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
 
     # This will cause protojson to reload with the default json module
     # instead of simplejson.
-    reload(protojson)
+    imp.reload(protojson)
     self.assertEquals('simplejson', protojson.json.name)
 
   def testLoadProtojsonWithInvalidJsonModule(self):
@@ -525,7 +526,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
     sys.modules['simplejson'] = ValidJsonModule
 
     # Ignore bad module and default back to simplejson.
-    reload(protojson)
+    imp.reload(protojson)
     self.assertEquals('simplejson', protojson.json.name)
 
   def testLoadProtojsonWithInvalidJsonModuleAndNoSimplejson(self):
@@ -536,7 +537,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
     self.assertRaisesWithRegexpMatch(
         ImportError,
         'json library "json" is not compatible with ProtoRPC',
-        reload,
+        imp.reload,
         protojson)
 
   def testLoadProtojsonWithNoJsonModules(self):
@@ -545,7 +546,7 @@ class TestJsonDependencyLoading(test_util.TestCase):
     self.assertRaisesWithRegexpMatch(
         ImportError,
         'Unable to find json',
-        reload,
+        imp.reload,
         protojson)
 
 
