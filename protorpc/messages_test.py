@@ -578,11 +578,11 @@ class FieldTest(test_util.TestCase):
     self.assertEquals(messages.Variant.UINT32, field.variant)
 
   def testDefaultFields_Single(self):
-    """Test default field is correct type."""
+    """Test default field is correct type (single)."""
     defaults = {messages.IntegerField: 10,
                 messages.FloatField: 1.5,
                 messages.BooleanField: False,
-                messages.BytesField: 'abc',
+                messages.BytesField: b'abc',
                 messages.StringField: u'abc',
                }
 
@@ -603,7 +603,7 @@ class FieldTest(test_util.TestCase):
       messages.StringField, 1, default='\x89')
 
   def testDefaultFields_InvalidSingle(self):
-    """Test default field is correct type."""
+    """Test default field is correct type (invalid single)."""
     def action(field_class):
       self.assertRaises(messages.InvalidDefaultError,
                         field_class,
@@ -689,7 +689,7 @@ class FieldTest(test_util.TestCase):
     values = {messages.IntegerField: 10,
               messages.FloatField: 1.5,
               messages.BooleanField: False,
-              messages.BytesField: 'abc',
+              messages.BytesField: b'abc',
               messages.StringField: u'abc',
              }
     def action(field_class):
