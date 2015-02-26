@@ -28,7 +28,6 @@ import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
-import cStringIO
 import base64
 import logging
 
