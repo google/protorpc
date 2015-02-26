@@ -45,10 +45,6 @@ import six
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
-import inspect
-import os
-import sys
-import traceback
 import types
 import weakref
 
