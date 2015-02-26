@@ -28,6 +28,7 @@ Public Functions:
   encode_message: Encodes a message in to a protocol buffer string.
   decode_message: Decode from a protocol buffer string to a message.
 """
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -93,7 +94,7 @@ class _Encoder(ProtocolBuffer.Encoder):
     Args:
       value: String value to encode.
     """
-    if isinstance(value, unicode):
+    if isinstance(value, six.text_type):
       value = value.encode('utf-8')
     self.putPrefixedString(value)
 
@@ -237,7 +238,7 @@ def encode_message(message):
   all_fields = [(field.number, field) for field in message.all_fields()]
   all_fields.extend((key, None)
                     for key in message.all_unrecognized_fields()
-                    if isinstance(key, (int, long)))
+                    if isinstance(key, six.integer_types))
   all_fields.sort()
   for field_num, field in all_fields:
     if field:
@@ -351,7 +352,7 @@ def decode_message(message_type, encoded_message):
           values.append(value)
       else:
         setattr(message, field.name, value)
-  except ProtocolBuffer.ProtocolBufferDecodeError, err:
+  except ProtocolBuffer.ProtocolBufferDecodeError as err:
     raise messages.DecodeError('Decoding error: %s' % str(err))
 
   message.check_initialized()

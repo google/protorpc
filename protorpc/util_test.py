@@ -16,6 +16,7 @@
 #
 
 """Tests for protorpc.util."""
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -285,7 +286,7 @@ class GetPackageForModuleTest(test_util.TestCase):
   def assertPackageEquals(self, expected, actual):
     self.assertEquals(expected, actual)
     if actual is not None:
-      self.assertTrue(isinstance(actual, unicode))
+      self.assertTrue(isinstance(actual, six.text_type))
 
   def testByString(self):
     module = self.CreateModule('service_module')

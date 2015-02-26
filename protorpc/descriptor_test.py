@@ -16,6 +16,7 @@
 #
 
 """Tests for protorpc.descriptor."""
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -344,10 +345,10 @@ class DescribeFileTest(test_util.TestCase):
               'messages': messages,
               'remote': remote,
               }
-    exec source in result
+    exec(source, result)
 
     module = new.module(module_name)
-    for name, value in result.iteritems():
+    for name, value in result.items():
       setattr(module, name, value)
 
     return module

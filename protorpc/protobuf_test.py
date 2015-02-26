@@ -55,7 +55,7 @@ class EncodeMessageTest(test_util.TestCase,
     try:
       function(*params, **kwargs)
       self.fail('Expected to raise exception %s but did not.' % exception)
-    except exception, err:
+    except exception as err:
       self.assertEquals(message, str(err))
 
   @property

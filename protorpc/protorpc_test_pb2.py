@@ -6,6 +6,7 @@ from .non_sdk_imports import descriptor
 from .non_sdk_imports import message
 from .non_sdk_imports import reflection
 from .non_sdk_imports import descriptor_pb2
+import six
 
 # @@protoc_insertion_point(imports)
 
@@ -71,7 +72,7 @@ _NESTEDMESSAGE = descriptor.Descriptor(
     descriptor.FieldDescriptor(
       name='a_value', full_name='protorpc.NestedMessage.a_value', index=0,
       number=1, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
+      has_default_value=False, default_value=six.text_type("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -134,7 +135,7 @@ _HASDEFAULT = descriptor.Descriptor(
     descriptor.FieldDescriptor(
       name='a_value', full_name='protorpc.HasDefault.a_value', index=0,
       number=1, type=9, cpp_type=9, label=1,
-      has_default_value=True, default_value=unicode("a default", "utf-8"),
+      has_default_value=True, default_value=six.text_type("a default", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -204,7 +205,7 @@ _OPTIONALMESSAGE = descriptor.Descriptor(
     descriptor.FieldDescriptor(
       name='string_value', full_name='protorpc.OptionalMessage.string_value', index=6,
       number=7, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
+      has_default_value=False, default_value=six.text_type("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -371,38 +372,32 @@ DESCRIPTOR.message_types_by_name['OptionalMessage'] = _OPTIONALMESSAGE
 DESCRIPTOR.message_types_by_name['RepeatedMessage'] = _REPEATEDMESSAGE
 DESCRIPTOR.message_types_by_name['HasOptionalNestedMessage'] = _HASOPTIONALNESTEDMESSAGE
 
-class NestedMessage(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
+class NestedMessage(six.with_metaclass(reflection.GeneratedProtocolMessageType, message.Message)):
   DESCRIPTOR = _NESTEDMESSAGE
   
   # @@protoc_insertion_point(class_scope:protorpc.NestedMessage)
 
-class HasNestedMessage(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
+class HasNestedMessage(six.with_metaclass(reflection.GeneratedProtocolMessageType, message.Message)):
   DESCRIPTOR = _HASNESTEDMESSAGE
   
   # @@protoc_insertion_point(class_scope:protorpc.HasNestedMessage)
 
-class HasDefault(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
+class HasDefault(six.with_metaclass(reflection.GeneratedProtocolMessageType, message.Message)):
   DESCRIPTOR = _HASDEFAULT
   
   # @@protoc_insertion_point(class_scope:protorpc.HasDefault)
 
-class OptionalMessage(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
+class OptionalMessage(six.with_metaclass(reflection.GeneratedProtocolMessageType, message.Message)):
   DESCRIPTOR = _OPTIONALMESSAGE
   
   # @@protoc_insertion_point(class_scope:protorpc.OptionalMessage)
 
-class RepeatedMessage(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
+class RepeatedMessage(six.with_metaclass(reflection.GeneratedProtocolMessageType, message.Message)):
   DESCRIPTOR = _REPEATEDMESSAGE
   
   # @@protoc_insertion_point(class_scope:protorpc.RepeatedMessage)
 
-class HasOptionalNestedMessage(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
+class HasOptionalNestedMessage(six.with_metaclass(reflection.GeneratedProtocolMessageType, message.Message)):
   DESCRIPTOR = _HASOPTIONALNESTEDMESSAGE
   
   # @@protoc_insertion_point(class_scope:protorpc.HasOptionalNestedMessage)

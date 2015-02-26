@@ -24,6 +24,7 @@ Public functions:
   encode_message: Encodes a message in to a JSON string.
   decode_message: Merge from a JSON string in to a message.
 """
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -72,7 +73,7 @@ def _load_json_module():
         raise ImportError(message)
       else:
         return module
-    except ImportError, err:
+    except ImportError as err:
       if not first_import_error:
         first_import_error = err
 
@@ -214,11 +215,11 @@ class ProtoJson(object):
     """
     if isinstance(value, bool):
       return messages.Variant.BOOL
-    elif isinstance(value, (int, long)):
+    elif isinstance(value, six.integer_types):
       return messages.Variant.INT64
     elif isinstance(value, float):
       return messages.Variant.DOUBLE
-    elif isinstance(value, basestring):
+    elif isinstance(value, six.string_types):
       return messages.Variant.STRING
     elif isinstance(value, (list, tuple)):
       # Find the most specific variant that covers all elements.
@@ -246,7 +247,7 @@ class ProtoJson(object):
         is as parsed from JSON.  Nested objects will also be dictionaries.
     """
     message = message_type()
-    for key, value in dictionary.iteritems():
+    for key, value in six.iteritems(dictionary):
       if value is None:
         try:
           message.reset(key)
@@ -304,13 +305,13 @@ class ProtoJson(object):
     elif isinstance(field, messages.BytesField):
       try:
         return base64.b64decode(value)
-      except TypeError, err:
+      except TypeError as err:
         raise messages.DecodeError('Base64 decoding error: %s' % err)
 
     elif isinstance(field, message_types.DateTimeField):
       try:
         return util.decode_datetime(value)
-      except ValueError, err:
+      except ValueError as err:
         raise messages.DecodeError(err)
 
     elif (isinstance(field, messages.MessageField) and
@@ -318,14 +319,14 @@ class ProtoJson(object):
       return self.__decode_dictionary(field.type, value)
 
     elif (isinstance(field, messages.FloatField) and
-          isinstance(value, (int, long, basestring))):
+          isinstance(value, (six.integer_types, six.string_types))):
       try:
         return float(value)
       except:
         pass
 
     elif (isinstance(field, messages.IntegerField) and
-          isinstance(value, basestring)):
+          isinstance(value, six.string_types)):
       try:
         return int(value)
       except:

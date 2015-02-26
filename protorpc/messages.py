@@ -40,6 +40,7 @@ Public Exceptions (indentation indications class hierarchy):
   ValidationError: Raised when a message or field is not valid.
   DefinitionNotFoundError: Raised when definition not found.
 """
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -250,7 +251,7 @@ class _DefinitionClass(type):
     """
     outer_definition_name = cls.outer_definition_name()
     if outer_definition_name is None:
-      return unicode(cls.__name__)
+      return six.text_type(cls.__name__)
     else:
       return u'%s.%s' % (outer_definition_name, cls.__name__)
 
@@ -310,14 +311,14 @@ class _EnumClass(_DefinitionClass):
     # Enum base class does not need to be initialized or locked.
     if bases != (object,):
       # Replace integer with number.
-      for attribute, value in dct.iteritems():
+      for attribute, value in dct.items():
 
         # Module will be in every enum class.
         if attribute in _RESERVED_ATTRIBUTE_NAMES:
           continue
 
         # Reject anything that is not an int.
-        if not isinstance(value, (int, long)):
+        if not isinstance(value, six.integer_types):
           raise EnumDefinitionError(
               'May only use integers in Enum definitions.  Found: %s = %s' %
               (attribute, value))
@@ -354,7 +355,7 @@ class _EnumClass(_DefinitionClass):
     Yields:
       Enumeration instances of the Enum class in arbitrary order.
     """
-    return cls.__by_number.itervalues()
+    return iter(cls.__by_number.values())
 
   def names(cls):
     """Get all names for Enum.
@@ -362,7 +363,7 @@ class _EnumClass(_DefinitionClass):
     Returns:
       An iterator for names of the enumeration in arbitrary order.
     """
-    return cls.__by_name.iterkeys()
+    return cls.__by_name.keys()
 
   def numbers(cls):
     """Get all numbers for Enum.
@@ -370,7 +371,7 @@ class _EnumClass(_DefinitionClass):
     Returns:
       An iterator for all numbers of the enumeration in arbitrary order.
     """
-    return cls.__by_number.iterkeys()
+    return cls.__by_number.keys()
 
   def lookup_by_name(cls, name):
     """Look up Enum by name.
@@ -398,10 +399,8 @@ class _EnumClass(_DefinitionClass):
     return len(cls.__by_name)
 
 
-class Enum(object):
+class Enum(six.with_metaclass(_EnumClass, object)):
   """Base class for all enumerated types."""
-
-  __metaclass__ = _EnumClass
 
   __slots__ = set(('name', 'number'))
 
@@ -425,14 +424,14 @@ class Enum(object):
       return index
 
     # If number, look up by number.
-    if isinstance(index, (int, long)):
+    if isinstance(index, six.integer_types):
       try:
         return cls.lookup_by_number(index)
       except KeyError:
         pass
 
     # If name, look up by name.
-    if isinstance(index, basestring):
+    if isinstance(index, six.string_types):
       try:
         return cls.lookup_by_name(index)
       except KeyError:
@@ -636,7 +635,7 @@ class _MessageClass(_DefinitionClass):
   def __init__(cls, name, bases, dct):
     """Initializer required to assign references to new class."""
     if bases != (object,):
-      for value in dct.itervalues():
+      for value in dct.values():
         if isinstance(value, _DefinitionClass) and not value is Message:
           value._message_definition = weakref.ref(cls)
 
@@ -646,7 +645,7 @@ class _MessageClass(_DefinitionClass):
     _DefinitionClass.__init__(cls, name, bases, dct)
 
 
-class Message(object):
+class Message(six.with_metaclass(_MessageClass, object)):
   """Base class for user defined message objects.
 
   Used to define messages for efficient transmission across network or
@@ -713,8 +712,6 @@ class Message(object):
     order.check_initialized()
   """
 
-  __metaclass__ = _MessageClass
-
   def __init__(self, **kwargs):
     """Initialize internal messages state.
 
@@ -743,7 +740,7 @@ class Message(object):
     self.__unrecognized_fields = {}
 
     assigned = set()
-    for name, value in kwargs.iteritems():
+    for name, value in kwargs.items():
       setattr(self, name, value)
       assigned.add(name)
 
@@ -761,7 +758,7 @@ class Message(object):
     Raises:
       ValidationError: If message is not initialized.
     """
-    for name, field in self.__by_name.iteritems():
+    for name, field in self.__by_name.items():
       value = getattr(self, name)
       if value is None:
         if field.required:
@@ -778,7 +775,7 @@ class Message(object):
             else:
               message_value = field.value_to_message(value)
               message_value.check_initialized()
-        except ValidationError, err:
+        except ValidationError as err:
           if not hasattr(err, 'message_name'):
             err.message_name = type(self).__name__
           raise
@@ -805,7 +802,7 @@ class Message(object):
     Returns:
       Iterator over all values in arbitrary order.
     """
-    return cls.__by_name.itervalues()
+    return cls.__by_name.values()
 
   @classmethod
   def field_by_name(cls, name):
@@ -873,7 +870,7 @@ class Message(object):
 
   def all_unrecognized_fields(self):
     """Get the names of all unrecognized fields in this message."""
-    return self.__unrecognized_fields.keys()
+    return list(self.__unrecognized_fields.keys())
 
   def get_unrecognized_field_info(self, key, value_default=None,
                                   variant_default=None):
@@ -1178,7 +1175,7 @@ class Field(object):
     if default is not None:
       try:
         self.validate_default(default)
-      except ValidationError, err:
+      except ValidationError as err:
         try:
           name = self.name
         except AttributeError:
@@ -1382,7 +1379,7 @@ class IntegerField(Field):
 
   DEFAULT_VARIANT = Variant.INT64
 
-  type = (int, long)
+  type = six.integer_types
 
 
 class FloatField(Field):
@@ -1424,7 +1421,7 @@ class StringField(Field):
 
   DEFAULT_VARIANT = Variant.STRING
 
-  type = unicode
+  type = six.text_type
 
   def validate_element(self, value):
     """Validate StringField allowing for str and unicode.
@@ -1435,8 +1432,8 @@ class StringField(Field):
     # If value is str is it considered valid.  Satisfies "required=True".
     if isinstance(value, str):
       try:
-        unicode(value)
-      except UnicodeDecodeError, err:
+        six.text_type(value)
+      except UnicodeDecodeError as err:
         try:
           name = self.name
         except AttributeError:
@@ -1522,7 +1519,7 @@ class MessageField(Field):
     Raises:
       FieldDefinitionError when invalid message_type is provided.
     """
-    valid_type = (isinstance(message_type, basestring) or
+    valid_type = (isinstance(message_type, six.string_types) or
                   (message_type is not Message and
                    isinstance(message_type, type) and
                    issubclass(message_type, Message)))
@@ -1530,7 +1527,7 @@ class MessageField(Field):
     if not valid_type:
       raise FieldDefinitionError('Invalid message class: %s' % message_type)
 
-    if isinstance(message_type, basestring):
+    if isinstance(message_type, six.string_types):
       self.__type_name = message_type
       self.__type = None
     else:
@@ -1671,7 +1668,7 @@ class EnumField(Field):
     Raises:
       FieldDefinitionError when invalid enum_type is provided.
     """
-    valid_type = (isinstance(enum_type, basestring) or
+    valid_type = (isinstance(enum_type, six.string_types) or
                   (enum_type is not Enum and
                    isinstance(enum_type, type) and
                    issubclass(enum_type, Enum)))
@@ -1679,7 +1676,7 @@ class EnumField(Field):
     if not valid_type:
       raise FieldDefinitionError('Invalid enum type: %s' % enum_type)
 
-    if isinstance(enum_type, basestring):
+    if isinstance(enum_type, six.string_types):
       self.__type_name = enum_type
       self.__type = None
     else:
@@ -1701,7 +1698,7 @@ class EnumField(Field):
     Raises:
       ValidationError if value is not expected message type.
     """
-    if isinstance(value, (basestring, int, long)):
+    if isinstance(value, (six.string_types, six.integer_types)):
       # Validation of the value does not happen for delayed resolution
       # enumerated types.  Ignore if type is not yet resolved.
       if self.__type:
@@ -1733,7 +1730,7 @@ class EnumField(Field):
       return self.__resolved_default
     except AttributeError:
       resolved_default = super(EnumField, self).default
-      if isinstance(resolved_default, (basestring, int, long)):
+      if isinstance(resolved_default, (six.string_types, six.integer_types)):
         resolved_default = self.type(resolved_default)
       self.__resolved_default = resolved_default
       return self.__resolved_default

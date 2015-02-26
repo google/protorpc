@@ -353,7 +353,7 @@ class HttpRequestStateTest(RequestStateTest):
     state = remote.HttpRequestState(
       headers=[('a', 'b'), ('c', 'd'), ('c', 'e')])
 
-    self.assertEquals(['a', 'c', 'c'], state.headers.keys())
+    self.assertEquals(['a', 'c', 'c'], list(state.headers.keys()))
     self.assertEquals(['b'], state.headers.get_all('a'))
     self.assertEquals(['d', 'e'], state.headers.get_all('c'))
 
@@ -485,8 +485,8 @@ class ServiceTest(test_util.TestCase):
     pattern = ('Creates new instances of service StatefulService.\n\n'
                'Returns:\n'
                '  New instance of %s.StatefulService.' % module_name)
-    self.assertEqual(pattern, factory.func_doc)
-    self.assertEquals('StatefulService_service_factory', factory.func_name)
+    self.assertEqual(pattern, factory.__doc__)
+    self.assertEquals('StatefulService_service_factory', factory.__name__)
     self.assertEquals(StatefulService, factory.service_class)
 
     service = factory()
@@ -735,7 +735,7 @@ class CheckRpcStatusTest(test_util.TestCase):
     try:
       remote.check_rpc_status(status)
       self.fail('Should have raised application error.')
-    except remote.ApplicationError, err:
+    except remote.ApplicationError as err:
       self.assertEquals('an application error', str(err))
       self.assertEquals('blam', err.error_name)
 

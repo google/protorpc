@@ -26,6 +26,7 @@ services_test.proto.
 Includes additional test utilities to make sure encoding/decoding libraries
 conform.
 """
+from six.moves import range
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -69,7 +70,7 @@ class TestCase(unittest.TestCase):
     try:
       function(*params, **kwargs)
       self.fail('Expected exception %s was not raised' % exception.__name__)
-    except exception, err:
+    except exception as err:
       match = bool(re.match(regexp, str(err)))
       self.assertTrue(match, 'Expected match "%s", found "%s"' % (regexp,
                                                                   err))

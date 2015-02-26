@@ -16,6 +16,7 @@
 #
 
 """Stub library."""
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -274,7 +275,7 @@ def import_file_set(file_set, modules=None, _open=open):
       FileDescriptor contents.
     _open: Used for dependency injection during tests.
   """
-  if isinstance(file_set, basestring):
+  if isinstance(file_set, six.string_types):
     encoded_file = _open(file_set, 'rb')
     try:
       encoded_file_set = encoded_file.read()

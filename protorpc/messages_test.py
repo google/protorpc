@@ -16,6 +16,7 @@
 #
 
 """Tests for protorpc.messages."""
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -1607,9 +1608,9 @@ class MessageTest(test_util.TestCase):
     self.assertEquals(module_name, MyMessage.outer_definition_name())
     self.assertEquals(module_name, MyMessage.definition_package())
 
-    self.assertEquals(unicode, type(MyMessage.definition_name()))
-    self.assertEquals(unicode, type(MyMessage.outer_definition_name()))
-    self.assertEquals(unicode, type(MyMessage.definition_package()))
+    self.assertEquals(six.text_type, type(MyMessage.definition_name()))
+    self.assertEquals(six.text_type, type(MyMessage.outer_definition_name()))
+    self.assertEquals(six.text_type, type(MyMessage.definition_package()))
 
   def testDefinitionName_OverrideModule(self):
     """Test message module is overriden by module package name."""
@@ -1624,9 +1625,9 @@ class MessageTest(test_util.TestCase):
       self.assertEquals('my.package', MyMessage.outer_definition_name())
       self.assertEquals('my.package', MyMessage.definition_package())
 
-      self.assertEquals(unicode, type(MyMessage.definition_name()))
-      self.assertEquals(unicode, type(MyMessage.outer_definition_name()))
-      self.assertEquals(unicode, type(MyMessage.definition_package()))
+      self.assertEquals(six.text_type, type(MyMessage.definition_name()))
+      self.assertEquals(six.text_type, type(MyMessage.outer_definition_name()))
+      self.assertEquals(six.text_type, type(MyMessage.definition_package()))
     finally:
       del package
 
@@ -1643,7 +1644,7 @@ class MessageTest(test_util.TestCase):
       self.assertEquals(None, MyMessage.outer_definition_name())
       self.assertEquals(None, MyMessage.definition_package())
 
-      self.assertEquals(unicode, type(MyMessage.definition_name()))
+      self.assertEquals(six.text_type, type(MyMessage.definition_name()))
     finally:
       sys.modules = original_modules
 

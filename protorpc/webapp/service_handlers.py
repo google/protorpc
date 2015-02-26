@@ -86,10 +86,11 @@ Public Exceptions:
     or request format.
   ResponseError: Raised by RPC mappers when there is an error in its response.
 """
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
-import httplib
+import six.moves.http_client
 import logging
 
 from .google_imports import webapp
@@ -224,7 +225,7 @@ class RPCMapper(object):
     """
     try:
       return self.__protocol.decode_message(request_type, handler.request.body)
-    except (messages.ValidationError, messages.DecodeError), err:
+    except (messages.ValidationError, messages.DecodeError) as err:
       raise RequestError('Unable to parse request content: %s' % err)
 
   def build_response(self, handler, response, pad_string=False):
@@ -245,7 +246,7 @@ class RPCMapper(object):
     """
     try:
       encoded_message = self.__protocol.encode_message(response)
-    except messages.ValidationError, err:
+    except messages.ValidationError as err:
       raise ResponseError('Unable to encode message: %s' % err)
     else:
       handler.response.headers['Content-Type'] = self.default_content_type
@@ -479,7 +480,7 @@ class ServiceHandler(webapp.RequestHandler):
     logging.error(message)
     self.response.set_status(code, message)
 
-    response_message = httplib.responses.get(code, 'Unknown Error')
+    response_message = six.moves.http_client.responses.get(code, 'Unknown Error')
     if pad:
       response_message = util.pad_string(response_message)
     self.response.out.write(response_message)
@@ -561,20 +562,20 @@ class ServiceHandler(webapp.RequestHandler):
         break
     else:
       if http_method == 'GET':
-        self.error(httplib.UNSUPPORTED_MEDIA_TYPE)
+        self.error(six.moves.http_client.UNSUPPORTED_MEDIA_TYPE)
         self.__show_info(service_path, remote_method)
       else:
-        self.__send_simple_error(httplib.UNSUPPORTED_MEDIA_TYPE,
+        self.__send_simple_error(six.moves.http_client.UNSUPPORTED_MEDIA_TYPE,
                                  'Unsupported content-type: %s' % content_type)
       return
 
     try:
       if http_method not in mapper.http_methods:
         if http_method == 'GET':
-          self.error(httplib.METHOD_NOT_ALLOWED)
+          self.error(six.moves.http_client.METHOD_NOT_ALLOWED)
           self.__show_info(service_path, remote_method)
         else:
-          self.__send_simple_error(httplib.METHOD_NOT_ALLOWED,
+          self.__send_simple_error(six.moves.http_client.METHOD_NOT_ALLOWED,
                                    'Unsupported HTTP method: %s' % http_method)
         return
 
@@ -582,7 +583,7 @@ class ServiceHandler(webapp.RequestHandler):
         try:
           method = getattr(self.service, remote_method)
           method_info = method.remote
-        except AttributeError, err:
+        except AttributeError as err:
           self.__send_error(
           400, remote.RpcState.METHOD_NOT_FOUND_ERROR,
             'Unrecognized RPC method: %s' % remote_method,
@@ -590,7 +591,7 @@ class ServiceHandler(webapp.RequestHandler):
           return
 
         request = mapper.build_request(self, method_info.request_type)
-      except (RequestError, messages.DecodeError), err:
+      except (RequestError, messages.DecodeError) as err:
         self.__send_error(400,
                           remote.RpcState.REQUEST_ERROR,
                           'Error parsing ProtoRPC request (%s)' % err,
@@ -599,7 +600,7 @@ class ServiceHandler(webapp.RequestHandler):
 
       try:
         response = method(request)
-      except remote.ApplicationError, err:
+      except remote.ApplicationError as err:
         self.__send_error(400,
                           remote.RpcState.APPLICATION_ERROR,
                           err.message,
@@ -608,7 +609,7 @@ class ServiceHandler(webapp.RequestHandler):
         return
 
       mapper.build_response(self, response)
-    except Exception, err:
+    except Exception as err:
       logging.error('An unexpected error occured when handling RPC: %s',
                     err, exc_info=1)
 
@@ -693,7 +694,7 @@ class URLEncodedRPCMapper(RPCMapper):
       values = handler.request.get_all(argument)
       try:
         builder.add_parameter(argument, values)
-      except messages.DecodeError, err:
+      except messages.DecodeError as err:
         raise RequestError(str(err))
     return request
 
@@ -779,7 +780,7 @@ def service_mapping(services,
     ServiceConfigurationError when duplicate paths are provided.
   """
   if isinstance(services, dict):
-    services = services.iteritems()
+    services = six.iteritems(services)
   mapping = []
   registry_map = {}
 

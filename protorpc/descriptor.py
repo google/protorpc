@@ -97,6 +97,7 @@ Public Functions:
   describe_method: Describe a Method definition.
   describe_service: Describe a Service definition.
 """
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -138,12 +139,12 @@ __all__ = ['EnumDescriptor',
 # to a string.  The function must return a value that is compatible with
 # FieldDescriptor.default_value and therefore a unicode string.
 _DEFAULT_TO_STRING_MAP = {
-    messages.IntegerField: unicode,
-    messages.FloatField: unicode,
+    messages.IntegerField: six.text_type,
+    messages.FloatField: six.text_type,
     messages.BooleanField: lambda value: value and u'true' or u'false',
     messages.BytesField: lambda value: codecs.escape_encode(value)[0],
     messages.StringField: lambda value: value,
-    messages.EnumField: lambda value: unicode(value.number),
+    messages.EnumField: lambda value: six.text_type(value.number),
 }
 
 _DEFAULT_FROM_STRING_MAP = {
@@ -309,7 +310,7 @@ def describe_enum_value(enum_value):
     Initialized EnumValueDescriptor instance describing the Enum instance.
   """
   enum_value_descriptor = EnumValueDescriptor()
-  enum_value_descriptor.name = unicode(enum_value.name)
+  enum_value_descriptor.name = six.text_type(enum_value.name)
   enum_value_descriptor.number = enum_value.number
   return enum_value_descriptor
 
@@ -427,7 +428,7 @@ def describe_method(method):
   """
   method_info = method.remote
   descriptor = MethodDescriptor()
-  descriptor.name = method_info.method.func_name
+  descriptor.name = method_info.method.__name__
   descriptor.request_type = method_info.request_type.definition_name()
   descriptor.response_type = method_info.response_type.definition_name()
 
@@ -447,7 +448,7 @@ def describe_service(service_class):
   descriptor.name = service_class.__name__
   methods = []
   remote_methods = service_class.all_remote_methods()
-  for name in sorted(remote_methods.iterkeys()):
+  for name in sorted(remote_methods.keys()):
     if name == 'get_descriptor':
       continue
 
@@ -602,7 +603,7 @@ def import_descriptor_loader(definition_name, importer=__import__):
     # Attempt to use messages.find_definition to find item.
     return describe(messages.find_definition(definition_name,
                                              importer=__import__))
-  except messages.DefinitionNotFoundError, err:
+  except messages.DefinitionNotFoundError as err:
     # There are things that find_definition will not find, but if the parent
     # is loaded, its children can be searched for a match.
     split_name = definition_name.rsplit('.', 1)

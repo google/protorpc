@@ -157,7 +157,7 @@ class RequestHandlerTestBase(test_util.TestCase):
           found_keys.add(name)
           self.assertEquals(expected_value, value)
 
-      missing_headers = set(expected_headers.iterkeys()) - found_keys
+      missing_headers = set(expected_headers.keys()) - found_keys
       if missing_headers:
         self.fail('Expected keys %r not found' % (list(missing_headers),))
 
@@ -394,5 +394,5 @@ class EndToEndTestBase(WebServerTestBase):
     try:
       self.DoRawRequest(method, content, content_type, headers)
       self.fail('Expected HTTP error')
-    except urllib2.HTTPError, err:
+    except urllib2.HTTPError as err:
       return err.code, err.read(), err.headers

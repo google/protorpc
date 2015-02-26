@@ -23,11 +23,12 @@ WSGI applications.  For more information about WSGI, please see:
   http://wsgi.org/wsgi
   http://docs.python.org/library/wsgiref.html
 """
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cgi
-import httplib
+import six.moves.http_client
 import logging
 import re
 
@@ -45,9 +46,9 @@ __all__ = [
 _METHOD_PATTERN = r'(?:\.([^?]+))'
 _REQUEST_PATH_PATTERN = r'^(%%s)%s$' % _METHOD_PATTERN
 
-_HTTP_BAD_REQUEST = wsgi_util.error(httplib.BAD_REQUEST)
-_HTTP_NOT_FOUND = wsgi_util.error(httplib.NOT_FOUND)
-_HTTP_UNSUPPORTED_MEDIA_TYPE = wsgi_util.error(httplib.UNSUPPORTED_MEDIA_TYPE)
+_HTTP_BAD_REQUEST = wsgi_util.error(six.moves.http_client.BAD_REQUEST)
+_HTTP_NOT_FOUND = wsgi_util.error(six.moves.http_client.NOT_FOUND)
+_HTTP_UNSUPPORTED_MEDIA_TYPE = wsgi_util.error(six.moves.http_client.UNSUPPORTED_MEDIA_TYPE)
 
 DEFAULT_REGISTRY_PATH = '/protorpc'
 
@@ -97,8 +98,8 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
                   service_class.definition_name().encode('utf-8'),
                   util.PROTORPC_PROJECT_URL))
       error_handler = wsgi_util.error(
-        httplib.METHOD_NOT_ALLOWED,
-        httplib.responses[httplib.METHOD_NOT_ALLOWED],
+        six.moves.http_client.METHOD_NOT_ALLOWED,
+        six.moves.http_client.responses[six.moves.http_client.METHOD_NOT_ALLOWED],
         content=content,
         content_type='text/plain; charset=utf-8')
       return error_handler(environ, start_response)
@@ -136,7 +137,7 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
 
     method = remote_methods.get(method_name)
     if not method:
-      return send_rpc_error(httplib.BAD_REQUEST,
+      return send_rpc_error(six.moves.http_client.BAD_REQUEST,
                             remote.RpcState.METHOD_NOT_FOUND_ERROR,
                             'Unrecognized RPC method: %s' % method_name)
 
@@ -146,8 +147,8 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
     try:
       request = protocol.decode_message(
         remote_info.request_type, environ['wsgi.input'].read(content_length))
-    except (messages.ValidationError, messages.DecodeError), err:
-      return send_rpc_error(httplib.BAD_REQUEST,
+    except (messages.ValidationError, messages.DecodeError) as err:
+      return send_rpc_error(six.moves.http_client.BAD_REQUEST,
                             remote.RpcState.REQUEST_ERROR,
                             'Error parsing ProtoRPC request '
                             '(Unable to parse request content: %s)' % err)
@@ -163,7 +164,7 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
         server_port = int(server_port)
 
       headers = []
-      for name, value in environ.iteritems():
+      for name, value in six.iteritems(environ):
         if name.startswith('HTTP_'):
           headers.append((name[len('HTTP_'):].lower().replace('_', '-'), value))
       request_state = remote.HttpRequestState(
@@ -180,21 +181,21 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
     try:
       response = method(instance, request)
       encoded_response = protocol.encode_message(response)
-    except remote.ApplicationError, err:
-      return send_rpc_error(httplib.BAD_REQUEST,
+    except remote.ApplicationError as err:
+      return send_rpc_error(six.moves.http_client.BAD_REQUEST,
                             remote.RpcState.APPLICATION_ERROR,
                             err.message,
                             err.error_name)
-    except Exception, err:
+    except Exception as err:
       logging.exception('Encountered unexpected error from ProtoRPC '
                         'method implementation: %s (%s)' %
                         (err.__class__.__name__, err))
-      return send_rpc_error(httplib.INTERNAL_SERVER_ERROR,
+      return send_rpc_error(six.moves.http_client.INTERNAL_SERVER_ERROR,
                             remote.RpcState.SERVER_ERROR,
                             'Internal Server Error')
 
     response_headers = [('content-type', content_type)]
-    start_response('%d %s' % (httplib.OK, httplib.responses[httplib.OK],),
+    start_response('%d %s' % (six.moves.http_client.OK, six.moves.http_client.responses[six.moves.http_client.OK],),
                    response_headers)
     return [encoded_response]
 
@@ -235,7 +236,7 @@ def service_mappings(services, registry_path=DEFAULT_REGISTRY_PATH):
     plus optional RegistryService.
   """
   if isinstance(services, dict):
-    services = services.iteritems()
+    services = six.iteritems(services)
 
   final_mapping = []
   paths = set()

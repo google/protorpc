@@ -102,6 +102,7 @@ make an asynchronous call, do:
 """
 
 from __future__ import with_statement
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -316,7 +317,7 @@ class _RemoteMethodInfo(object):
   @property
   def request_type(self):
     """Expected request type for remote method."""
-    if isinstance(self.__request_type, basestring):
+    if isinstance(self.__request_type, six.string_types):
       self.__request_type = messages.find_definition(
         self.__request_type,
         relative_to=sys.modules[self.__method.__module__])
@@ -325,7 +326,7 @@ class _RemoteMethodInfo(object):
   @property
   def response_type(self):
     """Expected response type for remote method."""
-    if isinstance(self.__response_type, basestring):
+    if isinstance(self.__response_type, six.string_types):
       self.__response_type = messages.find_definition(
         self.__response_type,
         relative_to=sys.modules[self.__method.__module__])
@@ -347,7 +348,7 @@ def method(request_type=message_types.VoidMessage,
     TypeError: if the request_type or response_type parameters are not
       proper subclasses of messages.Message.
   """
-  if (not isinstance(request_type, basestring) and
+  if (not isinstance(request_type, six.string_types) and
       (not isinstance(request_type, type) or
        not issubclass(request_type, messages.Message) or
        request_type is messages.Message)):
@@ -355,7 +356,7 @@ def method(request_type=message_types.VoidMessage,
         'Must provide message class for request-type.  Found %s',
         request_type)
 
-  if (not isinstance(response_type, basestring) and
+  if (not isinstance(response_type, six.string_types) and
       (not isinstance(response_type, type) or
        not issubclass(response_type, messages.Message) or
        response_type is messages.Message)):
@@ -544,7 +545,7 @@ class _ServiceClass(type):
       if not args:
         # Construct request object from arguments.
         request = remote.request_type()
-        for name, value in kwargs.iteritems():
+        for name, value in six.iteritems(kwargs):
           setattr(request, name, value)
       else:
         # First argument is request object.
@@ -592,7 +593,7 @@ class _ServiceClass(type):
       Results added to AsyncStub subclass.
     """
     async_methods = {}
-    for method_name, method in remote_methods.iteritems():
+    for method_name, method in remote_methods.items():
       async_methods[method_name] = cls.__new_async_method(method.remote)
     return async_methods
 
@@ -607,7 +608,7 @@ class _ServiceClass(type):
       Results added to Stub subclass.
     """
     sync_methods = {}
-    for method_name, async_method in async_methods.iteritems():
+    for method_name, async_method in async_methods.items():
       sync_methods[method_name] = cls.__new_sync_method(async_method)
     return sync_methods
 
@@ -628,7 +629,7 @@ class _ServiceClass(type):
       # to be recacluated in __init__.
       dct['_ServiceClass__base_methods'] = base_methods
 
-      for attribute, value in dct.iteritems():
+      for attribute, value in dct.items():
         base_method = base_methods.get(attribute, None)
         if base_method:
           if not callable(value):
@@ -662,7 +663,7 @@ class _ServiceClass(type):
       # Create list of remote methods.
       cls.__remote_methods = dict(cls.__base_methods)
 
-      for attribute, value in dct.iteritems():
+      for attribute, value in dct.items():
         value = getattr(cls, attribute)
         remote_method_info = get_remote_method_info(value)
         if remote_method_info:
@@ -833,7 +834,7 @@ class HttpRequestState(RequestState):
     yield 'headers', list(self.headers.items())
 
 
-class Service(object):
+class Service(six.with_metaclass(_ServiceClass, object)):
   """Service base class.
 
   Base class used for defining remote services.  Contains reflection functions,
@@ -870,8 +871,6 @@ class Service(object):
     request_state: RequestState set via initialize_request_state.
   """
 
-  __metaclass__ = _ServiceClass
-
   __request_state = None
 
   @classmethod
@@ -907,14 +906,14 @@ class Service(object):
 
     # Update docstring so that it is easier to debug.
     full_class_name = '%s.%s' % (cls.__module__, cls.__name__)
-    service_factory.func_doc = (
+    service_factory.__doc__ = (
         'Creates new instances of service %s.\n\n'
         'Returns:\n'
         '  New instance of %s.'
         % (cls.__name__, full_class_name))
 
     # Update name so that it is easier to debug the factory function.
-    service_factory.func_name = '%s_service_factory' % cls.__name__
+    service_factory.__name__ = '%s_service_factory' % cls.__name__
 
     service_factory.service_class = cls
 

@@ -16,7 +16,7 @@
 #
 
 import errno
-import httplib
+import six.moves.http_client
 import os
 import socket
 import unittest
@@ -250,14 +250,14 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
     self.used_https = False
     def https_connection(*args, **kwargs):
       self.used_https = True
-      return httplib.HTTPConnection(*args, **kwargs)
+      return six.moves.http_client.HTTPConnection(*args, **kwargs)
 
-    original_https_connection = httplib.HTTPSConnection
-    httplib.HTTPSConnection = https_connection
+    original_https_connection = six.moves.http_client.HTTPSConnection
+    six.moves.http_client.HTTPSConnection = https_connection
     try:
       rpc = self.connection.send_rpc(my_method.remote, self.request)
     finally:
-      httplib.HTTPSConnection = original_https_connection
+      six.moves.http_client.HTTPSConnection = original_https_connection
     self.assertEquals(self.response, rpc.response)
     self.assertTrue(self.used_https)
 
@@ -268,7 +268,7 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
     bad_transport = transport.HttpTransport('http://localhost:-1/blar')
     try:
       bad_transport.send_rpc(my_method.remote, self.request)
-    except remote.NetworkError, err:
+    except remote.NetworkError as err:
       self.assertTrue(str(err).startswith('Socket error: error ('))
       self.assertEquals(errno.ECONNREFUSED, err.cause.errno)
     else:
@@ -280,42 +280,42 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
 
     def request_error(*args, **kwargs):
       raise TypeError('Generic Error')
-    original_request = httplib.HTTPConnection.request
-    httplib.HTTPConnection.request = request_error
+    original_request = six.moves.http_client.HTTPConnection.request
+    six.moves.http_client.HTTPConnection.request = request_error
     try:
       try:
         self.connection.send_rpc(my_method.remote, self.request)
-      except remote.NetworkError, err:
+      except remote.NetworkError as err:
         self.assertEquals('Error communicating with HTTP server', str(err))
         self.assertEquals(TypeError, type(err.cause))
         self.assertEquals('Generic Error', str(err.cause))
       else:
         self.fail('Expected error')
     finally:
-      httplib.HTTPConnection.request = original_request
+      six.moves.http_client.HTTPConnection.request = original_request
 
   def testHandleGenericServiceError(self):
-    self.ResetServer(wsgi_util.error(httplib.INTERNAL_SERVER_ERROR,
+    self.ResetServer(wsgi_util.error(six.moves.http_client.INTERNAL_SERVER_ERROR,
                                      'arbitrary error',
                                      content_type='text/plain'))
 
     rpc = self.connection.send_rpc(my_method.remote, self.request)
     try:
       rpc.response
-    except remote.ServerError, err:
+    except remote.ServerError as err:
       self.assertEquals('HTTP Error 500: arbitrary error', str(err).strip())
     else:
       self.fail('Expected ServerError')
 
   def testHandleGenericServiceErrorNoMessage(self):
-    self.ResetServer(wsgi_util.error(httplib.NOT_IMPLEMENTED,
+    self.ResetServer(wsgi_util.error(six.moves.http_client.NOT_IMPLEMENTED,
                                      ' ',
                                      content_type='text/plain'))
 
     rpc = self.connection.send_rpc(my_method.remote, self.request)
     try:
       rpc.response
-    except remote.ServerError, err:
+    except remote.ServerError as err:
       self.assertEquals('HTTP Error 501: Not Implemented', str(err).strip())
     else:
       self.fail('Expected ServerError')
@@ -324,13 +324,13 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
     self.ResetServer(wsgi_util.static_page('{"state": "REQUEST_ERROR",'
                                            ' "error_message": "a request error"'
                                            '}',
-                                           status=httplib.BAD_REQUEST,
+                                           status=six.moves.http_client.BAD_REQUEST,
                                            content_type='application/json'))
 
     rpc = self.connection.send_rpc(my_method.remote, self.request)
     try:
       rpc.response
-    except remote.RequestError, err:
+    except remote.RequestError as err:
       self.assertEquals('a request error', str(err))
     else:
       self.fail('Expected RequestError')
@@ -339,13 +339,13 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
     self.ResetServer(wsgi_util.static_page('{"state": "APPLICATION_ERROR",'
                                            ' "error_message": "an app error",'
                                            ' "error_name": "MY_ERROR_NAME"}',
-                                           status=httplib.BAD_REQUEST,
+                                           status=six.moves.http_client.BAD_REQUEST,
                                            content_type='application/json'))
 
     rpc = self.connection.send_rpc(my_method.remote, self.request)
     try:
       rpc.response
-    except remote.ApplicationError, err:
+    except remote.ApplicationError as err:
       self.assertEquals('an app error', str(err))
       self.assertEquals('MY_ERROR_NAME', err.error_name)
     else:
@@ -353,26 +353,26 @@ class HttpTransportTest(webapp_test_util.WebServerTestBase):
 
   def testHandleUnparsableErrorContent(self):
     self.ResetServer(wsgi_util.static_page('oops',
-                                           status=httplib.BAD_REQUEST,
+                                           status=six.moves.http_client.BAD_REQUEST,
                                            content_type='application/json'))
 
     rpc = self.connection.send_rpc(my_method.remote, self.request)
     try:
       rpc.response
-    except remote.ServerError, err:
+    except remote.ServerError as err:
       self.assertEquals('HTTP Error 400: oops', str(err))
     else:
       self.fail('Expected ServerError')
 
   def testHandleEmptyBadRpcStatus(self):
     self.ResetServer(wsgi_util.static_page('{"error_message": "x"}',
-                                           status=httplib.BAD_REQUEST,
+                                           status=six.moves.http_client.BAD_REQUEST,
                                            content_type='application/json'))
 
     rpc = self.connection.send_rpc(my_method.remote, self.request)
     try:
       rpc.response
-    except remote.ServerError, err:
+    except remote.ServerError as err:
       self.assertEquals('HTTP Error 400: {"error_message": "x"}', str(err))
     else:
       self.fail('Expected ServerError')

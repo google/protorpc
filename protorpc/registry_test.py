@@ -87,7 +87,7 @@ class RegistryServiceTest(test_util.TestCase):
     request.names = ['my-service1', 'my-service2']
     response = self.registry_service.get_file_set(request)
 
-    expected_file_set = descriptor.describe_file_set(self.modules.values())
+    expected_file_set = descriptor.describe_file_set(list(self.modules.values()))
     self.assertIterEqual(expected_file_set.files, response.file_set.files)
 
   def testGetFileSet_None(self):
@@ -103,7 +103,7 @@ class RegistryServiceTest(test_util.TestCase):
     response = self.registry_service.get_file_set(request)
 
     # Will suck in and describe the test_util module.
-    expected_file_set = descriptor.describe_file_set(self.modules.values())
+    expected_file_set = descriptor.describe_file_set(list(self.modules.values()))
     self.assertIterEqual(expected_file_set.files, response.file_set.files)
 
   def testGetFileSet_DoNotReferenceOtherModules(self):
