@@ -19,10 +19,11 @@
 
 Small collection of helpful utilities for working with WSGI.
 """
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
-import httplib
+import six.moves.http_client
 import re
 
 from .. import util
@@ -61,13 +62,13 @@ def static_page(content='',
   Returns:
     WSGI application that serves static content.
   """
-  if isinstance(status, (int, long)):
-    status = '%d %s' % (status, httplib.responses.get(status, 'Unknown Error'))
-  elif not isinstance(status, basestring):
+  if isinstance(status, six.integer_types):
+    status = '%d %s' % (status, six.moves.http_client.responses.get(status, 'Unknown Error'))
+  elif not isinstance(status, six.string_types):
     status = '%d %s' % tuple(status)
 
   if isinstance(headers, dict):
-    headers = headers.iteritems()
+    headers = six.iteritems(headers)
 
   headers = [('content-length', str(len(content))),
              ('content-type', content_type),
@@ -75,7 +76,7 @@ def static_page(content='',
 
   # Ensure all headers are str.
   for index, (key, value) in enumerate(headers):
-    if isinstance(value, unicode):
+    if isinstance(value, six.text_type):
       value = value.encode('utf-8')
       headers[index] = key, value
 
@@ -116,7 +117,7 @@ def error(status_code, status_message=None,
     Static WSGI application that sends static error response.
   """
   if status_message is None:
-    status_message = httplib.responses.get(status_code, 'Unknown Error')
+    status_message = six.moves.http_client.responses.get(status_code, 'Unknown Error')
 
   if content is None:
     content = status_message
@@ -146,7 +147,7 @@ def first_found(apps):
     does not response with 404 Not Found.
   """
   apps = tuple(apps)
-  not_found = error(httplib.NOT_FOUND)
+  not_found = error(six.moves.http_client.NOT_FOUND)
 
   def first_found_app(environ, start_response):
     """Compound application returned from the first_found function."""
@@ -163,7 +164,7 @@ def first_found(apps):
       assert status_match, ('Status must be a string beginning '
                             'with 3 digit number. Found: %s' % status)
       status_code = status_match.group(0)
-      if int(status_code) == httplib.NOT_FOUND:
+      if int(status_code) == six.moves.http_client.NOT_FOUND:
         return
 
       final_result['status'] = status

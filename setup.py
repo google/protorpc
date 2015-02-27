@@ -22,7 +22,9 @@ from setuptools import setup
 
 # Configure the required packages and scripts to install, depending on
 # Python version and OS.
-REQUIRED_PACKAGES = []
+REQUIRED_PACKAGES = [
+    'six',
+    ]
 CONSOLE_SCRIPTS = [
     'gen_protorpc = gen_protorpc:main',
     ]
@@ -62,6 +64,9 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
         ],

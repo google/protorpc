@@ -20,7 +20,7 @@
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
-import new
+import types
 import unittest
 
 from protorpc import descriptor
@@ -344,17 +344,17 @@ class DescribeFileTest(test_util.TestCase):
               'messages': messages,
               'remote': remote,
               }
-    exec source in result
+    exec(source, result)
 
-    module = new.module(module_name)
-    for name, value in result.iteritems():
+    module = types.ModuleType(module_name)
+    for name, value in result.items():
       setattr(module, name, value)
 
     return module
 
   def testEmptyModule(self):
     """Test describing an empty file."""
-    module = new.module('my.package.name')
+    module = types.ModuleType('my.package.name')
 
     expected = descriptor.FileDescriptor()
     expected.package = 'my.package.name'
@@ -365,7 +365,7 @@ class DescribeFileTest(test_util.TestCase):
 
   def testNoPackageName(self):
     """Test describing a module with no module name."""
-    module = new.module('')
+    module = types.ModuleType('')
 
     expected = descriptor.FileDescriptor()
 
@@ -375,7 +375,7 @@ class DescribeFileTest(test_util.TestCase):
 
   def testPackageName(self):
     """Test using the 'package' module attribute."""
-    module = new.module('my.module.name')
+    module = types.ModuleType('my.module.name')
     module.package = 'my.package.name'
 
     expected = descriptor.FileDescriptor()
@@ -387,7 +387,7 @@ class DescribeFileTest(test_util.TestCase):
 
   def testMain(self):
     """Test using the 'package' module attribute."""
-    module = new.module('__main__')
+    module = types.ModuleType('__main__')
     module.__file__ = '/blim/blam/bloom/my_package.py'
 
     expected = descriptor.FileDescriptor()
@@ -470,7 +470,7 @@ class DescribeFileSetTest(test_util.TestCase):
 
   def testWithModules(self):
     """Test what happens when no modules provided."""
-    modules = [new.module('package1'), new.module('package1')]
+    modules = [types.ModuleType('package1'), types.ModuleType('package1')]
 
     file1 = descriptor.FileDescriptor()
     file1.package = 'package1'

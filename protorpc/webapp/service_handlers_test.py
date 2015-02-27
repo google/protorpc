@@ -232,12 +232,12 @@ class ServiceHandlerFactoryTest(test_util.TestCase):
     mappers = handler_factory.all_request_mappers()
 
     # Verify Protobuf encoded mapper.
-    protobuf_mapper = mappers.next()
+    protobuf_mapper = next(mappers)
     self.assertTrue(isinstance(protobuf_mapper,
                                service_handlers.ProtobufRPCMapper))
 
     # Verify JSON encoded mapper.
-    json_mapper = mappers.next()
+    json_mapper = next(mappers)
     self.assertTrue(isinstance(json_mapper,
                                service_handlers.JSONRPCMapper))
 
@@ -1158,7 +1158,7 @@ class ServiceMappingTest(test_util.TestCase):
 
       # Verify registry knows about other services.
       expected_registry = {registry_path: registry.RegistryService}
-      for path, factory in dict(services).iteritems():
+      for path, factory in dict(services).items():
         if isinstance(factory, type) and issubclass(factory, remote.Service):
           expected_registry[path] = factory
         else:
@@ -1168,7 +1168,7 @@ class ServiceMappingTest(test_util.TestCase):
 
     # Verify that services are mapped to URL.
     self.assertEquals(len(services), len(mapped_services))
-    for path, service in dict(services).iteritems():
+    for path, service in dict(services).items():
       mapped_path = r'(%s)%s' %  (path, service_handlers._METHOD_PATTERN)
       mapped_factory = dict(mapped_services)[mapped_path]
       self.assertEquals(service, mapped_factory.service_factory)

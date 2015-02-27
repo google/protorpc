@@ -16,11 +16,13 @@
 #
 
 """WSGI utility library tests."""
+import six
+from six.moves import filter
 
 __author__ = 'rafe@google.com (Rafe Kaplan)'
 
 
-import httplib
+import six.moves.http_client
 import unittest
 
 from protorpc import test_util
@@ -30,7 +32,7 @@ from protorpc.wsgi import util as wsgi_util
 
 APP1 = wsgi_util.static_page('App1')
 APP2 = wsgi_util.static_page('App2')
-NOT_FOUND = wsgi_util.error(httplib.NOT_FOUND)
+NOT_FOUND = wsgi_util.error(six.moves.http_client.NOT_FOUND)
 
 
 class WsgiTestBase(webapp_test_util.WebServerTestBase):
@@ -45,7 +47,7 @@ class WsgiTestBase(webapp_test_util.WebServerTestBase):
                     content=None,
                     content_type='text/plain; charset=utf-8',
                     headers=None):
-    connection = httplib.HTTPConnection('localhost', self.port)
+    connection = six.moves.http_client.HTTPConnection('localhost', self.port)
     if content is None:
       method = 'GET'
     else:
@@ -56,7 +58,7 @@ class WsgiTestBase(webapp_test_util.WebServerTestBase):
     response = connection.getresponse()
 
     not_date_or_server = lambda header: header[0] not in ('date', 'server')
-    headers = filter(not_date_or_server, response.getheaders())
+    headers = list(filter(not_date_or_server, response.getheaders()))
 
     return response.status, response.reason, response.read(), dict(headers)
 
@@ -201,9 +203,9 @@ class FirstFoundTest(WsgiTestBase):
   def testEmptyConfiguration(self):
     self.ResetServer(wsgi_util.first_found([]))
     status, status_text, content, headers = self.DoHttpRequest('/')
-    self.assertEquals(httplib.NOT_FOUND, status)
-    self.assertEquals(httplib.responses[httplib.NOT_FOUND], status_text)
-    self.assertEquals(util.pad_string(httplib.responses[httplib.NOT_FOUND]),
+    self.assertEquals(six.moves.http_client.NOT_FOUND, status)
+    self.assertEquals(six.moves.http_client.responses[six.moves.http_client.NOT_FOUND], status_text)
+    self.assertEquals(util.pad_string(six.moves.http_client.responses[six.moves.http_client.NOT_FOUND]),
                       content)
     self.assertEquals({'content-length': '512',
                        'content-type': 'text/plain; charset=utf-8',
@@ -214,8 +216,8 @@ class FirstFoundTest(WsgiTestBase):
     self.ResetServer(wsgi_util.first_found([APP1]))
 
     status, status_text, content, headers = self.DoHttpRequest('/')
-    self.assertEquals(httplib.OK, status)
-    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals(six.moves.http_client.OK, status)
+    self.assertEquals(six.moves.http_client.responses[six.moves.http_client.OK], status_text)
     self.assertEquals('App1', content)
     self.assertEquals({'content-length': '4',
                        'content-type': 'text/html; charset=utf-8',
@@ -226,8 +228,8 @@ class FirstFoundTest(WsgiTestBase):
     self.ResetServer(wsgi_util.first_found(iter([APP1])))
 
     status, status_text, content, headers = self.DoHttpRequest('/')
-    self.assertEquals(httplib.OK, status)
-    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals(six.moves.http_client.OK, status)
+    self.assertEquals(six.moves.http_client.responses[six.moves.http_client.OK], status_text)
     self.assertEquals('App1', content)
     self.assertEquals({'content-length': '4',
                        'content-type': 'text/html; charset=utf-8',
@@ -236,8 +238,8 @@ class FirstFoundTest(WsgiTestBase):
 
     # Do request again to make sure iterator was properly copied.
     status, status_text, content, headers = self.DoHttpRequest('/')
-    self.assertEquals(httplib.OK, status)
-    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals(six.moves.http_client.OK, status)
+    self.assertEquals(six.moves.http_client.responses[six.moves.http_client.OK], status_text)
     self.assertEquals('App1', content)
     self.assertEquals({'content-length': '4',
                        'content-type': 'text/html; charset=utf-8',
@@ -248,8 +250,8 @@ class FirstFoundTest(WsgiTestBase):
     self.ResetServer(wsgi_util.first_found([APP1, APP2]))
 
     status, status_text, content, headers = self.DoHttpRequest('/')
-    self.assertEquals(httplib.OK, status)
-    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals(six.moves.http_client.OK, status)
+    self.assertEquals(six.moves.http_client.responses[six.moves.http_client.OK], status_text)
     self.assertEquals('App1', content)
     self.assertEquals({'content-length': '4',
                        'content-type': 'text/html; charset=utf-8',
@@ -260,8 +262,8 @@ class FirstFoundTest(WsgiTestBase):
     self.ResetServer(wsgi_util.first_found([NOT_FOUND, APP2]))
 
     status, status_text, content, headers = self.DoHttpRequest('/')
-    self.assertEquals(httplib.OK, status)
-    self.assertEquals(httplib.responses[httplib.OK], status_text)
+    self.assertEquals(six.moves.http_client.OK, status)
+    self.assertEquals(six.moves.http_client.responses[six.moves.http_client.OK], status_text)
     self.assertEquals('App2', content)
     self.assertEquals({'content-length': '4',
                        'content-type': 'text/html; charset=utf-8',
@@ -278,7 +280,7 @@ class FirstFoundTest(WsgiTestBase):
 
     self.ResetServer(wsgi_util.first_found([current_error, APP2]))
 
-    statuses_to_check = sorted(httplib.responses.iterkeys())
+    statuses_to_check = sorted(httplib.responses.keys())
     # 100, 204 and 304 have slightly different expectations, so they are left
     # out of this test in order to keep the code simple.
     for dont_check in (100, 200, 204, 304, 404):

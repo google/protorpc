@@ -224,7 +224,7 @@ class RegistryService(remote.Service):
     """Get all registered services."""
     response = ServicesResponse()
     response.services = []
-    for name, service_class in self.__registry.iteritems():
+    for name, service_class in self.__registry.items():
       mapping = ServiceMapping()
       mapping.name = name.decode('utf-8')
       mapping.definition = service_class.definition_name().decode('utf-8')

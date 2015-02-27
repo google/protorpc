@@ -18,6 +18,7 @@
 """Common utility library."""
 
 from __future__ import with_statement
+import six
 
 __author__ = ['rafek@google.com (Rafe Kaplan)',
               'guido@google.com (Guido van Rossum)',
@@ -171,7 +172,7 @@ def positional(max_positional_args):
       return wrapped(*args, **kwargs)
     return positional_wrapper
 
-  if isinstance(max_positional_args, (int, long)):
+  if isinstance(max_positional_args, six.integer_types):
     return positional_decorator
   else:
     args, _, _, defaults = inspect.getargspec(max_positional_args)
@@ -310,7 +311,7 @@ class AcceptItem(object):
     values = self.values
 
     if values:
-      value_strings = ['%s=%s' % (i, v) for i, v in values.iteritems()]
+      value_strings = ['%s=%s' % (i, v) for i, v in values.items()]
       return '%s; %s' % (content_type, '; '.join(value_strings))
     else:
       return content_type
@@ -369,14 +370,14 @@ def get_package_for_module(module):
     Else, if module is not the '__main__' module, the module __name__.
     Else, the base name of the module file name.  Else None.
   """
-  if isinstance(module, basestring):
+  if isinstance(module, six.string_types):
     try:
       module = sys.modules[module]
     except KeyError:
       return None
 
   try:
-    return unicode(module.package)
+    return six.text_type(module.package)
   except AttributeError:
     if module.__name__ == '__main__':
       try:
@@ -387,11 +388,11 @@ def get_package_for_module(module):
         base_name = os.path.basename(file_name)
         split_name = os.path.splitext(base_name)
         if len(split_name) == 1:
-          return unicode(base_name)
+          return six.text_type(base_name)
         else:
           return u'.'.join(split_name[:-1])
 
-    return unicode(module.__name__)
+    return six.text_type(module.__name__)
 
 
 def total_seconds(offset):

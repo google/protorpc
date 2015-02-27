@@ -16,14 +16,12 @@
 #
 
 """Tests for protorpc.messages."""
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 
 import pickle
-import imp
-import inspect
-import new
 import re
 import sys
 import types
@@ -120,7 +118,8 @@ class EnumTest(test_util.TestCase):
     self.assertEquals(Color.RED, Color('RED'))
     self.assertEquals(Color.RED, Color(u'RED'))
     self.assertEquals(Color.RED, Color(20))
-    self.assertEquals(Color.RED, Color(20L))
+    if six.PY2:
+        self.assertEquals(Color.RED, Color(long(20)))
     self.assertEquals(Color.RED, Color(Color.RED))
     self.assertRaises(TypeError, Color, 'Not exists')
     self.assertRaises(TypeError, Color, 'Red')
@@ -263,7 +262,7 @@ class EnumTest(test_util.TestCase):
       self.assertEquals('Enum1', Enum1.definition_name())
       self.assertEquals(None, Enum1.outer_definition_name())
       self.assertEquals(None, Enum1.definition_package())
-      self.assertEquals(unicode, type(Enum1.definition_name()))
+      self.assertEquals(six.text_type, type(Enum1.definition_name()))
     finally:
       sys.modules = original_modules
 
@@ -382,8 +381,9 @@ class FieldListTest(test_util.TestCase):
   def testConstructor_InvalidValues(self):
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 1 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 1 (type %r)"
+               % (six.integer_types, str)),
       messages.FieldList, self.integer_field, ["1", "2", "3"])
 
   def testConstructor_Scalars(self):
@@ -394,7 +394,7 @@ class FieldListTest(test_util.TestCase):
 
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      "IntegerField is repeated. Found: <(list|sequence)iterator object",
+      "IntegerField is repeated. Found: <(list[_]?|sequence)iterator object",
       messages.FieldList, self.integer_field, iter([1, 2, 3]))
 
   def testSetSlice(self):
@@ -407,10 +407,13 @@ class FieldListTest(test_util.TestCase):
 
     def setslice():
       field_list[1:3] = ['10', '20']
+
+    msg_re = re.escape("Expected type %r "
+                       "for IntegerField, found 10 (type %r)"
+                             % (six.integer_types, str))
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      msg_re,
       setslice)
 
   def testSetItem(self):
@@ -425,8 +428,9 @@ class FieldListTest(test_util.TestCase):
       field_list[0] = '10'
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 10 (type %r)"
+               % (six.integer_types, str)),
       setitem)
 
   def testAppend(self):
@@ -442,8 +446,9 @@ class FieldListTest(test_util.TestCase):
       field_list.append('10')
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 10 (type %r)"
+               % (six.integer_types, str)),
       append)
 
   def testExtend(self):
@@ -458,8 +463,9 @@ class FieldListTest(test_util.TestCase):
       field_list.extend(['10'])
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 10 (type %r)"
+               % (six.integer_types, str)),
       extend)
 
   def testInsert(self):
@@ -474,8 +480,9 @@ class FieldListTest(test_util.TestCase):
       field_list.insert(1, '10')
     self.assertRaisesWithRegexpMatch(
       messages.ValidationError,
-      re.escape("Expected type (<type 'int'>, <type 'long'>) "
-                "for IntegerField, found 10 (type <type 'str'>)"),
+      re.escape("Expected type %r "
+                "for IntegerField, found 10 (type %r)"
+               % (six.integer_types, str)),
       insert)
 
   def testPickle(self):
@@ -571,11 +578,11 @@ class FieldTest(test_util.TestCase):
     self.assertEquals(messages.Variant.UINT32, field.variant)
 
   def testDefaultFields_Single(self):
-    """Test default field is correct type."""
+    """Test default field is correct type (single)."""
     defaults = {messages.IntegerField: 10,
                 messages.FloatField: 1.5,
                 messages.BooleanField: False,
-                messages.BytesField: 'abc',
+                messages.BytesField: b'abc',
                 messages.StringField: u'abc',
                }
 
@@ -591,12 +598,14 @@ class FieldTest(test_util.TestCase):
     """Test binary values in string field."""
     self.assertRaisesWithRegexpMatch(
       messages.InvalidDefaultError,
-      'Invalid default value for StringField: \211: '
-      'Field encountered non-ASCII string \211:',
-      messages.StringField, 1, default='\x89')
+      r"Invalid default value for StringField:.*: "
+      r"Field encountered non-ASCII string .*: "
+      r"'ascii' codec can't decode byte 0x89 in position 0: "
+      r"ordinal not in range",
+      messages.StringField, 1, default=b'\x89')
 
   def testDefaultFields_InvalidSingle(self):
-    """Test default field is correct type."""
+    """Test default field is correct type (invalid single)."""
     def action(field_class):
       self.assertRaises(messages.InvalidDefaultError,
                         field_class,
@@ -682,7 +691,7 @@ class FieldTest(test_util.TestCase):
     values = {messages.IntegerField: 10,
               messages.FloatField: 1.5,
               messages.BooleanField: False,
-              messages.BytesField: 'abc',
+              messages.BytesField: b'abc',
               messages.StringField: u'abc',
              }
     def action(field_class):
@@ -982,7 +991,8 @@ class FieldTest(test_util.TestCase):
 
   def testIntegerField_AllowLong(self):
     """Test that the integer field allows for longs."""
-    messages.IntegerField(10, default=long(10))
+    if six.PY2:
+        messages.IntegerField(10, default=long(10))
 
   def testMessageFieldValidate_Initialized(self):
     """Test validation on message field."""
@@ -1324,7 +1334,7 @@ class MessageTest(test_util.TestCase):
     fields = list(ComplexMessage.all_fields())
 
     # Order does not matter, so sort now.
-    fields = sorted(fields, lambda f1, f2: cmp(f1.name, f2.name))
+    fields = sorted(fields, key=lambda f: f.name)
 
     self.assertEquals(3, len(fields))
     self.assertEquals('a3', fields[0].name)
@@ -1547,8 +1557,9 @@ class MessageTest(test_util.TestCase):
     my_message.integer_value = 42
     my_message.string_value = u'A string'
 
-    self.assertEquals("<MyMessage\n integer_value: 42\n"
-                      " string_value: u'A string'>", repr(my_message))
+    pat = re.compile(r"<MyMessage\n integer_value: 42\n"
+                      " string_value: [u]?'A string'>")
+    self.assertTrue(pat.match(repr(my_message)) is not None)
 
   def testValidation(self):
     """Test validation of message values."""
@@ -1607,9 +1618,9 @@ class MessageTest(test_util.TestCase):
     self.assertEquals(module_name, MyMessage.outer_definition_name())
     self.assertEquals(module_name, MyMessage.definition_package())
 
-    self.assertEquals(unicode, type(MyMessage.definition_name()))
-    self.assertEquals(unicode, type(MyMessage.outer_definition_name()))
-    self.assertEquals(unicode, type(MyMessage.definition_package()))
+    self.assertEquals(six.text_type, type(MyMessage.definition_name()))
+    self.assertEquals(six.text_type, type(MyMessage.outer_definition_name()))
+    self.assertEquals(six.text_type, type(MyMessage.definition_package()))
 
   def testDefinitionName_OverrideModule(self):
     """Test message module is overriden by module package name."""
@@ -1624,9 +1635,9 @@ class MessageTest(test_util.TestCase):
       self.assertEquals('my.package', MyMessage.outer_definition_name())
       self.assertEquals('my.package', MyMessage.definition_package())
 
-      self.assertEquals(unicode, type(MyMessage.definition_name()))
-      self.assertEquals(unicode, type(MyMessage.outer_definition_name()))
-      self.assertEquals(unicode, type(MyMessage.definition_package()))
+      self.assertEquals(six.text_type, type(MyMessage.definition_name()))
+      self.assertEquals(six.text_type, type(MyMessage.outer_definition_name()))
+      self.assertEquals(six.text_type, type(MyMessage.definition_package()))
     finally:
       del package
 
@@ -1643,7 +1654,7 @@ class MessageTest(test_util.TestCase):
       self.assertEquals(None, MyMessage.outer_definition_name())
       self.assertEquals(None, MyMessage.definition_package())
 
-      self.assertEquals(unicode, type(MyMessage.definition_name()))
+      self.assertEquals(six.text_type, type(MyMessage.definition_name()))
     finally:
       sys.modules = original_modules
 
@@ -1829,7 +1840,7 @@ class FindDefinitionTest(test_util.TestCase):
     for node in name_path:
       full_path.append(node)
       full_name = '.'.join(full_path)
-      self.modules.setdefault(full_name, new.module(full_name))
+      self.modules.setdefault(full_name, types.ModuleType(full_name))
     return self.modules[name]
 
   def DefineMessage(self, module, name, children={}, add_to_module=True):
@@ -1861,7 +1872,7 @@ class FindDefinitionTest(test_util.TestCase):
     children['__module__'] = module
 
     # Instantiate and possibly add to module.
-    message_class = new.classobj(name, (messages.Message,), dict(children))
+    message_class = type(name, (messages.Message,), dict(children))
     if add_to_module:
       setattr(module_instance, name, message_class)
     return message_class

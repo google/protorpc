@@ -23,7 +23,7 @@ transports such as HTTP.
 Includes HTTP transport built over urllib2.
 """
 
-import httplib
+import six.moves.http_client
 import logging
 import os
 import socket
@@ -34,6 +34,7 @@ from . import messages
 from . import protobuf
 from . import remote
 from . import util
+import six
 
 __all__ = [
   'RpcStateError',
@@ -160,7 +161,7 @@ class Transport(object):
         by implementing encode_message, decode_message and set CONTENT_TYPE.
         For example, the modules protobuf and protojson can be used directly.
     """
-    if isinstance(protocol, basestring):
+    if isinstance(protocol, six.string_types):
       protocols = remote.Protocols.get_default()
       try:
         protocol = protocols.lookup_by_name(protocol)
@@ -248,7 +249,7 @@ class HttpTransport(Transport):
       if content_type == self.protocol_config.default_content_type:
         try:
           rpc_status = self.protocol.decode_message(remote.RpcStatus, content)
-        except Exception, decode_err:
+        except Exception as decode_err:
           logging.warning(
             'An error occurred trying to parse status: %s\n%s',
             str(decode_err), content)
@@ -263,7 +264,7 @@ class HttpTransport(Transport):
     # If no RpcStatus message present, attempt to forward any content.  If empty
     # use standard error message.
     if not content.strip():
-      content = httplib.responses.get(response.status, 'Unknown Error')
+      content = six.moves.http_client.responses.get(response.status, 'Unknown Error')
     return remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
                             error_message='HTTP Error %s: %s' % (
                               response.status, content or 'Unknown Error'))
@@ -284,7 +285,7 @@ class HttpTransport(Transport):
 
       content = response.read()
 
-      if response.status == httplib.OK:
+      if response.status == six.moves.http_client.OK:
         response = self.protocol.decode_message(remote_info.response_type,
                                                 content)
         rpc.set_response(response)
@@ -304,14 +305,14 @@ class HttpTransport(Transport):
     Returns:
       An Rpc instance initialized with a Request.
     """
-    method_url = '%s.%s' % (self.__service_url, remote_info.method.func_name)
+    method_url = '%s.%s' % (self.__service_url, remote_info.method.__name__)
     encoded_request = self.protocol.encode_message(request)
 
     url = urlparse.urlparse(method_url)
     if url.scheme == 'https':
-      connection_type = httplib.HTTPSConnection
+      connection_type = six.moves.http_client.HTTPSConnection
     else:
-      connection_type = httplib.HTTPConnection
+      connection_type = six.moves.http_client.HTTPConnection
     connection = connection_type(url.hostname, url.port)
     try:
       self._send_http_request(connection, url.path, encoded_request)
@@ -320,12 +321,12 @@ class HttpTransport(Transport):
       # Pass through all ProtoRPC errors
       connection.close()
       raise
-    except socket.error, err:
+    except socket.error as err:
       connection.close()
       raise remote.NetworkError('Socket error: %s %r' % (type(err).__name__,
                                                          err.args),
                                 err)
-    except Exception, err:
+    except Exception as err:
       connection.close()
       raise remote.NetworkError('Error communicating with HTTP server',
                                 err)
@@ -392,7 +393,7 @@ class LocalTransport(Transport):
       except AttributeError:
         pass
       else:
-        host = unicode(os.uname()[1])
+        host = six.text_type(os.uname()[1])
         initalize_request_state(remote.RequestState(remote_host=host,
                                                     remote_address=u'127.0.0.1',
                                                     server_host=host,
@@ -405,7 +406,7 @@ class LocalTransport(Transport):
       except:
         exc_type, exc_value, traceback = sys.exc_info()
         message = 'Unexpected error %s: %s' % (exc_type.__name__, exc_value)
-        raise remote.ServerError, message, traceback
+        six.reraise(remote.ServerError, message, traceback)
       rpc.set_response(response)
     rpc._wait_impl = wait_impl
     return rpc

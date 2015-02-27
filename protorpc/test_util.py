@@ -26,6 +26,7 @@ services_test.proto.
 Includes additional test utilities to make sure encoding/decoding libraries
 conform.
 """
+from six.moves import range
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -38,6 +39,8 @@ import socket
 import types
 import unittest2 as unittest
 
+import six
+
 from . import message_types
 from . import messages
 from . import util
@@ -46,7 +49,7 @@ from . import util
 RUSSIAN = u'\u0440\u0443\u0441\u0441\u043a\u0438\u0439'
 
 # All characters binary value interspersed with nulls.
-BINARY = ''.join(chr(value) + '\0' for value in range(256))
+BINARY = b''.join(six.int2byte(value) + b'\0' for value in range(256))
 
 
 class TestCase(unittest.TestCase):
@@ -69,7 +72,7 @@ class TestCase(unittest.TestCase):
     try:
       function(*params, **kwargs)
       self.fail('Expected exception %s was not raised' % exception.__name__)
-    except exception, err:
+    except exception as err:
       match = bool(re.match(regexp, str(err)))
       self.assertTrue(match, 'Expected match "%s", found "%s"' % (regexp,
                                                                   err))
@@ -376,7 +379,7 @@ class ProtoConformanceTestBase(object):
         int32_value: 1020
         bool_value: true
         string_value: u"a string\u044f"
-        bytes_value: "a bytes\xff\xfe"
+        bytes_value: b"a bytes\xff\xfe"
         enum_value: OptionalMessage.SimpleEnum.VAL2
         >
 
@@ -389,7 +392,7 @@ class ProtoConformanceTestBase(object):
         int32_value: [1020, 718]
         bool_value: [true, false]
         string_value: [u"a string\u044f", u"another string"]
-        bytes_value: ["a bytes\xff\xfe", "another bytes"]
+        bytes_value: [b"a bytes\xff\xfe", b"another bytes"]
         enum_value: [OptionalMessage.SimpleEnum.VAL2,
                      OptionalMessage.SimpleEnum.VAL 1]
         >
@@ -477,7 +480,7 @@ class ProtoConformanceTestBase(object):
     message.int32_value = 1020
     message.bool_value = True
     message.string_value = u'a string\u044f'
-    message.bytes_value = 'a bytes\xff\xfe'
+    message.bytes_value = b'a bytes\xff\xfe'
     message.enum_value = OptionalMessage.SimpleEnum.VAL2
 
     self.EncodeDecode(self.encoded_full, message)
@@ -492,7 +495,7 @@ class ProtoConformanceTestBase(object):
     message.int32_value = [1020, 718]
     message.bool_value = [True, False]
     message.string_value = [u'a string\u044f', u'another string']
-    message.bytes_value = ['a bytes\xff\xfe', 'another bytes']
+    message.bytes_value = [b'a bytes\xff\xfe', b'another bytes']
     message.enum_value = [RepeatedMessage.SimpleEnum.VAL2,
                           RepeatedMessage.SimpleEnum.VAL1]
 

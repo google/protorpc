@@ -85,6 +85,7 @@ Helper classes:
   URLEncodedRequestBuilder: Used for encapsulating the logic used for building
     a request message from a URL encoded RPC.
 """
+import six
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
@@ -425,7 +426,7 @@ class URLEncodedRequestBuilder(object):
     elif isinstance(field, message_types.DateTimeField):
       try:
         converted_value = util.decode_datetime(value)
-      except ValueError, e:
+      except ValueError as e:
         raise messages.DecodeError(e)
     elif isinstance(field, messages.MessageField):
       # Just make sure it's instantiated.  Assignment to field or
@@ -520,7 +521,7 @@ def encode_message(message, prefix=''):
         elif isinstance(field, messages.BooleanField):
           parameters.append((field_name, item and 'true' or 'false'))
         else:
-          if isinstance(item, unicode):
+          if isinstance(item, six.text_type):
             item = item.encode('utf-8')
           parameters.append((field_name, str(item)))
 
@@ -553,7 +554,7 @@ def decode_message(message_type, encoded_message, **kwargs):
   message = message_type()
   builder = URLEncodedRequestBuilder(message, **kwargs)
   arguments = cgi.parse_qs(encoded_message, keep_blank_values=True)
-  for argument, values in sorted(arguments.iteritems()):
+  for argument, values in sorted(six.iteritems(arguments)):
     added = builder.add_parameter(argument, values)
     # Save off any unknown values, so they're still accessible.
     if not added:
