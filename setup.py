@@ -23,7 +23,7 @@ from setuptools import setup
 # Configure the required packages and scripts to install, depending on
 # Python version and OS.
 REQUIRED_PACKAGES = [
-    'six',
+    'six>=1.7.0',  # minimum version to avoid six.NewBase issues
     ]
 CONSOLE_SCRIPTS = [
     'gen_protorpc = gen_protorpc:main',
