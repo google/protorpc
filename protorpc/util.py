@@ -26,6 +26,7 @@ __author__ = ['rafek@google.com (Rafe Kaplan)',
 
 import cgi
 import datetime
+import functools
 import inspect
 import os
 import re
@@ -160,6 +161,7 @@ def positional(max_positional_args):
       has no arguments with default values.
   """
   def positional_decorator(wrapped):
+    @functools.wraps(wrapped)
     def positional_wrapper(*args, **kwargs):
       if len(args) > max_positional_args:
         plural_s = ''
