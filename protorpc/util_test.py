@@ -116,6 +116,13 @@ class UtilTest(test_util.TestCase):
         'Functions with no keyword arguments must specify max_positional_args',
         util.positional, fn)
 
+  def testDecoratedFunctionDocstring(self):
+    @util.positional(0)
+    def fn(kwonly=1):
+      """fn docstring."""
+      return [kwonly]
+    self.assertEquals('fn docstring.', fn.__doc__)
+
 
 class AcceptItemTest(test_util.TestCase):
 

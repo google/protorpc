@@ -83,6 +83,7 @@ class BasicService(remote.Service):
 
   @remote.method(SimpleRequest, SimpleResponse)
   def remote_method(self, request):
+    """BasicService remote_method docstring."""
     self.request_ids.append(id(request))
     return SimpleResponse()
 
@@ -234,6 +235,12 @@ class MethodTest(test_util.TestCase):
             pass
 
       self.assertRaises(TypeError, declare)
+
+  def testDocString(self):
+    """Test that the docstring comes from the original method."""
+    service = BasicService()
+    self.assertEquals('BasicService remote_method docstring.',
+                      service.remote_method.__doc__)
 
 
 class GetRemoteMethodTest(test_util.TestCase):
