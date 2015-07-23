@@ -950,7 +950,7 @@ class Message(six.with_metaclass(_MessageClass, object)):
 
     Args:
       name: Name of field to assign to.
-      vlaue: Value to assign to field.
+      value: Value to assign to field.
 
     Raises:
       AttributeError when trying to assign value that is not a field.
