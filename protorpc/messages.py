@@ -1134,19 +1134,19 @@ class FieldList(list):
     return list.insert(self, index, value)
 
 
+class _FieldMeta(type):
+
+  def __init__(cls, name, bases, dct):
+    getattr(cls, '_Field__variant_to_type').update(
+      (variant, cls) for variant in dct.get('VARIANTS', []))
+    type.__init__(cls, name, bases, dct)
+
+
 # TODO(rafek): Prevent additional field subclasses.
-class Field(object):
-
-  __variant_to_type = {}
-
-  class __metaclass__(type):
-
-    def __init__(cls, name, bases, dct):
-      getattr(cls, '_Field__variant_to_type').update(
-        (variant, cls) for variant in dct.get('VARIANTS', []))
-      type.__init__(cls, name, bases, dct)
+class Field(six.with_metaclass(_FieldMeta, object)):
 
   __initialized = False
+  __variant_to_type = {}
 
   @util.positional(2)
   def __init__(self,
