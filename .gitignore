@@ -32,3 +32,6 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+
+# Jetbrains IDE directories
+.idea/
