@@ -30,7 +30,10 @@ from protorpc import messages
 from protorpc import protojson
 from protorpc import test_util
 
-import simplejson
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 
 class CustomField(messages.MessageField):
@@ -88,8 +91,8 @@ class ProtojsonTest(test_util.TestCase,
 
   def CompareEncoded(self, expected_encoded, actual_encoded):
     """JSON encoding will be laundered to remove string differences."""
-    self.assertEquals(simplejson.loads(expected_encoded),
-                      simplejson.loads(actual_encoded))
+    self.assertEquals(json.loads(expected_encoded),
+                      json.loads(actual_encoded))
 
   encoded_empty_message = '{}'
 
@@ -280,6 +283,14 @@ class ProtojsonTest(test_util.TestCase,
 
     message = protojson.decode_message(test_util.OptionalMessage, ' ')
     self.assertEquals(test_util.OptionalMessage(), message)
+
+  def testMeregeInvalidEmptyMessage(self):
+    self.assertRaisesWithRegexpMatch(messages.ValidationError,
+                                     'Message NestedMessage is missing '
+                                     'required field a_value',
+                                     self.PROTOLIB.decode_message,
+                                     test_util.NestedMessage,
+                                     '')
 
   def testProtojsonUnrecognizedFieldName(self):
     """Test that unrecognized fields are saved and can be accessed."""
