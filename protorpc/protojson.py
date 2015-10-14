@@ -198,10 +198,7 @@ class ProtoJson(object):
       ValueError: If encoded_message is not valid JSON.
       messages.ValidationError if merged message is not initialized.
     """
-    if not encoded_message.strip():
-      return message_type()
-
-    dictionary = json.loads(encoded_message)
+    dictionary = json.loads(encoded_message) if encoded_message.strip() else {}
     message = self.__decode_dictionary(message_type, dictionary)
     message.check_initialized()
     return message
