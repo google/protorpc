@@ -1297,6 +1297,10 @@ class Field(six.with_metaclass(_FieldMeta, object)):
       ValidationError if value is not expected type.
     """
     if not isinstance(value, self.type):
+      # Authorize in values as float
+      if isinstance(value, six.integer_types) and self.type == float:
+        return
+
       if value is None:
         if self.required:
           raise ValidationError('Required field is missing')
