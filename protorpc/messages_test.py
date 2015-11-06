@@ -783,7 +783,7 @@ class FieldTest(test_util.TestCase):
     values = {messages.IntegerField: 10,
               messages.FloatField: 1.5,
               messages.BooleanField: False,
-              messages.BytesField: 'abc',
+              messages.BytesField: b'abc',
               messages.StringField: u'abc',
              }
     def action(field_class):
@@ -797,10 +797,10 @@ class FieldTest(test_util.TestCase):
 
       # Repeated.
       field = field_class(1, repeated=True)
-      self.assertRaises(message.VAlidationError,
+      self.assertRaises(messages.ValidationError,
                         field.validate_element,
                         [])
-      self.assertRaises(message.VAlidationError,
+      self.assertRaises(messages.ValidationError,
                         field.validate_element,
                         ())
       field.validate_element(values[field_class])
@@ -813,6 +813,7 @@ class FieldTest(test_util.TestCase):
       self.assertRaises(messages.ValidationError,
                         field.validate_element,
                         (values[field_class],))
+    self.ActionOnAllFieldClasses(action)
 
   def testReadOnly(self):
     """Test that objects are all read-only."""
