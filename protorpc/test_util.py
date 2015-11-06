@@ -526,7 +526,7 @@ class ProtoConformanceTestBase(object):
   def testStringTypes(self):
     """Test that encoding str on StringField works."""
     message = OptionalMessage()
-    message.string_value = 'Latin'
+    message.string_value = u'Latin'
     self.EncodeDecode(self.encoded_string_types, message)
 
   def testEncodeUninitialized(self):

@@ -429,18 +429,18 @@ class CustomProtoJsonTest(test_util.TestCase):
     self.protojson = CustomProtoJson()
 
   def testEncode(self):
-    self.assertEqual('{"a_string": "{encoded}xyz"}',
-                     self.protojson.encode_message(MyMessage(a_string='xyz')))
+    self.assertEqual(u'{"a_string": "{encoded}xyz"}',
+                     self.protojson.encode_message(MyMessage(a_string=u'xyz')))
 
   def testDecode(self):
     self.assertEqual(
-        MyMessage(a_string='{decoded}xyz'),
-        self.protojson.decode_message(MyMessage, '{"a_string": "xyz"}'))
+        MyMessage(a_string=u'{decoded}xyz'),
+        self.protojson.decode_message(MyMessage, u'{"a_string": "xyz"}'))
 
   def testDecodeEmptyMessage(self):
     self.assertEqual(
-        MyMessage(a_string='{decoded}'),
-        self.protojson.decode_message(MyMessage, '{"a_string": ""}'))
+        MyMessage(a_string=u'{decoded}'),
+        self.protojson.decode_message(MyMessage, u'{"a_string": ""}'))
 
   def testDefault(self):
     self.assertTrue(protojson.ProtoJson.get_default(),

@@ -1519,14 +1519,14 @@ class MessageTest(test_util.TestCase):
     self.assertEquals(message1, message2)
 
     message1.field3 = AnotherMessage()
-    message1.field3.string = 'value1'
+    message1.field3.string = u'value1'
     self.assertNotEquals(message1, message2)
 
     message2.field3 = AnotherMessage()
-    message2.field3.string = 'value2'
+    message2.field3.string = u'value2'
     self.assertNotEquals(message1, message2)
 
-    message2.field3.string = 'value1'
+    message2.field3.string = u'value1'
     self.assertEquals(message1, message2)
 
   def testEqualityWithUnknowns(self):
