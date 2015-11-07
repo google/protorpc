@@ -723,7 +723,7 @@ class FieldTest(test_util.TestCase):
   def testValidate_Invalid(self):
     """Test validation of valid values."""
     values = {messages.IntegerField: "10",
-              messages.FloatField: 1,
+              messages.FloatField: "blah",
               messages.BooleanField: 0,
               messages.BytesField: 10.20,
               messages.StringField: 42,
@@ -780,20 +780,22 @@ class FieldTest(test_util.TestCase):
 
   def testValidateElement(self):
     """Test validation of valid values."""
-    values = {messages.IntegerField: 10,
-              messages.FloatField: 1.5,
-              messages.BooleanField: False,
-              messages.BytesField: b'abc',
-              messages.StringField: u'abc',
+    values = {messages.IntegerField: (10, -1, 0),
+              messages.FloatField: (1.5, -1.5, 3),  # for json it is all a number
+              messages.BooleanField: (True, False),
+              messages.BytesField: (b'abc',),
+              messages.StringField: (u'abc',),
              }
     def action(field_class):
       # Optional.
       field = field_class(1)
-      field.validate_element(values[field_class])
+      for value in values[field_class]:
+        field.validate_element(value)
 
       # Required.
       field = field_class(1, required=True)
-      field.validate_element(values[field_class])
+      for value in values[field_class]:
+        field.validate_element(value)
 
       # Repeated.
       field = field_class(1, repeated=True)
@@ -803,17 +805,27 @@ class FieldTest(test_util.TestCase):
       self.assertRaises(messages.ValidationError,
                         field.validate_element,
                         ())
-      field.validate_element(values[field_class])
-      field.validate_element(values[field_class])
+      for value in values[field_class]:
+        field.validate_element(value)
 
       # Right value, but repeated.
       self.assertRaises(messages.ValidationError,
                         field.validate_element,
-                        [values[field_class]])
+                        list(values[field_class]))  # testing list
       self.assertRaises(messages.ValidationError,
                         field.validate_element,
-                        (values[field_class],))
+                        values[field_class])  # testing tuple
     self.ActionOnAllFieldClasses(action)
+
+  def testValidateCastingElement(self):
+    field = messages.FloatField(1)
+    self.assertEquals(type(field.validate_element(12)), float)
+    self.assertEquals(type(field.validate_element(12.0)), float)
+    field = messages.IntegerField(1)
+    self.assertEquals(type(field.validate_element(12)), int)
+    self.assertRaises(messages.ValidationError,
+                      field.validate_element,
+                      12.0)  # should fail from float to int
 
   def testReadOnly(self):
     """Test that objects are all read-only."""
@@ -1507,14 +1519,14 @@ class MessageTest(test_util.TestCase):
     self.assertEquals(message1, message2)
 
     message1.field3 = AnotherMessage()
-    message1.field3.string = 'value1'
+    message1.field3.string = u'value1'
     self.assertNotEquals(message1, message2)
 
     message2.field3 = AnotherMessage()
-    message2.field3.string = 'value2'
+    message2.field3.string = u'value2'
     self.assertNotEquals(message1, message2)
 
-    message2.field3.string = 'value1'
+    message2.field3.string = u'value1'
     self.assertEquals(message1, message2)
 
   def testEqualityWithUnknowns(self):
