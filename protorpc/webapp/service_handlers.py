@@ -429,7 +429,7 @@ class ServiceHandler(webapp.RequestHandler):
 
     response_message.append('Service %s\n\n' % definition_name)
     response_message.append('More about ProtoRPC: ')
-      
+
     response_message.append('http://code.google.com/p/google-protorpc\n')
     self.response.out.write(util.pad_string(''.join(response_message)))
 
@@ -603,7 +603,7 @@ class ServiceHandler(webapp.RequestHandler):
       except remote.ApplicationError as err:
         self.__send_error(400,
                           remote.RpcState.APPLICATION_ERROR,
-                          err.message,
+                          str(err),
                           mapper,
                           err.error_name)
         return
