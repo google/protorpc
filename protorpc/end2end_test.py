@@ -110,7 +110,7 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
     try:
       self.stub.raise_application_error()
     except remote.ApplicationError as err:
-      self.assertEquals('This is an application error', str(err))
+      self.assertEquals('This is an application error', unicode(err))
       self.assertEquals('ERROR_NAME', err.error_name)
     else:
       self.fail('Expected application error')
@@ -119,7 +119,7 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
     try:
       self.stub.raise_rpc_error()
     except remote.ServerError as err:
-      self.assertEquals('Internal Server Error', str(err))
+      self.assertEquals('Internal Server Error', unicode(err))
     else:
       self.fail('Expected server error')
 
@@ -127,7 +127,7 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
     try:
       self.stub.raise_unexpected_error()
     except remote.ServerError as err:
-      self.assertEquals('Internal Server Error', str(err))
+      self.assertEquals('Internal Server Error', unicode(err))
     else:
       self.fail('Expected server error')
 
@@ -135,7 +135,7 @@ class EndToEndTest(webapp_test_util.EndToEndTestBase):
     try:
       self.stub.return_bad_message()
     except remote.ServerError as err:
-      self.assertEquals('Internal Server Error', str(err))
+      self.assertEquals('Internal Server Error', unicode(err))
     else:
       self.fail('Expected server error')
 

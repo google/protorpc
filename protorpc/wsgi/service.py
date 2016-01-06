@@ -184,7 +184,7 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
     except remote.ApplicationError as err:
       return send_rpc_error(six.moves.http_client.BAD_REQUEST,
                             remote.RpcState.APPLICATION_ERROR,
-                            str(err),
+                            unicode(err),
                             err.error_name)
     except Exception as err:
       logging.exception('Encountered unexpected error from ProtoRPC '
@@ -265,4 +265,3 @@ def service_mappings(services, registry_path=DEFAULT_REGISTRY_PATH):
       registry.RegistryService.new_factory(registry_map), registry_path))
 
   return wsgi_util.first_found(final_mapping)
-

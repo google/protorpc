@@ -264,7 +264,7 @@ class ApplicationError(RpcError):
     self.error_name = error_name
 
   def __str__(self):
-    return self.args[0]
+    return self.args[0] or ''
 
   def __repr__(self):
     if self.error_name is None:
