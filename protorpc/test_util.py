@@ -639,7 +639,12 @@ def pick_unused_port():
 
       http://code.activestate.com/recipes/531822-pick-unused-port
   """
-  temp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  try:
+    temp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  except socket.error:
+    # Try IPv6
+    temp = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+
   try:
     temp.bind(('localhost', 0))
     port = temp.getsockname()[1]
