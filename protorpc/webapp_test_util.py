@@ -24,6 +24,7 @@
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
 import cStringIO
+import socket
 import threading
 import urllib2
 from wsgiref import simple_server
@@ -188,6 +189,10 @@ class SyncedWSGIServer(simple_server.WSGIServer):
   pass
 
 
+class WSGIServerIPv6(simple_server.WSGIServer):
+  address_family = socket.AF_INET6
+
+
 class ServerThread(threading.Thread):
   """Thread responsible for managing wsgi server.
 
@@ -332,7 +337,15 @@ class WebServerTestBase(test_util.TestCase):
     if not application:
       application = self.CreateWsgiApplication()
     validated_application = validate.validator(application)
-    server = simple_server.make_server('localhost', port, validated_application)
+
+    try:
+      server = simple_server.make_server(
+          'localhost', port, validated_application)
+    except socket.error:
+      # Try IPv6
+      server = simple_server.make_server(
+          'localhost', port, validated_application, server_class=WSGIServerIPv6)
+
     server = ServerThread(server)
     server.start()
     return server, application
