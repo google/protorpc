@@ -24,14 +24,14 @@ from setuptools import setup
 # Python version and OS.
 REQUIRED_PACKAGES = [
     'six>=1.7.0',  # minimum version to avoid six.NewBase issues
-    ]
+]
 CONSOLE_SCRIPTS = [
     'gen_protorpc = gen_protorpc:main',
-    ]
+]
 
 py_version = platform.python_version()
 if py_version < '2.6':
-  REQUIRED_PACKAGES.append('simplejson')
+    REQUIRED_PACKAGES.append('simplejson')
 
 _PROTORPC_VERSION = '0.12.0'
 packages = [
@@ -49,11 +49,8 @@ setup(
     packages=packages,
     entry_points={
         'console_scripts': CONSOLE_SCRIPTS,
-        },
+    },
     install_requires=REQUIRED_PACKAGES,
-    provides=[
-        'protorpc (%s)' % (_PROTORPC_VERSION,),
-        ],
     # PyPI package information.
     classifiers=[
         'Intended Audience :: Developers',
@@ -69,7 +66,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
-        ],
+    ],
     license='Apache 2.0',
     keywords='google protocol rpc',
-    )
+)
