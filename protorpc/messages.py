@@ -1148,12 +1148,6 @@ class Field(six.with_metaclass(_FieldMeta, object)):
   __initialized = False
   __variant_to_type = {}
 
-  # TODO(craigcitro): Remove this alias.
-  #
-  # We add an alias here for backwards compatibility; note that in
-  # python3, this attribute will silently be ignored.
-  __metaclass__ = _FieldMeta
-
   @util.positional(2)
   def __init__(self,
                number,
